@@ -831,10 +831,10 @@ void MongooseServer::SendWSQueue()
                                         bSent = true;
                                         break;
                                     }
-                                    if(bSent)
-                                    {
-                                        break;
-                                    }
+                                }
+                                if(bSent)
+                                {
+                                    break;
                                 }
                             }
                         }
