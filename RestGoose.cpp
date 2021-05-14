@@ -41,9 +41,9 @@ bool RestGoose::AddEndpoint(const endpoint& theEndpoint, std::function<response(
     return m_pImpl->AddEndpoint(theEndpoint, func);
 }
 
-bool RestGoose::AddWebsocketEndpoint(const url& theEndpoint, std::function<bool(const url&, const userName&)> funcAuthentication, std::function<bool(const url&, const Json::Value&)> funcMessage)
+bool RestGoose::AddWebsocketEndpoint(const url& theEndpoint, std::function<bool(const url&, const userName&, const ipAddress& peer)> funcAuthentication, std::function<bool(const url&, const Json::Value&)> funcMessage, std::function<void(const url&, const ipAddress& peer)> funcClose)
 {
-    return m_pImpl->AddWebsocketEndpoint(theEndpoint, funcAuthentication, funcMessage);
+    return m_pImpl->AddWebsocketEndpoint(theEndpoint, funcAuthentication, funcMessage, funcClose);
 }
 
 bool RestGoose::DeleteEndpoint(const endpoint& theEndpoint)
@@ -75,4 +75,14 @@ void RestGoose::DeleteBAUser(const userName& aUser)
 std::set<endpoint> RestGoose::GetEndpoints()
 {
     return m_pImpl->GetEndpoints();
+}
+
+void RestGoose::SetStaticDirectory(const std::string& sDir)
+{
+    m_pImpl->SetStaticDirectory(sDir);
+}
+
+const std::string& RestGoose::GetStaticDirectory() const
+{
+    return m_pImpl->GetStaticDirectory();
 }

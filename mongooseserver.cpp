@@ -28,6 +28,20 @@ bool RG_EXPORT operator<(const endpoint& e1, const endpoint& e2)
     return (e1.first.Get() < e2.first.Get() || (e1.first.Get() == e2.first.Get() && e1.second.Get() < e2.second.Get()));
 }
 
+void mgpmlLog(const void* buff, int nLength, void* param)
+{
+    std::string str((char*)buff, nLength);
+    if(str.length() > 7 && str[4] == '-' && str[7] == '-')
+    {   //prefix message
+
+    }
+    else
+    {
+        pmlLog() << "Mongoose: " << str;
+    }
+
+}
+
 
 map<string, string> DecodeQueryString(mg_http_message* pMessage)
 {
@@ -90,7 +104,7 @@ bool MongooseServer::AuthenticateWebsocket(subscriber& sub, const Json::Value& j
             auto itEndpoint = m_mWebsocketAuthenticationEndpoints.find(sub.theUrl);
             if(itEndpoint != m_mWebsocketAuthenticationEndpoints.end())
             {
-                if(itEndpoint->second(sub.theUrl, itUser->first))
+                if(itEndpoint->second(sub.theUrl, itUser->first, sub.peer))
                 {
                     pmlLog(pml::LOG_INFO) << "Websocket subscriber: " << sub.peer << " authorized";
 
@@ -253,7 +267,30 @@ void MongooseServer::EventWebsocketCtl(mg_connection *pConnection, int nEvent, v
 {
     mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pData);
 
-    pmlLog(pml::LOG_DEBUG) << "Websocket ctl: " << pMessage->data.ptr;
+    std::string sData;
+
+    if((pMessage->flags & WEBSOCKET_OP_TEXT) != 0)
+    {
+        sData.assign(pMessage->data.ptr, pMessage->data.len);
+    }
+    pmlLog(pml::LOG_DEBUG) << "Websocket ctl: [" << (int)pMessage->flags << "] " << sData;
+
+
+
+    if((pMessage->flags & WEBSOCKET_OP_CLOSE) != 0)
+    {
+        pmlLog(pml::LOG_DEBUG) << "MongooseServer\tWebsocketCtl - close";
+        auto itSub = m_mSubscribers.find(pConnection);
+        if(itSub != m_mSubscribers.end())
+        {
+            auto itEndpoint = m_mWebsocketCloseEndpoints.find(itSub->second.theUrl);
+            if(itEndpoint != m_mWebsocketCloseEndpoints.end())
+            {
+                itEndpoint->second(itSub->second.theUrl, itSub->second.peer);
+            }
+        }
+        m_mSubscribers.erase(pConnection);
+    }
 }
 
 
@@ -314,10 +351,14 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pDa
         auto itWsEndpoint = m_mWebsocketAuthenticationEndpoints.find(url(sUri));
         if(itWsEndpoint != m_mWebsocketAuthenticationEndpoints.end())
         {
+
             mg_ws_upgrade(pConnection, pMessage, nullptr);
             char buffer[256];
             mg_ntoa(&pConnection->peer, buffer, 256);
-            m_mSubscribers.insert(std::make_pair(pConnection, subscriber(url(sUri), ipAddress(buffer))));
+            std::stringstream ssPeer;
+            ssPeer << buffer << ":" << pConnection->peer.port;
+
+            m_mSubscribers.insert(std::make_pair(pConnection, subscriber(url(sUri), ipAddress(ssPeer.str()))));
         }
         else
         {
@@ -348,7 +389,15 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pDa
             }
             else
             {   //none found so sne a "not found" error
-                SendError(pConnection, "Not Found", 404);
+                if(m_sStaticRootDir.empty() == false)
+                {
+                    mg_http_serve_opts opts = {.root_dir = m_sStaticRootDir.c_str()};
+                    mg_http_serve_dir(pConnection, pMessage, &opts);
+                }
+                else
+                {
+                    SendError(pConnection, "Not Found", 404);
+                }
             }
         }
     }
@@ -358,6 +407,9 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
 {
     switch (nEvent)
     {
+        case MG_EV_ACCEPT:
+            HandleAccept(pConnection);
+            break;
         case MG_EV_WS_OPEN:
             pmlLog(pml::LOG_TRACE) << "MG_EV_WS_OPEN";
             EventWebsocketOpen(pConnection, nEvent, pData);
@@ -370,7 +422,6 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
             pmlLog(pml::LOG_TRACE) << "MG_EV_WS_MSG";
             EventWebsocketMessage(pConnection, nEvent, pData);
             break;
-
         case MG_EV_HTTP_MSG:
             pmlLog(pml::LOG_TRACE) << "MG_EV_HTTP_MSG";
             EventHttp(pConnection, nEvent, pData);
@@ -379,7 +430,9 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
             pmlLog(pml::LOG_TRACE) << "MG_EV_CLOSE";
             if (is_websocket(pConnection))
             {
+                pmlLog(pml::LOG_DEBUG) << "MongooseServer\tWebsocket closed";
                 pConnection->fn_data = nullptr;
+                m_mSubscribers.erase(pConnection);
             }
             pmlLog(pml::LOG_DEBUG) << "MongooseServer\tDone";
             break;
@@ -404,6 +457,25 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
     }
 }
 
+void MongooseServer::HandleAccept(mg_connection* pConnection)
+{
+    if(mg_url_is_ssl(m_sServerName.c_str()))
+    {
+        pmlLog(pml::LOG_DEBUG) << "Accept connection: Turn on TLS";
+        struct mg_tls_opts tls_opts;
+        tls_opts.ca = NULL;
+        tls_opts.srvname.len = 0;
+        tls_opts.srvname.ptr = NULL;
+        tls_opts.cert = m_sCert.c_str();
+        tls_opts.certkey = m_sKey.c_str();
+        tls_opts.ciphers = NULL;
+        //tls_opts.ciphers = "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256";
+        if(mg_tls_init(pConnection, &tls_opts) == 0)
+        {
+            pmlLog(pml::LOG_ERROR) << "Could not implement TLS";
+        }
+    }
+}
 
 
 MongooseServer::MongooseServer() :
@@ -413,6 +485,10 @@ MongooseServer::MongooseServer() :
     m_bLoop(true),
     m_pThread(nullptr)
 {
+    #ifdef __WXDEBUG__
+    mg_log_set("2");
+    mg_log_set_callback(mgpmlLog, NULL);
+    #endif // __WXDEBUG__
 
     m_multipartData.itEndpoint = m_mEndpoints.end();
 }
@@ -429,45 +505,36 @@ MongooseServer::~MongooseServer()
 bool MongooseServer::Init(const std::string& sCert, const std::string& sKey, int nPort)
 {
     //check for ssl
+    m_sKey = sKey;
+    m_sCert = sCert;
+
 
     char hostname[255];
     gethostname(hostname, 255);
     stringstream ssRewrite;
     ssRewrite << "%80=https://" << hostname;
 
+
+
     s_ServerOpts.root_dir = ".";
-//    s_ServerOpts.enable_directory_listing = "no";
-//    s_ServerOpts.url_rewrites=ssRewrite.str().c_str();
 // @todo    s_ServerOpts.extra_headers="X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown";
 
     mg_mgr_init(&m_mgr);
 
     stringstream ss;
-    ss << "http://localhost:";
-    ss << nPort;
 
-    if(!sCert.empty() && !sKey.empty())
+    if(sCert.empty())
     {
-        const char* err;
-
-        memset(&m_tls_opts, 0, sizeof(m_tls_opts));
-        m_tls_opts.cert = sCert.c_str();
-        m_tls_opts.certkey = sKey.c_str();
-        m_tls_opts.ciphers = "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256";
-
-
-        m_pConnection = mg_http_listen(&m_mgr, ss.str().c_str(), ev_handler, nullptr);
-        mg_tls_init(m_pConnection, &m_tls_opts);
-
-        if(m_pConnection == NULL)
-        {
-            pmlLog(pml::LOG_ERROR) << err;
-        }
+        ss << "http://0.0.0.0:";
     }
     else
     {
-        m_pConnection = mg_http_listen(&m_mgr, ss.str().c_str(), ev_handler, nullptr);
+        ss << "https://0.0.0.0:";
     }
+    ss << nPort;
+    m_sServerName = ss.str();
+
+    m_pConnection = mg_http_listen(&m_mgr, ss.str().c_str(), ev_handler, nullptr);
 
 
 
@@ -533,9 +600,11 @@ void MongooseServer::Stop()
     m_bLoop = false;
 }
 
-bool MongooseServer::AddWebsocketEndpoint(const url& theUrl, std::function<bool(const url&, const userName&)> funcAuthentication, std::function<bool(const url&, const Json::Value&)> funcMessage)
+bool MongooseServer::AddWebsocketEndpoint(const url& theUrl, std::function<bool(const url&, const userName&, const ipAddress& peer)> funcAuthentication, std::function<bool(const url&, const Json::Value&)> funcMessage, std::function<void(const url&, const ipAddress& peer)> funcClose)
 {
-    return m_mWebsocketAuthenticationEndpoints.insert(std::make_pair(theUrl, funcAuthentication)).second && m_mWebsocketMessageEndpoints.insert(std::make_pair(theUrl, funcMessage)).second;
+    return m_mWebsocketAuthenticationEndpoints.insert(std::make_pair(theUrl, funcAuthentication)).second &&
+           m_mWebsocketMessageEndpoints.insert(std::make_pair(theUrl, funcMessage)).second &&
+           m_mWebsocketCloseEndpoints.insert(std::make_pair(theUrl, funcClose)).second;
 }
 
 bool MongooseServer::AddEndpoint(const endpoint& theEndpoint, std::function<response(const query&, const postData&, const url&, const userName& )> func)

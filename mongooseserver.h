@@ -59,7 +59,7 @@ class MongooseServer
         void Stop();
 
 
-        bool AddWebsocketEndpoint(const url& theEndpoint, std::function<bool(const url&, const userName&)> funcAuthentication, std::function<bool(const url&, const Json::Value&)> funcMessage);
+        bool AddWebsocketEndpoint(const url& theEndpoint, std::function<bool(const url&, const userName&, const ipAddress& peer)> funcAuthentication, std::function<bool(const url&, const Json::Value&)> funcMessage, std::function<void(const url&, const ipAddress& peer)> funcClose);
 
         /** Adds a callback handler for an endpoint
         *   @param theEndpoint a pair definining the HTTP method and endpoint address
@@ -90,6 +90,10 @@ class MongooseServer
 
 
         std::set<endpoint> GetEndpoints();
+
+
+        void SetStaticDirectory(const std::string& sDir) { m_sStaticRootDir = sDir;}
+        const std::string& GetStaticDirectory() const {return m_sStaticRootDir;}
 
     private:
 
@@ -159,6 +163,7 @@ class MongooseServer
 
         bool AuthenticateWebsocket(subscriber& sub, const Json::Value& jsData);
 
+        void HandleAccept(mg_connection* pConnection);
 
 
 
@@ -167,15 +172,21 @@ class MongooseServer
         std::string m_sIniPath;
         std::string m_sServerName;
 
+        std::string m_sCert;
+        std::string m_sKey;
+
+        std::string m_sStaticRootDir;
+
         mg_mgr m_mgr;
-        struct mg_tls_opts m_tls_opts;
+
 
         int m_nPollTimeout;
 
         std::function<void(unsigned int)> m_loopCallback;
         std::map<endpoint, std::function<response(const query&, const postData&, const url&, const userName&)>> m_mEndpoints;
-        std::map<url, std::function<bool(const url&, const userName&)>> m_mWebsocketAuthenticationEndpoints;
+        std::map<url, std::function<bool(const url&, const userName&, const ipAddress& peer)>> m_mWebsocketAuthenticationEndpoints;
         std::map<url, std::function<bool(const url&, const Json::Value&)>> m_mWebsocketMessageEndpoints;
+        std::map<url, std::function<void(const url&, const ipAddress& peer)>> m_mWebsocketCloseEndpoints;
         std::multimap<std::string, httpMethod> m_mmOptions;
 
 

@@ -28,7 +28,7 @@ class RG_EXPORT RestGoose
         void AddBAUser(const userName& aUser, const password& aPassword);
         void DeleteBAUser(const userName& aUser);
 
-        bool AddWebsocketEndpoint(const url& theEndpoint, std::function<bool(const url&, const userName&)> funcAuthentication, std::function<bool(const url&, const Json::Value&)> funcMessage);
+        bool AddWebsocketEndpoint(const url& theEndpoint, std::function<bool(const url&, const userName&, const ipAddress& peer)> funcAuthentication, std::function<bool(const url&, const Json::Value&)> funcMessage, std::function<void(const url&, const ipAddress& peer)> funcClose);
 
 
         ///< @brief Stops the server
@@ -55,6 +55,9 @@ class RG_EXPORT RestGoose
         void SendWebsocketMessage(const std::set<std::string>& setEndpoints, const Json::Value& jsMessage);
 
         std::set<endpoint> GetEndpoints();
+
+        void SetStaticDirectory(const std::string& sDir);
+        const std::string& GetStaticDirectory() const;
 
         static const httpMethod GET;
         static const httpMethod POST;
