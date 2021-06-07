@@ -490,6 +490,7 @@ MongooseServer::MongooseServer() :
     mg_log_set_callback(mgpmlLog, NULL);
     #endif // __WXDEBUG__
 
+
     m_multipartData.itEndpoint = m_mEndpoints.end();
 }
 

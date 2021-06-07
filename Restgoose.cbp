@@ -50,13 +50,13 @@
 			<Add directory="../../log/include" />
 			<Add directory="../../external/jsoncpp/dist" />
 			<Add directory="../../external/mongoose" />
-			<Add directory="../../external/openssl-1.1.0h-win32-mingw/include" />
+			<Add directory="C:/Program Files (x86)/OpenSSL-Win32/include" />
 		</Compiler>
 		<Linker>
 			<Add library="ws2_32" />
-			<Add library="libssl" />
-			<Add library="libcrypto" />
-			<Add directory="../../external/openssl-1.1.0h-win32-mingw/lib" />
+			<Add library="libssl-1_1" />
+			<Add library="libcrypto-1_1" />
+			<Add directory="C:/Program Files (x86)/OpenSSL-Win32/bin" />
 			<Add directory="../../log/lib" />
 		</Linker>
 		<Unit filename="../../external/jsoncpp/dist/jsoncpp.cpp" />
