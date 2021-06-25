@@ -7,7 +7,7 @@
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="Debug">
-				<Option output="bin/Debug/Restgoose" prefix_auto="1" extension_auto="1" />
+				<Option output="../lib/Restgoosed" prefix_auto="1" extension_auto="1" />
 				<Option working_dir="bin/Debug" />
 				<Option object_output="obj/Debug/" />
 				<Option type="3" />
@@ -23,7 +23,7 @@
 				</Linker>
 			</Target>
 			<Target title="Release">
-				<Option output="bin/Release/Restgoose" prefix_auto="1" extension_auto="1" />
+				<Option output="../lib/Restgoose" prefix_auto="1" extension_auto="1" />
 				<Option working_dir="bin/Release" />
 				<Option object_output="obj/Release/" />
 				<Option type="3" />
@@ -50,14 +50,14 @@
 			<Add directory="../../log/include" />
 			<Add directory="../../external/jsoncpp/dist" />
 			<Add directory="../../external/mongoose" />
-			<Add directory="C:/Program Files (x86)/OpenSSL-Win32/include" />
+			<Add directory="$(#openssl_32.INCLUDE)" />
 		</Compiler>
 		<Linker>
 			<Add library="ws2_32" />
 			<Add library="libssl-1_1" />
 			<Add library="libcrypto-1_1" />
-			<Add directory="C:/Program Files (x86)/OpenSSL-Win32/bin" />
 			<Add directory="../../log/lib" />
+			<Add directory="$(#openssl_32.LIB)" />
 		</Linker>
 		<Unit filename="../../external/jsoncpp/dist/jsoncpp.cpp" />
 		<Unit filename="../../external/mongoose/mongoose.c">
