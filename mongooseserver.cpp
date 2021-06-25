@@ -470,7 +470,8 @@ void MongooseServer::HandleAccept(mg_connection* pConnection)
         tls_opts.certkey = m_sKey.c_str();
         tls_opts.ciphers = NULL;
         //tls_opts.ciphers = "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256";
-        if(mg_tls_init(pConnection, &tls_opts) == 0)
+        mg_tls_init(pConnection, &tls_opts);
+        if(pConnection->is_closing == 1)
         {
             pmlLog(pml::LOG_ERROR) << "Could not implement TLS";
         }
