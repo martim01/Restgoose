@@ -304,6 +304,7 @@ authorised MongooseServer::CheckAuthorization(mg_http_message* pMessage)
         return std::make_pair(true, userName(""));
     }
 
+
     char sUser[255];
     char sPass[255];
     mg_http_creds(pMessage, sUser, 255, sPass, 255);
@@ -316,7 +317,7 @@ authorised MongooseServer::CheckAuthorization(mg_http_message* pMessage)
     }
     else
     {
-        pmlLog(pml::LOG_INFO) << "CheckAuthorization: user '" << sUser <<"' ,password '" << sPass << "' not found";
+        pmlLog(pml::LOG_INFO) << "CheckAuthorization: user '" << sUser <<" with given password not found";
         return std::make_pair(false, userName(""));
     }
 
