@@ -20,9 +20,9 @@ RestGoose::~RestGoose()
     m_pImpl->Stop();
 }
 
-bool RestGoose::Init(const std::string& sCert, const std::string& sKey, int nPort)
+bool RestGoose::Init(const std::string& sCert, const std::string& sKey, int nPort, const std::string& sRootApi)
 {
-    return m_pImpl->Init(sCert, sKey, nPort);
+    return m_pImpl->Init(sCert, sKey, nPort, sRootApi);
 }
 
 void RestGoose:: Run(bool bThread, unsigned int nTimeoutMs)

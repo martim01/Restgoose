@@ -347,59 +347,75 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pDa
     {
         SendOptions(pConnection, sUri);
     }
-    else
+    else if(InApiTree(sUri))
     {
         auto itWsEndpoint = m_mWebsocketAuthenticationEndpoints.find(url(sUri));
         if(itWsEndpoint != m_mWebsocketAuthenticationEndpoints.end())
         {
-
-            mg_ws_upgrade(pConnection, pMessage, nullptr);
-            char buffer[256];
-            mg_ntoa(&pConnection->peer, buffer, 256);
-            std::stringstream ssPeer;
-            ssPeer << buffer << ":" << pConnection->peer.port;
-
-            m_mSubscribers.insert(std::make_pair(pConnection, subscriber(url(sUri), ipAddress(ssPeer.str()))));
+            EventHttpWebsocket(pConnection, pMessage, url(sUri));
         }
         else
         {
-            auto auth = CheckAuthorization(pMessage);
-            if(auth.first == false)
-            {
-                SendAuthenticationRequest(pConnection);
-                return;
-            }
+            EventHttpApi(pConnection, pMessage, httpMethod(sMethod), url(sUri));
+        }
+    }
+    else
+    {
+        auto auth = CheckAuthorization(pMessage);
+        if(auth.first == false)
+        {
+            SendAuthenticationRequest(pConnection);
+            return;
+        }
+        //none found so sne a "not found" error
+        if(m_sStaticRootDir.empty() == false)
+        {
+            mg_http_serve_opts opts = {.root_dir = m_sStaticRootDir.c_str()};
+            mg_http_serve_dir(pConnection, pMessage, &opts);
+        }
+    }
+}
 
+void MongooseServer::EventHttpWebsocket(mg_connection *pConnection, mg_http_message* pMessage, const url& uri)
+{
+    mg_ws_upgrade(pConnection, pMessage, nullptr);
+    char buffer[256];
+    mg_ntoa(&pConnection->peer, buffer, 256);
+    std::stringstream ssPeer;
+    ssPeer << buffer << ":" << pConnection->peer.port;
+    m_mSubscribers.insert(std::make_pair(pConnection, subscriber(uri, ipAddress(ssPeer.str()))));
+}
 
-            std::string sQuery, sData;
-            if(pMessage->body.len > 0)
-            {
-                sData.assign(pMessage->body.ptr, pMessage->body.len);
-            }
-            if(pMessage->query.len > 0)
-            {
-                mg_url_decode(pMessage->query.ptr, pMessage->query.len, decode, 6000, 0);
-                sQuery = std::string(decode);
-            }
+void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* pMessage, const httpMethod& method, const url& uri)
+{
+    auto auth = CheckAuthorization(pMessage);
+    if(auth.first == false)
+    {
+        SendAuthenticationRequest(pConnection);
+    }
+    else
+    {
+        std::string sQuery, sData;
+        if(pMessage->body.len > 0)
+        {
+            sData.assign(pMessage->body.ptr, pMessage->body.len);
+        }
+        if(pMessage->query.len > 0)
+        {
+            char decode[6000];
+            mg_url_decode(pMessage->query.ptr, pMessage->query.len, decode, 6000, 0);
+            sQuery = std::string(decode);
+        }
 
-            //find the callback function assigned to the method and url
-            auto itCallback = m_mEndpoints.find(endpoint(httpMethod(sMethod),url(sUri)));
-            if(itCallback != m_mEndpoints.end())
-            {
-                DoReply(pConnection, itCallback->second(query(sQuery), postData(sData), url(sUri), auth.second));
-            }
-            else
-            {   //none found so sne a "not found" error
-                if(m_sStaticRootDir.empty() == false)
-                {
-                    mg_http_serve_opts opts = {.root_dir = m_sStaticRootDir.c_str()};
-                    mg_http_serve_dir(pConnection, pMessage, &opts);
-                }
-                else
-                {
-                    SendError(pConnection, "Not Found", 404);
-                }
-            }
+        //find the callback function assigned to the method and url
+        auto itCallback = m_mEndpoints.find(endpoint(method, uri));
+        if(itCallback != m_mEndpoints.end())
+        {
+            DoReply(pConnection, itCallback->second(query(sQuery), postData(sData), uri, auth.second));
+        }
+        else
+        {
+            SendError(pConnection, "Not Found", 404);
         }
     }
 }
@@ -505,12 +521,13 @@ MongooseServer::~MongooseServer()
     }
 }
 
-bool MongooseServer::Init(const std::string& sCert, const std::string& sKey, int nPort)
+bool MongooseServer::Init(const std::string& sCert, const std::string& sKey, int nPort, const std::string& sApiRoot)
 {
     //check for ssl
     m_sKey = sKey;
     m_sCert = sCert;
 
+    m_sApiRoot = sApiRoot;
 
     char hostname[255];
     gethostname(hostname, 255);
@@ -962,4 +979,10 @@ std::set<endpoint> MongooseServer::GetEndpoints()
         setEndpoints.insert(pairEnd.first);
     }
     return setEndpoints;
+}
+
+
+bool MongooseServer::InApiTree(const std::string& sUri)
+{
+    return (sUri.length() >= m_sApiRoot.length() && sUri.substr(0, m_sApiRoot.length()) == m_sApiRoot);
 }

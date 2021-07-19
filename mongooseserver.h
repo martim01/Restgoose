@@ -41,7 +41,7 @@ class MongooseServer
         MongooseServer();
         ~MongooseServer();
 
-        bool Init(const std::string& sCert, const std::string& sKey, int nPort);
+        bool Init(const std::string& sCert, const std::string& sKey, int nPort, const std::string& sApiRoot);
 
 
         void AddBAUser(const userName& aUser, const password& aPassword);
@@ -118,6 +118,8 @@ class MongooseServer
         **/
         void EventHttp(mg_connection *pConnection, int nEvent, void* pData);
 
+        void EventHttpWebsocket(mg_connection *pConnection, mg_http_message* pMessage, const url& uri);
+        void EventHttpApi(mg_connection *pConnection, mg_http_message* pMessage, const httpMethod& method, const url& uri);
 
         /** @brief Send a JSON encoded error message to the provided connection containing the provided error
         *   @param pConnection the mg_connection to send the data to
@@ -166,7 +168,7 @@ class MongooseServer
         void HandleAccept(mg_connection* pConnection);
 
 
-
+        bool InApiTree(const std::string& sUri);
 
         mg_connection* m_pConnection;
         std::string m_sIniPath;
@@ -176,6 +178,7 @@ class MongooseServer
         std::string m_sKey;
 
         std::string m_sStaticRootDir;
+        std::string m_sApiRoot;
 
         mg_mgr m_mgr;
 

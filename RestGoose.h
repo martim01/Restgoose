@@ -12,7 +12,7 @@ class RG_EXPORT RestGoose
         RestGoose();
         ~RestGoose();
 
-          bool Init(const std::string& sCert, const std::string& sKey, int nPort);
+        bool Init(const std::string& sCert, const std::string& sKey, int nPort, const std::string& sApiRoot);
 
         /** @brief Creates the thread that runs the webserver loop
         *   @param bThread if true will run in a separate thread, if false will run in main thread
