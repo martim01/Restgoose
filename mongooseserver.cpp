@@ -349,6 +349,7 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pDa
     }
     else if(InApiTree(sUri))
     {
+        pmlLog(pml::LOG_DEBUG) << "API call";
         auto itWsEndpoint = m_mWebsocketAuthenticationEndpoints.find(url(sUri));
         if(itWsEndpoint != m_mWebsocketAuthenticationEndpoints.end())
         {
@@ -361,6 +362,7 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pDa
     }
     else
     {
+        pmlLog(pml::LOG_DEBUG) << "Non-API call";
         auto auth = CheckAuthorization(pMessage);
         if(auth.first == false)
         {
@@ -378,6 +380,8 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pDa
 
 void MongooseServer::EventHttpWebsocket(mg_connection *pConnection, mg_http_message* pMessage, const url& uri)
 {
+    pmlLog(pml::LOG_DEBUG) << "Websocket subscription";
+
     mg_ws_upgrade(pConnection, pMessage, nullptr);
     char buffer[256];
     mg_ntoa(&pConnection->peer, buffer, 256);
@@ -447,11 +451,11 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
             pmlLog(pml::LOG_TRACE) << "MG_EV_CLOSE";
             if (is_websocket(pConnection))
             {
-                pmlLog(pml::LOG_DEBUG) << "MongooseServer\tWebsocket closed";
+                pmlLog(pml::LOG_TRACE) << "MongooseServer\tWebsocket closed";
                 pConnection->fn_data = nullptr;
                 m_mSubscribers.erase(pConnection);
             }
-            pmlLog(pml::LOG_DEBUG) << "MongooseServer\tDone";
+            pmlLog(pml::LOG_TRACE) << "MongooseServer\tDone";
             break;
 //        case MG_EV_HTTP_MULTIPART_REQUEST:
 //            MultipartBegin(pConnection, reinterpret_cast<http_message*>(pData));
