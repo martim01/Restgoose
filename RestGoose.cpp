@@ -20,9 +20,9 @@ RestGoose::~RestGoose()
     m_pImpl->Stop();
 }
 
-bool RestGoose::Init(const std::string& sCert, const std::string& sKey, int nPort, const std::string& sRootApi)
+bool RestGoose::Init(const std::string& sCert, const std::string& sKey, int nPort, const std::string& sRootApi, bool bEnableWebsocket)
 {
-    return m_pImpl->Init(sCert, sKey, nPort, sRootApi);
+    return m_pImpl->Init(sCert, sKey, nPort, sRootApi, bEnableWebsocket);
 }
 
 void RestGoose:: Run(bool bThread, unsigned int nTimeoutMs)
@@ -39,6 +39,11 @@ void RestGoose::Stop()
 bool RestGoose::AddEndpoint(const endpoint& theEndpoint, std::function<response(const query&, const postData&, const url&, const userName&)> func)
 {
     return m_pImpl->AddEndpoint(theEndpoint, func);
+}
+
+void RestGoose::AddNotFoundCallback(std::function<response(const query&, const postData&, const url&, const userName&)> func)
+{
+    return m_pImpl->AddNotFoundCallback(func);
 }
 
 bool RestGoose::AddWebsocketEndpoint(const url& theEndpoint, std::function<bool(const url&, const userName&, const ipAddress& peer)> funcAuthentication, std::function<bool(const url&, const Json::Value&)> funcMessage, std::function<void(const url&, const ipAddress& peer)> funcClose)
@@ -85,4 +90,34 @@ void RestGoose::SetStaticDirectory(const std::string& sDir)
 const std::string& RestGoose::GetStaticDirectory() const
 {
     return m_pImpl->GetStaticDirectory();
+}
+
+unsigned long RestGoose::GetPort() const
+{
+    return m_pImpl->GetPort();
+}
+
+void RestGoose::Wait()
+{
+    m_pImpl->Wait();
+}
+
+void RestGoose::PrimeWait()
+{
+    m_pImpl->PrimeWait();
+}
+
+bool RestGoose::IsOk()
+{
+    return m_pImpl->IsOk();
+}
+
+void RestGoose::Signal(bool bOk, const std::string& sData)
+{
+    m_pImpl->Signal(bOk, sData);
+}
+
+const std::string& RestGoose::GetSignalData()
+{
+    return m_pImpl->GetSignalData();
 }

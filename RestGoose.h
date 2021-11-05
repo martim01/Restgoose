@@ -2,7 +2,7 @@
 #include "response.h"
 #include "json/json.h"
 #include <set>
-
+#include <functional>
 
 class MongooseServer;
 
@@ -12,7 +12,7 @@ class RG_EXPORT RestGoose
         RestGoose();
         ~RestGoose();
 
-        bool Init(const std::string& sCert, const std::string& sKey, int nPort, const std::string& sApiRoot);
+        bool Init(const std::string& sCert, const std::string& sKey, int nPort, const std::string& sApiRoot, bool bEnableWebsocket);
 
         /** @brief Creates the thread that runs the webserver loop
         *   @param bThread if true will run in a separate thread, if false will run in main thread
@@ -30,6 +30,7 @@ class RG_EXPORT RestGoose
 
         bool AddWebsocketEndpoint(const url& theEndpoint, std::function<bool(const url&, const userName&, const ipAddress& peer)> funcAuthentication, std::function<bool(const url&, const Json::Value&)> funcMessage, std::function<void(const url&, const ipAddress& peer)> funcClose);
 
+        void AddNotFoundCallback(std::function<response(const query&, const postData&, const url&, const userName&)> func);
 
         ///< @brief Stops the server
         void Stop();
@@ -58,6 +59,16 @@ class RG_EXPORT RestGoose
 
         void SetStaticDirectory(const std::string& sDir);
         const std::string& GetStaticDirectory() const;
+
+        unsigned long GetPort() const;
+
+        void Wait();
+        void PrimeWait();
+        bool IsOk();
+        void Signal(bool bOk, const std::string& sData);
+        const std::string& GetSignalData();
+
+
 
         static const httpMethod GET;
         static const httpMethod POST;

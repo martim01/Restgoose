@@ -11,7 +11,7 @@
 #include "log.h"
 #include <chrono>
 #include "utils.h"
-//#include "uidutils.h"
+#include <algorithm>
 
 using namespace std;
 using namespace std::placeholders;
@@ -37,7 +37,7 @@ void mgpmlLog(const void* buff, int nLength, void* param)
     }
     else
     {
-        pmlLog() << "Mongoose: " << str;
+        pmlLog(pml::LOG_DEBUG) << "Mongoose: " << str;
     }
 
 }
@@ -73,7 +73,7 @@ static int is_websocket(const struct mg_connection *nc)
 
 static void ev_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_data)
 {
-    if(nEvent == 0)
+        if(nEvent == 0)
     {
         return;
     }
@@ -239,7 +239,7 @@ void MongooseServer::HandleExternalWebsocketMessage(mg_connection* pConnection, 
 
 void MongooseServer::AddWebsocketSubscriptions(subscriber& sub, const Json::Value& jsData)
 {
-    pmlLog() << "Websocket subscriber: " << sub.peer << " adding subscriptions " << jsData;
+    pmlLog(pml::LOG_DEBUG) << "Websocket subscriber: " << sub.peer << " adding subscriptions " << jsData;
 
     if(jsData["endpoints"].isArray())
     {
@@ -252,7 +252,7 @@ void MongooseServer::AddWebsocketSubscriptions(subscriber& sub, const Json::Valu
 
 void MongooseServer::RemoveWebsocketSubscriptions(subscriber& sub, const Json::Value& jsData)
 {
-    pmlLog() << "Websocket subscriber: " << sub.peer << " removing subscriptions " << jsData;
+    pmlLog(pml::LOG_DEBUG) << "Websocket subscriber: " << sub.peer << " removing subscriptions " << jsData;
 
     if(jsData["endpoints"].isArray())
     {
@@ -337,6 +337,20 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pDa
         sUri = sUri.substr(0, sUri.length()-1);
     }
 
+    transform(sUri.begin(), sUri.end(), sUri.begin(), ::tolower);
+    //remove any double /
+    std::string sPath;
+    char c(0);
+    for(size_t i = 0; i < sUri.length(); i++)
+    {
+        if(sUri[i] != c || c != '/')
+        {
+            sPath += sUri[i];
+        }
+        c = sUri[i];
+    }
+    sUri = sPath;
+
     string sMethod(pMessage->method.ptr);
     size_t nSpace = sMethod.find(' ');
     sMethod = sMethod.substr(0, nSpace);
@@ -417,6 +431,10 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
         {
             DoReply(pConnection, itCallback->second(query(sQuery), postData(sData), uri, auth.second));
         }
+        else if(m_callbackNotFound)
+        {
+            DoReply(pConnection, m_callbackNotFound(query(sQuery), postData(sData), uri, auth.second));
+        }
         else
         {
             SendError(pConnection, "Not Found", 404);
@@ -426,6 +444,7 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
 
 void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* pData)
 {
+
     switch (nEvent)
     {
         case MG_EV_ACCEPT:
@@ -480,6 +499,8 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
 
 void MongooseServer::HandleAccept(mg_connection* pConnection)
 {
+    pmlLog(pml::LOG_TRACE) << "MongooseServer::HandleAccept";
+
     if(mg_url_is_ssl(m_sServerName.c_str()))
     {
         pmlLog(pml::LOG_DEBUG) << "Accept connection: Turn on TLS";
@@ -502,10 +523,13 @@ void MongooseServer::HandleAccept(mg_connection* pConnection)
 
 MongooseServer::MongooseServer() :
     m_pConnection(nullptr),
+    m_bWebsocket(false),
+    m_nPort(0),
     m_nPollTimeout(100),
     m_loopCallback(nullptr),
     m_bLoop(true),
-    m_pThread(nullptr)
+    m_pThread(nullptr),
+    m_callbackNotFound(nullptr)
 {
     #ifdef __WXDEBUG__
     mg_log_set("2");
@@ -518,15 +542,13 @@ MongooseServer::MongooseServer() :
 
 MongooseServer::~MongooseServer()
 {
-    if(m_pThread)
-    {
-        m_bLoop = false;
-        m_pThread->join();
-    }
+    Stop();
+
 }
 
-bool MongooseServer::Init(const std::string& sCert, const std::string& sKey, int nPort, const std::string& sApiRoot)
+bool MongooseServer::Init(const std::string& sCert, const std::string& sKey, int nPort, const std::string& sApiRoot, bool bEnableWebsocket)
 {
+    m_nPort = nPort;
     //check for ssl
     m_sKey = sKey;
     m_sCert = sCert;
@@ -538,6 +560,7 @@ bool MongooseServer::Init(const std::string& sCert, const std::string& sKey, int
     stringstream ssRewrite;
     ssRewrite << "%80=https://" << hostname;
 
+    m_bWebsocket = bEnableWebsocket;
 
 
     s_ServerOpts.root_dir = ".";
@@ -558,46 +581,36 @@ bool MongooseServer::Init(const std::string& sCert, const std::string& sKey, int
     ss << nPort;
     m_sServerName = ss.str();
 
-    m_pConnection = mg_http_listen(&m_mgr, ss.str().c_str(), ev_handler, nullptr);
+    return true;
+}
 
+void MongooseServer::Run(bool bThread, unsigned int nTimeoutMs)
+{
+    m_bLoop = true;
+    m_nPollTimeout = nTimeoutMs;
 
+    if(bThread)
+    {
+        m_pThread = std::make_unique<std::thread>(&MongooseServer::Loop, this);
+    }
+    else
+    {
+        Loop();
+    }
+
+}
+
+void MongooseServer::Loop()
+{
+    m_pConnection = mg_http_listen(&m_mgr, m_sServerName.c_str(), ev_handler, nullptr);
 
     if(m_pConnection)
     {
         m_pConnection->fn_data = reinterpret_cast<void*>(this);
 
-        pmlLog(pml::LOG_INFO) << "Server started: " << ss.str();
+        pmlLog(pml::LOG_INFO) << "Server started: " << m_sServerName;
         pmlLog(pml::LOG_INFO) << "--------------------------";
-        return true;
-    }
-    else
-    {
-        pmlLog(pml::LOG_ERROR) << "Could not start webserver";
-        return false;
-    }
-}
 
-void MongooseServer::Run(bool bThread, unsigned int nTimeoutMs)
-{
-    if(m_pConnection)
-    {
-        m_nPollTimeout = nTimeoutMs;
-
-        if(bThread)
-        {
-            m_pThread = std::make_unique<std::thread>(&MongooseServer::Loop, this);
-        }
-        else
-        {
-            Loop();
-        }
-    }
-}
-
-void MongooseServer::Loop()
-{
-    if(m_pConnection)
-    {
         int nCount = 0;
         while (m_bLoop)
         {
@@ -611,21 +624,38 @@ void MongooseServer::Loop()
             {
                 m_loopCallback(took.count());
             }
-            SendWSQueue();
+            if(m_bWebsocket)
+            {
+                SendWSQueue();
+            }
 
             ++nCount;
         }
         mg_mgr_free(&m_mgr);
     }
+    else
+    {
+        pmlLog(pml::LOG_ERROR) << "Could not start webserver";
+    }
+
 }
 
 void MongooseServer::Stop()
 {
-    m_bLoop = false;
+    if(m_pThread)
+    {
+        m_bLoop = false;
+        m_pThread->join();
+    }
 }
 
 bool MongooseServer::AddWebsocketEndpoint(const url& theUrl, std::function<bool(const url&, const userName&, const ipAddress& peer)> funcAuthentication, std::function<bool(const url&, const Json::Value&)> funcMessage, std::function<void(const url&, const ipAddress& peer)> funcClose)
 {
+    if(!m_bWebsocket)
+    {
+        return false;
+    }
+
     return m_mWebsocketAuthenticationEndpoints.insert(std::make_pair(theUrl, funcAuthentication)).second &&
            m_mWebsocketMessageEndpoints.insert(std::make_pair(theUrl, funcMessage)).second &&
            m_mWebsocketCloseEndpoints.insert(std::make_pair(theUrl, funcClose)).second;
@@ -807,27 +837,34 @@ bool MongooseServer::MultipartEnd(mg_connection* pConnection, mg_http_multipart_
 
 void MongooseServer::DoReply(mg_connection* pConnection,const response& theResponse)
 {
-    std::stringstream ssJson;
-    ssJson << theResponse.jsonData;
+    std::stringstream ssData;
+    if(theResponse.sContentType == "application/json")
+    {
+        ssData << theResponse.jsonData;
+    }
+    else
+    {
+        ssData << theResponse.sData;
+    }
 
-    pmlLog() << "MongooseServer::DoReply " << theResponse.nHttpCode;
-    pmlLog() << "MongooseServer::DoReply " << ssJson.str();
+    pmlLog(pml::LOG_DEBUG) << "MongooseServer::DoReply " << theResponse.nHttpCode;
+    pmlLog(pml::LOG_DEBUG) << "MongooseServer::DoReply " << ssData.str();
 
 
 
     stringstream ssHeaders;
     ssHeaders << "HTTP/1.1 " << theResponse.nHttpCode << " \r\n"
-              << "Content-Type: " << "application/json" << "\r\n"
-              << "Content-Length: " << ssJson.str().length() << "\r\n"
+              << "Content-Type: " << theResponse.sContentType << "\r\n"
+              << "Content-Length: " << ssData.str().length() << "\r\n"
               << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
               << "Access-Control-Allow-Origin:*\r\n"
               << "Access-Control-Allow-Methods:GET, PUT, POST, HEAD, OPTIONS, DELETE\r\n"
               << "Access-Control-Allow-Headers:Content-Type, Accept, Authorization\r\n"
               << "Access-Control-Max-AgeL3600\r\n\r\n";
 
-//    mg_http_reply(pConnection, theResponse.nHttpCode, ssHeaders.str().c_str(), "%s", ssJson.str().c_str());
+
         mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
-        mg_send(pConnection, ssJson.str().c_str(), ssJson.str().length());
+        mg_send(pConnection, ssData.str().c_str(), ssData.str().length());
 }
 
 
@@ -989,4 +1026,52 @@ std::set<endpoint> MongooseServer::GetEndpoints()
 bool MongooseServer::InApiTree(const std::string& sUri)
 {
     return (sUri.length() >= m_sApiRoot.length() && sUri.substr(0, m_sApiRoot.length()) == m_sApiRoot);
+}
+
+
+void MongooseServer::PrimeWait()
+{
+    lock_guard<mutex> lock(m_mutex);
+    m_eOk = WAIT;
+}
+
+void MongooseServer::Wait()
+{
+    std::unique_lock<std::mutex> lk(m_mutex);
+    while(m_eOk == WAIT)
+    {
+        m_cvSync.wait(lk);
+    }
+}
+
+const std::string& MongooseServer::GetSignalData()
+{
+    return m_sSignalData;
+}
+
+void MongooseServer::Signal(bool bOk, const std::string& sData)
+{
+    lock_guard<mutex> lock(m_mutex);
+    if(bOk)
+    {
+        m_eOk = SUCCESS;
+    }
+    else
+    {
+        m_eOk = FAIL;
+    }
+    m_sSignalData = sData;
+    m_cvSync.notify_one();
+}
+
+bool MongooseServer::IsOk()
+{
+    lock_guard<mutex> lock(m_mutex);
+    return (m_eOk == SUCCESS);
+}
+
+
+void MongooseServer::AddNotFoundCallback(std::function<response(const query&, const postData&, const url&, const userName&)> func)
+{
+    m_callbackNotFound = func;
 }

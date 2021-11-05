@@ -18,7 +18,7 @@ extern "C" {
 #include <list>
 #include <atomic>
 #include <thread>
-
+#include <condition_variable>
 
 extern RG_EXPORT bool operator<(const endpoint& e1, const endpoint& e2);
 
@@ -41,7 +41,7 @@ class MongooseServer
         MongooseServer();
         ~MongooseServer();
 
-        bool Init(const std::string& sCert, const std::string& sKey, int nPort, const std::string& sApiRoot);
+        bool Init(const std::string& sCert, const std::string& sKey, int nPort, const std::string& sApiRoot, bool bEnableWebsocket);
 
 
         void AddBAUser(const userName& aUser, const password& aPassword);
@@ -67,6 +67,10 @@ class MongooseServer
         *   @return <i>bool</i> true on success
         **/
         bool AddEndpoint(const endpoint& theEndpoint, std::function<response(const query&, const postData&, const url&, const userName&)> func);
+
+        /** @brief Adds a callback handler that is called if no handler is found for the url
+        **/
+        void AddNotFoundCallback(std::function<response(const query&, const postData&, const url&, const userName&)> func);
 
         /** Removes a callback handler for an endpoint
         *   @param theEndpoint a pair definining the HTTP method and endpoint address
@@ -94,6 +98,15 @@ class MongooseServer
 
         void SetStaticDirectory(const std::string& sDir) { m_sStaticRootDir = sDir;}
         const std::string& GetStaticDirectory() const {return m_sStaticRootDir;}
+
+        unsigned long GetPort() const { return m_nPort; }
+
+
+        void Wait();
+        void PrimeWait();
+        bool IsOk();
+        void Signal(bool bOk, const std::string& sData);
+        const std::string& GetSignalData();
 
     private:
 
@@ -180,8 +193,9 @@ class MongooseServer
         std::string m_sStaticRootDir;
         std::string m_sApiRoot;
 
+        bool m_bWebsocket;
         mg_mgr m_mgr;
-
+        unsigned long m_nPort;
 
         int m_nPollTimeout;
 
@@ -194,6 +208,8 @@ class MongooseServer
 
 
 
+
+
         std::map<mg_connection*, subscriber > m_mSubscribers;
 
         std::queue<wsMessage> m_qWsMessages;
@@ -201,9 +217,16 @@ class MongooseServer
 
         std::mutex m_mutex;
         bool m_bThreaded;
+        std::condition_variable m_cvSync;
+        enum enumSignal{WAIT, FAIL, SUCCESS};
+
+        enumSignal m_eOk;
+
+        std::string m_sSignalData;
 
         std::atomic<bool> m_bLoop;
         std::unique_ptr<std::thread> m_pThread;
+        std::function<response(const query&, const postData&, const url&, const userName&)> m_callbackNotFound;
 
         std::map<userName, password> m_mUsers;
 };

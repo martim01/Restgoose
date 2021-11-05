@@ -20,9 +20,13 @@
 				<Linker>
 					<Add library="user32" />
 					<Add library="pml_logd" />
+					<Add library="ws2_32" />
+					<Add library="libssl-1_1" />
+					<Add library="libcrypto-1_1" />
 				</Linker>
 			</Target>
 			<Target title="Release">
+				<Option platforms="Windows;" />
 				<Option output="../lib/Restgoose" prefix_auto="1" extension_auto="1" />
 				<Option working_dir="bin/Release" />
 				<Option object_output="obj/Release/" />
@@ -31,12 +35,67 @@
 				<Compiler>
 					<Add option="-O2" />
 					<Add option="-Wall" />
+					<Add option="-std=c++14" />
 					<Add option="-DBUILD_DLL" />
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
 					<Add library="user32" />
 					<Add library="pml_log" />
+					<Add library="libssl-1_1" />
+					<Add library="libcrypto-1_1" />
+				</Linker>
+			</Target>
+			<Target title="Linux Release">
+				<Option platforms="Unix;" />
+				<Option output="lib/restgoose" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="bin/Release" />
+				<Option object_output="obj/Release/" />
+				<Option type="3" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-Wall" />
+					<Add option="-std=c++14" />
+					<Add option="-pthread" />
+					<Add option="-DBUILD_DLL" />
+					<Add directory="../jsoncpp/dist" />
+					<Add directory="../mongoose" />
+					<Add directory="../log/include" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+					<Add library="pml_log" />
+					<Add library="ssl" />
+					<Add library="crypto" />
+					<Add library="pthread" />
+					<Add directory="../log/lib" />
+				</Linker>
+			</Target>
+			<Target title="Linux Debug">
+				<Option platforms="Unix;" />
+				<Option output="lib/restgoosed" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="bin/Release" />
+				<Option object_output="obj/Release/" />
+				<Option type="3" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+					<Add option="-Wall" />
+					<Add option="-std=c++14" />
+					<Add option="-pthread" />
+					<Add option="-DBUILD_DLL" />
+					<Add directory="../jsoncpp/dist" />
+					<Add directory="../mongoose" />
+					<Add directory="../log/include" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+					<Add library="pml_logd" />
+					<Add library="ssl" />
+					<Add library="crypto" />
+					<Add library="pthread" />
+					<Add directory="../log/lib" />
 				</Linker>
 			</Target>
 		</Build>
@@ -45,7 +104,6 @@
 			<Add option="-D_UNICODE" />
 			<Add option="-DMG_ENABLE_OPENSSL" />
 			<Add option="-DMG_ENABLE_FS=1" />
-			<Add option="-D_WIN32" />
 			<Add option="-DRESTGOOSE_DLL" />
 			<Add directory="../../log/include" />
 			<Add directory="../../external/jsoncpp/dist" />
@@ -53,17 +111,14 @@
 			<Add directory="$(#openssl_32.INCLUDE)" />
 		</Compiler>
 		<Linker>
-			<Add library="ws2_32" />
-			<Add library="libssl-1_1" />
-			<Add library="libcrypto-1_1" />
 			<Add directory="../../log/lib" />
 			<Add directory="$(#openssl_32.LIB)" />
 		</Linker>
-		<Unit filename="../../external/jsoncpp/dist/jsoncpp.cpp" />
-		<Unit filename="../../external/mongoose/mongoose.c">
+		<Unit filename="../jsoncpp/dist/jsoncpp.cpp" />
+		<Unit filename="../mongoose/mongoose.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../../external/mongoose/mongoose.h" />
+		<Unit filename="../mongoose/mongoose.h" />
 		<Unit filename="RestGoose.cpp" />
 		<Unit filename="RestGoose.h" />
 		<Unit filename="mongooseserver.cpp" />
