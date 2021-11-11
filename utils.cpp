@@ -129,3 +129,13 @@ std::string& trim(std::string& s)
     return ltrim(rtrim(s));
 }
 
+std::string ConvertFromJson(const Json::Value& jsValue)
+{
+    Json::StreamWriterBuilder builder;
+    builder["commentStyle"] = "None";
+    builder["indentation"] = "";
+    return Json::writeString(builder, jsValue);
+    //std::stringstream ssJson;
+    //ssJson << jsValue;
+    //return ssJson.str();
+}

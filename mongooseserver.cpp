@@ -646,6 +646,7 @@ void MongooseServer::Stop()
     {
         m_bLoop = false;
         m_pThread->join();
+        m_pThread = nullptr;
     }
 }
 
@@ -837,25 +838,25 @@ bool MongooseServer::MultipartEnd(mg_connection* pConnection, mg_http_multipart_
 
 void MongooseServer::DoReply(mg_connection* pConnection,const response& theResponse)
 {
-    std::stringstream ssData;
+    std::string sReply;
     if(theResponse.sContentType == "application/json")
     {
-        ssData << theResponse.jsonData;
+        sReply = ConvertFromJson(theResponse.jsonData);
     }
     else
     {
-        ssData << theResponse.sData;
+        sReply = theResponse.sData;
     }
 
     pmlLog(pml::LOG_DEBUG) << "MongooseServer::DoReply " << theResponse.nHttpCode;
-    pmlLog(pml::LOG_DEBUG) << "MongooseServer::DoReply " << ssData.str();
+    pmlLog(pml::LOG_DEBUG) << "MongooseServer::DoReply " << sReply;
 
 
 
     stringstream ssHeaders;
     ssHeaders << "HTTP/1.1 " << theResponse.nHttpCode << " \r\n"
               << "Content-Type: " << theResponse.sContentType << "\r\n"
-              << "Content-Length: " << ssData.str().length() << "\r\n"
+              << "Content-Length: " << sReply.length() << "\r\n"
               << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
               << "Access-Control-Allow-Origin:*\r\n"
               << "Access-Control-Allow-Methods:GET, PUT, POST, HEAD, OPTIONS, DELETE\r\n"
@@ -864,7 +865,7 @@ void MongooseServer::DoReply(mg_connection* pConnection,const response& theRespo
 
 
         mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
-        mg_send(pConnection, ssData.str().c_str(), ssData.str().length());
+        mg_send(pConnection, sReply.c_str(), sReply.length());
 }
 
 
