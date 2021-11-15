@@ -127,6 +127,10 @@
 		<Unit filename="response.h" />
 		<Unit filename="utils.cpp" />
 		<Unit filename="utils.h" />
+		<Unit filename="websocketclient.cpp" />
+		<Unit filename="websocketclient.h" />
+		<Unit filename="websocketclientimpl.cpp" />
+		<Unit filename="websocketclientimpl.h" />
 		<Extensions>
 			<code_completion />
 			<envvars />
