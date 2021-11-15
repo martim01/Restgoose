@@ -7,17 +7,23 @@
 #include <queue>
 #include <mutex>
 #include "namedtype.h"
+#include <map>
+
 
 class WebSocketClientImpl
 {
     public:
-        WebSocketClientImpl(const url& theUrl, std::function<bool(const url& theUrl)> pConnectCallback, std::function<bool(const url& theUrl, const std::string&)> pMessageCallback, unsigned int nTimeout=250);
+        WebSocketClientImpl(std::function<bool(const url& theUrl)> pConnectCallback, std::function<bool(const url& theUrl, const std::string&)> pMessageCallback, unsigned int nTimeout=250);
         ~WebSocketClientImpl();
 
         bool Run();
         void Stop();
 
-        void SendMessage(const std::string& sMessage);
+        bool Connect(const url& theUrl);
+
+        bool SendMessage(const url& theUrl, const std::string& sMessage);
+
+        void CloseConnection(const url& theUrl);
 
         void Callback(mg_connection* pConnection, int nEvent, void * pEventData);
 
@@ -25,10 +31,14 @@ class WebSocketClientImpl
 
         void Loop();
 
+        void SendMessages();
 
-        void SendMessages(mg_connection* pConnection);
+        void CloseConnection(mg_connection* pConnection, bool bTellServer);
 
-        url m_url;
+        url FindUrl(mg_connection* pConnection);
+
+        mg_mgr m_mgr;
+
         std::function<bool(const url& theUrl)> m_pConnectCallback;
         std::function<bool(const url& theUrl, const std::string&)> m_pMessageCallback;
         unsigned int m_nTimeout;
@@ -37,5 +47,13 @@ class WebSocketClientImpl
         std::atomic<bool> m_bRun;
 
         std::mutex m_mutex;
-        std::queue<std::string> m_queue;
+
+        struct connection
+        {
+            connection(mg_connection* pc) : pConnection(pc){}
+            mg_connection* pConnection;
+            std::queue<std::string> q;
+        };
+
+        std::map<url, connection> m_mConnection;
 };
