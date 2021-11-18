@@ -63,20 +63,22 @@ void WebSocketClientImpl::SendMessages()
 
 void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void * pEventData)
 {
+
     switch(nEvent)
     {
         case MG_EV_ERROR:
-            pmlLog(pml::LOG_ERROR) << "Websocket error: " << (char*)pEventData;
+            pmlLog(pml::LOG_ERROR) << "RestGoose: Websocket error: " << (char*)pEventData;
             CloseConnection(pConnection, false);
             break;
         case MG_EV_WS_OPEN:
-            pmlLog(pml::LOG_TRACE) << "Websocket connected";
+            pmlLog(pml::LOG_DEBUG) << "RestGoose: Websocket connected";
             if(m_pConnectCallback && m_pConnectCallback(FindUrl(pConnection)) == false)
             {
                 CloseConnection(pConnection, true);
             }
             break;
         case MG_EV_WS_MSG:
+            pmlLog(pml::LOG_DEBUG) << "RestGoose: Websocket message from: " << pConnection->id;
             if(m_pMessageCallback)
             {
                 mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
@@ -85,6 +87,13 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
                 {
                     CloseConnection(pConnection, true);
                 }
+            }
+            break;
+        case MG_EV_WS_CTL:
+            {
+                mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
+                std::string sMessage(pMessage->data.ptr, pMessage->data.len);
+                pmlLog(pml::LOG_DEBUG) << "RestGoose: Websocket ctl from: " << pConnection->id << ": " << sMessage;
             }
             break;
     }
