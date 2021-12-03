@@ -37,6 +37,8 @@ using authorised = std::pair<bool, userName>;
 class MongooseServer
 {
     public:
+        friend void pipe_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_data);
+        friend void ev_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_data);
 
         MongooseServer();
         ~MongooseServer();
@@ -85,12 +87,6 @@ class MongooseServer
 
         void SendWebsocketMessage(const std::set<std::string>& setEndpoints, const Json::Value& jsMessage);
 
-        /** Handles an event
-        *   @param pConnection the mg_connection that caused the event
-        *   @param nEvent the event type
-        *   @param pData any associated data
-        **/
-        void HandleEvent(mg_connection *pConnection, int nEvent, void* pData);
 
 
         std::set<endpoint> GetEndpoints();
@@ -109,6 +105,14 @@ class MongooseServer
         const std::string& GetSignalData();
 
     private:
+
+        /** Handles an event
+        *   @param pConnection the mg_connection that caused the event
+        *   @param nEvent the event type
+        *   @param pData any associated data
+        **/
+        void HandleEvent(mg_connection *pConnection, int nEvent, void* pData);
+
 
         ///< @brief the main mongoose loop. Called in a separate thread by Run()
         void Loop();
@@ -184,6 +188,7 @@ class MongooseServer
         bool InApiTree(const std::string& sUri);
 
         mg_connection* m_pConnection;
+        mg_connection* m_pPipe;
         std::string m_sIniPath;
         std::string m_sServerName;
 

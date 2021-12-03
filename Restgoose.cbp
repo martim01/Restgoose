@@ -109,6 +109,7 @@
 			<Add directory="../../external/jsoncpp/dist" />
 			<Add directory="../../external/mongoose" />
 			<Add directory="$(#openssl_32.INCLUDE)" />
+			<Add directory="include" />
 		</Compiler>
 		<Linker>
 			<Add directory="../../log/lib" />
@@ -119,18 +120,18 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../mongoose/mongoose.h" />
-		<Unit filename="RestGoose.cpp" />
-		<Unit filename="RestGoose.h" />
-		<Unit filename="mongooseserver.cpp" />
-		<Unit filename="mongooseserver.h" />
-		<Unit filename="namedtype.h" />
-		<Unit filename="response.h" />
-		<Unit filename="utils.cpp" />
-		<Unit filename="utils.h" />
-		<Unit filename="websocketclient.cpp" />
-		<Unit filename="websocketclient.h" />
-		<Unit filename="websocketclientimpl.cpp" />
-		<Unit filename="websocketclientimpl.h" />
+		<Unit filename="include/utils.h" />
+		<Unit filename="include/websocketclient.cpp" />
+		<Unit filename="include/websocketclient.h" />
+		<Unit filename="include/websocketclientimpl.cpp" />
+		<Unit filename="include/websocketclientimpl.h" />
+		<Unit filename="src/RestGoose.cpp" />
+		<Unit filename="src/RestGoose.h" />
+		<Unit filename="src/mongooseserver.cpp" />
+		<Unit filename="src/mongooseserver.h" />
+		<Unit filename="src/namedtype.h" />
+		<Unit filename="src/response.h" />
+		<Unit filename="src/utils.cpp" />
 		<Extensions>
 			<code_completion />
 			<envvars />

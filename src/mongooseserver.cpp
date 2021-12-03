@@ -71,9 +71,9 @@ static int is_websocket(const struct mg_connection *nc)
 
 
 
-static void ev_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_data)
+void ev_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_data)
 {
-        if(nEvent == 0)
+    if(nEvent == 0)
     {
         return;
     }
@@ -82,11 +82,20 @@ static void ev_handler(mg_connection *pConnection, int nEvent, void* pData, void
     pThread->HandleEvent(pConnection, nEvent, pData);
 }
 
+void pipe_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_data)
+{
+    if(nEvent == MG_EV_READ)
+    {
+        MongooseServer* pThread = reinterpret_cast<MongooseServer*>(pConnection->fn_data);
+        pThread->SendWSQueue();
+    }
+}
+
 
 void MongooseServer::EventWebsocketOpen(mg_connection *pConnection, int nEvent, void* pData)
 {
 
-    mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pData);
+    //mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pData);
 
     pmlLog(pml::LOG_INFO) << "EventWebsocketOpen";
 
@@ -523,6 +532,7 @@ void MongooseServer::HandleAccept(mg_connection* pConnection)
 
 MongooseServer::MongooseServer() :
     m_pConnection(nullptr),
+    m_pPipe(nullptr),
     m_bWebsocket(false),
     m_nPort(0),
     m_nPollTimeout(100),
@@ -608,28 +618,30 @@ void MongooseServer::Loop()
     {
         m_pConnection->fn_data = reinterpret_cast<void*>(this);
 
+        m_pPipe = mg_mkpipe(&m_mgr, pipe_handler, nullptr);
+        if(m_pPipe)
+        {
+            m_pPipe->fn_data = reinterpret_cast<void*>(this);
+        }
+
         pmlLog(pml::LOG_INFO) << "Server started: " << m_sServerName;
         pmlLog(pml::LOG_INFO) << "--------------------------";
 
-        int nCount = 0;
+        auto now = std::chrono::high_resolution_clock::now();
         while (m_bLoop)
         {
-            auto now = std::chrono::high_resolution_clock::now();
-
             mg_mgr_poll(&m_mgr, m_nPollTimeout);
 
-            auto took = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()-now.time_since_epoch());
-
             if(m_loopCallback)
-            {
-                m_loopCallback(took.count());
-            }
-            if(m_bWebsocket)
-            {
-                SendWSQueue();
+            {   //call the loopback functoin saying how long it is since we last called the loopback function
+                m_loopCallback((std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()-now.time_since_epoch())).count());
+                now = std::chrono::high_resolution_clock::now();
             }
 
-            ++nCount;
+//            if(m_bWebsocket && !m_pPipe)
+//            {   //if we are doing websockets and for some reason our interupt pipe didn't get created then send the websocket messages
+//                SendWSQueue();
+//            }
         }
         mg_mgr_free(&m_mgr);
     }
@@ -985,8 +997,13 @@ void MongooseServer::SendWSQueue()
 
 void MongooseServer::SendWebsocketMessage(const std::set<std::string>& setEndpoints, const Json::Value& jsMessage)
 {
-    std::lock_guard<std::mutex> lg(m_mutex);
+    m_mutex.lock();
     m_qWsMessages.push(wsMessage(setEndpoints, jsMessage));
+    m_mutex.unlock();
+    if(m_pPipe)
+    {
+        mg_mgr_wakeup(m_pPipe);
+    }
 }
 
 void MongooseServer::SetLoopCallback(std::function<void(unsigned int)> func)
