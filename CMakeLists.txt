@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 project(restgoose LANGUAGES CXX C)
 
-SET(DIR_JSON $ENV{HOME}/jsoncpp CACHE STRING "location of jsoncpp")
-SET(DIR_MONGOOSE $ENV{HOME}/mongoose CACHE STRING "location of mongoose")
-SET(DIR_LOG $ENV{HOME}/log CACHE STRING "location of pml log")
+SET(DIR_BASE $ENV{HOME} CACHE STRING "base location for libraries")
+SET(DIR_JSON ${DIR_BASE}/jsoncpp CACHE STRING "location of jsoncpp")
+SET(DIR_MONGOOSE ${DIR_BASE}/mongoose CACHE STRING "location of mongoose")
+SET(DIR_LOG ${DIR_BASE}/log CACHE STRING "location of pml log")
 
 #Get JsonCpp
 find_path(TEMP_DIR NAMES "amalgamate.py" PATHS ${DIR_JSON})
@@ -76,9 +77,18 @@ include_directories("include")
 SET(SOURCES "src/RestGoose.cpp" "src/mongooseserver.cpp" "src/utils.cpp" "src/websocketclient.cpp" "src/websocketclientimpl.cpp" "${DIR_MONGOOSE}/mongoose.c" "${DIR_JSON}/dist/jsoncpp.cpp")
 
 add_library(restgoose SHARED ${SOURCES})
+set_target_properties(restgoose PROPERTIES DEBUG_POSTFIX "d")
 
-list(APPEND flags "-fPIC" "-Wall" "-fpermissive" "-O3")
+list(APPEND flags "-fPIC" "-Wall" "-fpermissive"  "-std=c++14")
+
+if(CMAKE_BUILD_TYPE MATCHES Release)
+   list(APPEND flags "-O3")
+   target_compile_definitions(restgoose PUBLIC NDEBUG DLL_EXPORTS _MSL_STDINT_H)
+else()
+   list(APPEND flags "-g")
+   target_compile_definitions(restgoose PUBLIC DEBUG DLL_EXPORTS _MSL_STDINT_H)
+endif()
+
 target_compile_options(restgoose PRIVATE ${flags})
-target_compile_definitions(restgoose PUBLIC NDEBUG DLL_EXPORTS _MSL_STDINT_H)
 target_link_libraries(restgoose pml_log)
-set_target_properties(restgoose PROPERTIES LIBRARY_OUTPUT_DIRECTORY "../lib/")
+set_target_properties(restgoose PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib/)

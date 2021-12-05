@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PML_NAMEDTYPE_H
+#define PML_NAMEDTYPE_H
 #include <string>
 #include <ostream>
 
@@ -55,3 +56,4 @@ class NamedType
         T m_value;
 };
 
+#endif
