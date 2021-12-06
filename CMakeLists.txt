@@ -6,6 +6,8 @@ SET(DIR_JSON ${DIR_BASE}/jsoncpp CACHE STRING "location of jsoncpp")
 SET(DIR_MONGOOSE ${DIR_BASE}/mongoose CACHE STRING "location of mongoose")
 SET(DIR_LOG ${DIR_BASE}/log CACHE STRING "location of pml log")
 
+SET(BUILD_LOG ON CACHE BOOL "set to OFF if pml::log built by parent project")
+
 #Get JsonCpp
 find_path(TEMP_DIR NAMES "amalgamate.py" PATHS ${DIR_JSON})
 if((NOT TEMP_DIR) OR (NOT EXISTS ${TEMP_DIR}))
@@ -62,8 +64,11 @@ if((NOT TEMP_DIR8) OR (NOT EXISTS ${TEMP_DIR8}))
 endif()
 unset(TEMP_DIR8)
 
-
-add_subdirectory(${DIR_LOG} ${DIR_LOG}/build)
+if(${BUILD_LOG})
+	add_subdirectory(${DIR_LOG} ${DIR_LOG}/build)
+else()
+	message("Restgoose - pml::log being build elsewhere")
+endif()
 
 #Now restgoose
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -90,5 +95,5 @@ else()
 endif()
 
 target_compile_options(restgoose PRIVATE ${flags})
-target_link_libraries(restgoose pml_log)
+target_link_libraries(restgoose optimized pml_log debug pml_logd)
 set_target_properties(restgoose PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib/)
