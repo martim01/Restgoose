@@ -13,17 +13,17 @@
 class WebSocketClientImpl
 {
     public:
-        WebSocketClientImpl(std::function<bool(const url& theUrl)> pConnectCallback, std::function<bool(const url& theUrl, const std::string&)> pMessageCallback, unsigned int nTimeout=250);
+        WebSocketClientImpl(std::function<bool(const endpoint& theEndpoint)> pConnectCallback, std::function<bool(const endpoint& theEndpoint, const std::string&)> pMessageCallback, unsigned int nTimeout=250);
         ~WebSocketClientImpl();
 
         bool Run();
         void Stop();
 
-        bool Connect(const url& theUrl);
+        bool Connect(const endpoint& theEndpoint);
 
-        bool SendMessage(const url& theUrl, const std::string& sMessage);
+        bool SendMessage(const endpoint& theEndpoint, const std::string& sMessage);
 
-        void CloseConnection(const url& theUrl);
+        void CloseConnection(const endpoint& theEndpoint);
 
         void Callback(mg_connection* pConnection, int nEvent, void * pEventData);
 
@@ -35,12 +35,12 @@ class WebSocketClientImpl
 
         void CloseConnection(mg_connection* pConnection, bool bTellServer);
 
-        url FindUrl(mg_connection* pConnection);
+        endpoint FindUrl(mg_connection* pConnection);
 
         mg_mgr m_mgr;
 
-        std::function<bool(const url& theUrl)> m_pConnectCallback;
-        std::function<bool(const url& theUrl, const std::string&)> m_pMessageCallback;
+        std::function<bool(const endpoint& theEndpoint)> m_pConnectCallback;
+        std::function<bool(const endpoint& theEndpoint, const std::string&)> m_pMessageCallback;
         unsigned int m_nTimeout;
 
         std::unique_ptr<std::thread> m_pThread;
@@ -55,5 +55,5 @@ class WebSocketClientImpl
             std::queue<std::string> q;
         };
 
-        std::map<url, connection> m_mConnection;
+        std::map<endpoint, connection> m_mConnection;
 };

@@ -36,24 +36,24 @@ void RestGoose::Stop()
     m_pImpl->Stop();
 }
 
-bool RestGoose::AddEndpoint(const endpoint& theEndpoint, std::function<response(const query&, const postData&, const url&, const userName&)> func)
+bool RestGoose::AddEndpoint(const methodpoint& theMethodPoint, std::function<response(const query&, const postData&, const endpoint&, const userName&)> func)
 {
-    return m_pImpl->AddEndpoint(theEndpoint, func);
+    return m_pImpl->AddEndpoint(theMethodPoint, func);
 }
 
-void RestGoose::AddNotFoundCallback(std::function<response(const query&, const postData&, const url&, const userName&)> func)
+void RestGoose::AddNotFoundCallback(std::function<response(const query&, const postData&, const endpoint&, const userName&)> func)
 {
     return m_pImpl->AddNotFoundCallback(func);
 }
 
-bool RestGoose::AddWebsocketEndpoint(const url& theEndpoint, std::function<bool(const url&, const userName&, const ipAddress& peer)> funcAuthentication, std::function<bool(const url&, const Json::Value&)> funcMessage, std::function<void(const url&, const ipAddress& peer)> funcClose)
+bool RestGoose::AddWebsocketEndpoint(const endpoint& theMethodPoint, std::function<bool(const endpoint&, const userName&, const ipAddress& peer)> funcAuthentication, std::function<bool(const endpoint&, const Json::Value&)> funcMessage, std::function<void(const endpoint&, const ipAddress& peer)> funcClose)
 {
-    return m_pImpl->AddWebsocketEndpoint(theEndpoint, funcAuthentication, funcMessage, funcClose);
+    return m_pImpl->AddWebsocketEndpoint(theMethodPoint, funcAuthentication, funcMessage, funcClose);
 }
 
-bool RestGoose::DeleteEndpoint(const endpoint& theEndpoint)
+bool RestGoose::DeleteEndpoint(const methodpoint& theMethodPoint)
 {
-    return m_pImpl->DeleteEndpoint(theEndpoint);
+    return m_pImpl->DeleteEndpoint(theMethodPoint);
 }
 
 void RestGoose::SetLoopCallback(std::function<void(unsigned int)> func)
@@ -77,7 +77,7 @@ void RestGoose::DeleteBAUser(const userName& aUser)
     m_pImpl->DeleteBAUser(aUser);
 }
 
-std::set<endpoint> RestGoose::GetEndpoints()
+std::set<methodpoint> RestGoose::GetEndpoints()
 {
     return m_pImpl->GetEndpoints();
 }

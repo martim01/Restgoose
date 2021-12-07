@@ -13,8 +13,8 @@
 #endif
 
 using httpMethod = NamedType<std::string, struct MethodParameter>;
-using url = NamedType<std::string, struct UrlParameter>;
-using endpoint = std::pair<httpMethod, url>;
+using endpoint = NamedType<std::string, struct endpointParameter>;
+using methodpoint = std::pair<httpMethod, endpoint>;
 using query = NamedType<std::string, struct QueryParameter>;
 using postData = NamedType<std::string, struct PostDataParameter>;
 using userName = NamedType<std::string, struct userParamater>;

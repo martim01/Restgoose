@@ -20,11 +20,11 @@ extern "C" {
 #include <thread>
 #include <condition_variable>
 
-extern RG_EXPORT bool operator<(const endpoint& e1, const endpoint& e2);
+extern RG_EXPORT bool operator<(const methodpoint& e1, const methodpoint& e2);
 
 struct multipartData
 {
-    std::map<endpoint, std::function<response(const query&, const postData&, const url&, const userName&)>>::const_iterator itEndpoint;
+    std::map<methodpoint, std::function<response(const query&, const postData&, const endpoint&, const userName&)>>::const_iterator itEndpoint;
     std::map<std::string, std::string> mData;
     std::map<std::string, std::string> mFiles;
     std::ofstream ofs;
@@ -61,24 +61,24 @@ class MongooseServer
         void Stop();
 
 
-        bool AddWebsocketEndpoint(const url& theEndpoint, std::function<bool(const url&, const userName&, const ipAddress& peer)> funcAuthentication, std::function<bool(const url&, const Json::Value&)> funcMessage, std::function<void(const url&, const ipAddress& peer)> funcClose);
+        bool AddWebsocketEndpoint(const endpoint& theEndpoint, std::function<bool(const endpoint&, const userName&, const ipAddress& peer)> funcAuthentication, std::function<bool(const endpoint&, const Json::Value&)> funcMessage, std::function<void(const endpoint&, const ipAddress& peer)> funcClose);
 
-        /** Adds a callback handler for an endpoint
-        *   @param theEndpoint a pair definining the HTTP method and endpoint address
+        /** Adds a callback handler for an methodpoint
+        *   @param theMethodPoint a pair definining the HTTP method and methodpoint address
         *   @param func std::function that defines the callback function
         *   @return <i>bool</i> true on success
         **/
-        bool AddEndpoint(const endpoint& theEndpoint, std::function<response(const query&, const postData&, const url&, const userName&)> func);
+        bool AddEndpoint(const methodpoint& theMethodPoint, std::function<response(const query&, const postData&, const endpoint&, const userName&)> func);
 
-        /** @brief Adds a callback handler that is called if no handler is found for the url
+        /** @brief Adds a callback handler that is called if no handler is found for the endpoint
         **/
-        void AddNotFoundCallback(std::function<response(const query&, const postData&, const url&, const userName&)> func);
+        void AddNotFoundCallback(std::function<response(const query&, const postData&, const endpoint&, const userName&)> func);
 
-        /** Removes a callback handler for an endpoint
-        *   @param theEndpoint a pair definining the HTTP method and endpoint address
+        /** Removes a callback handler for an methodpoint
+        *   @param theMethodPoint a pair definining the HTTP method and methodpoint address
         *   @return <i>bool</i> true on success
         **/
-        bool DeleteEndpoint(const endpoint& theEndpoint);
+        bool DeleteEndpoint(const methodpoint& theMethodPoint);
 
         /** Sets the function that will be called every time the poll function times out or an event happens
         *   @param func the function to call. It will be passed one argument, the number of milliseconds since it was last called
@@ -89,7 +89,7 @@ class MongooseServer
 
 
 
-        std::set<endpoint> GetEndpoints();
+        std::set<methodpoint> GetEndpoints();
 
 
         void SetStaticDirectory(const std::string& sDir) { m_sStaticRootDir = sDir;}
@@ -135,8 +135,8 @@ class MongooseServer
         **/
         void EventHttp(mg_connection *pConnection, int nEvent, void* pData);
 
-        void EventHttpWebsocket(mg_connection *pConnection, mg_http_message* pMessage, const url& uri);
-        void EventHttpApi(mg_connection *pConnection, mg_http_message* pMessage, const httpMethod& method, const url& uri);
+        void EventHttpWebsocket(mg_connection *pConnection, mg_http_message* pMessage, const endpoint& uri);
+        void EventHttpApi(mg_connection *pConnection, mg_http_message* pMessage, const httpMethod& method, const endpoint& uri);
 
         /** @brief Send a JSON encoded error message to the provided connection containing the provided error
         *   @param pConnection the mg_connection to send the data to
@@ -167,8 +167,8 @@ class MongooseServer
 
         struct subscriber
         {
-            subscriber(const url& aUrl, const ipAddress& Ip) : theUrl(aUrl), peer(Ip), bAuthenticated(false){}
-            url theUrl;
+            subscriber(const endpoint& anEndpoint, const ipAddress& Ip) : theEndpoint(anEndpoint), peer(Ip), bAuthenticated(false){}
+            endpoint theEndpoint;
             ipAddress peer;
             bool bAuthenticated;
             std::set<std::string> setEndpoints;
@@ -205,10 +205,10 @@ class MongooseServer
         int m_nPollTimeout;
 
         std::function<void(unsigned int)> m_loopCallback;
-        std::map<endpoint, std::function<response(const query&, const postData&, const url&, const userName&)>> m_mEndpoints;
-        std::map<url, std::function<bool(const url&, const userName&, const ipAddress& peer)>> m_mWebsocketAuthenticationEndpoints;
-        std::map<url, std::function<bool(const url&, const Json::Value&)>> m_mWebsocketMessageEndpoints;
-        std::map<url, std::function<void(const url&, const ipAddress& peer)>> m_mWebsocketCloseEndpoints;
+        std::map<methodpoint, std::function<response(const query&, const postData&, const endpoint&, const userName&)>> m_mEndpoints;
+        std::map<endpoint, std::function<bool(const endpoint&, const userName&, const ipAddress& peer)>> m_mWebsocketAuthenticationEndpoints;
+        std::map<endpoint, std::function<bool(const endpoint&, const Json::Value&)>> m_mWebsocketMessageEndpoints;
+        std::map<endpoint, std::function<void(const endpoint&, const ipAddress& peer)>> m_mWebsocketCloseEndpoints;
         std::multimap<std::string, httpMethod> m_mmOptions;
 
 
@@ -231,7 +231,7 @@ class MongooseServer
 
         std::atomic<bool> m_bLoop;
         std::unique_ptr<std::thread> m_pThread;
-        std::function<response(const query&, const postData&, const url&, const userName&)> m_callbackNotFound;
+        std::function<response(const query&, const postData&, const endpoint&, const userName&)> m_callbackNotFound;
 
         std::map<userName, password> m_mUsers;
 };

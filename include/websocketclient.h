@@ -11,15 +11,15 @@ class WebSocketClientImpl;
 class RG_EXPORT WebSocketClient
 {
     public:
-        WebSocketClient(std::function<bool(const url& theUrl)> pConnectCallback, std::function<bool(const url& theUrl, const std::string&)> pMessageCallback, unsigned int nTimeout=250);
+        WebSocketClient(std::function<bool(const endpoint& theEndpoint)> pConnectCallback, std::function<bool(const endpoint& theEndpoint, const std::string&)> pMessageCallback, unsigned int nTimeout=250);
         ~WebSocketClient();
 
         bool Run();
         void Stop();
 
-        bool Connect(const url& theUrl);
-        bool SendMessage(const url& theUrl, const std::string& sMessage);
-        void CloseConnection(const url& theUrl);
+        bool Connect(const endpoint& theEndpoint);
+        bool SendMessage(const endpoint& theEndpoint, const std::string& sMessage);
+        void CloseConnection(const endpoint& theEndpoint);
 
     private:
         std::unique_ptr<WebSocketClientImpl> m_pImpl;

@@ -9,7 +9,7 @@ static void callback(struct mg_connection* pConnection, int nEvent, void* pEvent
 
 
 
-WebSocketClientImpl::WebSocketClientImpl(std::function<bool(const url& theUrl)> pConnectCallback, std::function<bool(const url& theUrl, const std::string&)> pMessageCallback, unsigned int nTimeout) :
+WebSocketClientImpl::WebSocketClientImpl(std::function<bool(const endpoint& theEndpoint)> pConnectCallback, std::function<bool(const endpoint& theEndpoint, const std::string&)> pMessageCallback, unsigned int nTimeout) :
     m_pConnectCallback(pConnectCallback),
     m_pMessageCallback(pMessageCallback),
     m_nTimeout(nTimeout),
@@ -109,10 +109,10 @@ void WebSocketClientImpl::Stop()
     }
 }
 
-bool WebSocketClientImpl::SendMessage(const url& theUrl, const std::string& sMessage)
+bool WebSocketClientImpl::SendMessage(const endpoint& theEndpoint, const std::string& sMessage)
 {
     std::lock_guard<std::mutex> lg(m_mutex);
-    auto itConnection = m_mConnection.find(theUrl);
+    auto itConnection = m_mConnection.find(theEndpoint);
     if(itConnection != m_mConnection.end())
     {
         itConnection->second.q.push(sMessage);
@@ -122,15 +122,15 @@ bool WebSocketClientImpl::SendMessage(const url& theUrl, const std::string& sMes
 }
 
 
-bool WebSocketClientImpl::Connect(const url& theUrl)
+bool WebSocketClientImpl::Connect(const endpoint& theEndpoint)
 {
     std::lock_guard<std::mutex> lg(m_mutex);
-    if(m_mConnection.find(theUrl) == m_mConnection.end())
+    if(m_mConnection.find(theEndpoint) == m_mConnection.end())
     {
-        auto pConnection = mg_ws_connect(&m_mgr, theUrl.Get().c_str(), callback, reinterpret_cast<void*>(this), nullptr);
+        auto pConnection = mg_ws_connect(&m_mgr, theEndpoint.Get().c_str(), callback, reinterpret_cast<void*>(this), nullptr);
         if(pConnection)
         {
-            m_mConnection.insert(std::make_pair(theUrl, connection(pConnection)));
+            m_mConnection.insert(std::make_pair(theEndpoint, connection(pConnection)));
             return true;
         }
     }
@@ -157,9 +157,9 @@ void WebSocketClientImpl::CloseConnection(mg_connection* pConnection, bool bTell
     //@todo do we need to close this another way as well??
 }
 
-void WebSocketClientImpl::CloseConnection(const url& theUrl)
+void WebSocketClientImpl::CloseConnection(const endpoint& theEndpoint)
 {
-    auto itConnection = m_mConnection.find(theUrl);
+    auto itConnection = m_mConnection.find(theEndpoint);
     if(itConnection != m_mConnection.end())
     {
         mg_ws_send(itConnection->second.pConnection, nullptr, 0, WEBSOCKET_OP_CLOSE);
@@ -168,7 +168,7 @@ void WebSocketClientImpl::CloseConnection(const url& theUrl)
 }
 
 
-url WebSocketClientImpl::FindUrl(mg_connection* pConnection)
+endpoint WebSocketClientImpl::FindUrl(mg_connection* pConnection)
 {
     for(auto pairConnection : m_mConnection)
     {
@@ -177,5 +177,5 @@ url WebSocketClientImpl::FindUrl(mg_connection* pConnection)
             return pairConnection.first;
         }
     }
-    return url("");
+    return endpoint("");
 }

@@ -23,7 +23,7 @@ static struct mg_http_serve_opts s_ServerOpts;
 
 
 
-bool RG_EXPORT operator<(const endpoint& e1, const endpoint& e2)
+bool RG_EXPORT operator<(const methodpoint& e1, const methodpoint& e2)
 {
     return (e1.first.Get() < e2.first.Get() || (e1.first.Get() == e2.first.Get() && e1.second.Get() < e2.second.Get()));
 }
@@ -110,10 +110,10 @@ bool MongooseServer::AuthenticateWebsocket(subscriber& sub, const Json::Value& j
         auto itUser = m_mUsers.find(userName(jsData["user"].asString()));
         if(itUser != m_mUsers.end() && itUser->second.Get() == jsData["password"].asString())
         {
-            auto itEndpoint = m_mWebsocketAuthenticationEndpoints.find(sub.theUrl);
+            auto itEndpoint = m_mWebsocketAuthenticationEndpoints.find(sub.theEndpoint);
             if(itEndpoint != m_mWebsocketAuthenticationEndpoints.end())
             {
-                if(itEndpoint->second(sub.theUrl, itUser->first, sub.peer))
+                if(itEndpoint->second(sub.theEndpoint, itUser->first, sub.peer))
                 {
                     pmlLog(pml::LOG_INFO) << "Websocket subscriber: " << sub.peer << " authorized";
 
@@ -127,7 +127,7 @@ bool MongooseServer::AuthenticateWebsocket(subscriber& sub, const Json::Value& j
             }
             else
             {
-                pmlLog(pml::LOG_WARN) << "Websocket subscriber: " << sub.peer << " url: " << sub.theUrl << " has not authorization function";
+                pmlLog(pml::LOG_WARN) << "Websocket subscriber: " << sub.peer << " endpoint: " << sub.theEndpoint << " has not authorization function";
                 return false;
             }
         }
@@ -228,14 +228,14 @@ void MongooseServer::HandleExternalWebsocketMessage(mg_connection* pConnection, 
 {
     if(sub.bAuthenticated)
     {
-        auto itEndpoint = m_mWebsocketMessageEndpoints.find(sub.theUrl);
+        auto itEndpoint = m_mWebsocketMessageEndpoints.find(sub.theEndpoint);
         if(itEndpoint != m_mWebsocketMessageEndpoints.end())
         {
-            itEndpoint->second(sub.theUrl, jsData);
+            itEndpoint->second(sub.theEndpoint, jsData);
         }
         else
         {
-            pmlLog(pml::LOG_WARN) << sub.peer << " has no message endpoint!";
+            pmlLog(pml::LOG_WARN) << sub.peer << " has no message methodpoint!";
         }
     }
     else
@@ -292,10 +292,10 @@ void MongooseServer::EventWebsocketCtl(mg_connection *pConnection, int nEvent, v
         auto itSub = m_mSubscribers.find(pConnection);
         if(itSub != m_mSubscribers.end())
         {
-            auto itEndpoint = m_mWebsocketCloseEndpoints.find(itSub->second.theUrl);
+            auto itEndpoint = m_mWebsocketCloseEndpoints.find(itSub->second.theEndpoint);
             if(itEndpoint != m_mWebsocketCloseEndpoints.end())
             {
-                itEndpoint->second(itSub->second.theUrl, itSub->second.peer);
+                itEndpoint->second(itSub->second.theEndpoint, itSub->second.peer);
             }
         }
         m_mSubscribers.erase(pConnection);
@@ -373,14 +373,14 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pDa
     else if(InApiTree(sUri))
     {
         pmlLog(pml::LOG_DEBUG) << "API call";
-        auto itWsEndpoint = m_mWebsocketAuthenticationEndpoints.find(url(sUri));
+        auto itWsEndpoint = m_mWebsocketAuthenticationEndpoints.find(endpoint(sUri));
         if(itWsEndpoint != m_mWebsocketAuthenticationEndpoints.end())
         {
-            EventHttpWebsocket(pConnection, pMessage, url(sUri));
+            EventHttpWebsocket(pConnection, pMessage, endpoint(sUri));
         }
         else
         {
-            EventHttpApi(pConnection, pMessage, httpMethod(sMethod), url(sUri));
+            EventHttpApi(pConnection, pMessage, httpMethod(sMethod), endpoint(sUri));
         }
     }
     else
@@ -401,7 +401,7 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pDa
     }
 }
 
-void MongooseServer::EventHttpWebsocket(mg_connection *pConnection, mg_http_message* pMessage, const url& uri)
+void MongooseServer::EventHttpWebsocket(mg_connection *pConnection, mg_http_message* pMessage, const endpoint& uri)
 {
     pmlLog(pml::LOG_DEBUG) << "Websocket subscription";
 
@@ -413,7 +413,7 @@ void MongooseServer::EventHttpWebsocket(mg_connection *pConnection, mg_http_mess
     m_mSubscribers.insert(std::make_pair(pConnection, subscriber(uri, ipAddress(ssPeer.str()))));
 }
 
-void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* pMessage, const httpMethod& method, const url& uri)
+void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* pMessage, const httpMethod& method, const endpoint& uri)
 {
     auto auth = CheckAuthorization(pMessage);
     if(auth.first == false)
@@ -434,8 +434,8 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
             sQuery = std::string(decode);
         }
 
-        //find the callback function assigned to the method and url
-        auto itCallback = m_mEndpoints.find(endpoint(method, uri));
+        //find the callback function assigned to the method and endpoint
+        auto itCallback = m_mEndpoints.find(methodpoint(method, uri));
         if(itCallback != m_mEndpoints.end())
         {
             DoReply(pConnection, itCallback->second(query(sQuery), postData(sData), uri, auth.second));
@@ -662,40 +662,40 @@ void MongooseServer::Stop()
     }
 }
 
-bool MongooseServer::AddWebsocketEndpoint(const url& theUrl, std::function<bool(const url&, const userName&, const ipAddress& peer)> funcAuthentication, std::function<bool(const url&, const Json::Value&)> funcMessage, std::function<void(const url&, const ipAddress& peer)> funcClose)
+bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, std::function<bool(const endpoint&, const userName&, const ipAddress& peer)> funcAuthentication, std::function<bool(const endpoint&, const Json::Value&)> funcMessage, std::function<void(const endpoint&, const ipAddress& peer)> funcClose)
 {
     if(!m_bWebsocket)
     {
         return false;
     }
 
-    return m_mWebsocketAuthenticationEndpoints.insert(std::make_pair(theUrl, funcAuthentication)).second &&
-           m_mWebsocketMessageEndpoints.insert(std::make_pair(theUrl, funcMessage)).second &&
-           m_mWebsocketCloseEndpoints.insert(std::make_pair(theUrl, funcClose)).second;
+    return m_mWebsocketAuthenticationEndpoints.insert(std::make_pair(theEndpoint, funcAuthentication)).second &&
+           m_mWebsocketMessageEndpoints.insert(std::make_pair(theEndpoint, funcMessage)).second &&
+           m_mWebsocketCloseEndpoints.insert(std::make_pair(theEndpoint, funcClose)).second;
 }
 
-bool MongooseServer::AddEndpoint(const endpoint& theEndpoint, std::function<response(const query&, const postData&, const url&, const userName& )> func)
+bool MongooseServer::AddEndpoint(const methodpoint& theMethodPoint, std::function<response(const query&, const postData&, const endpoint&, const userName& )> func)
 {
     pml::LogStream lg;
-    lg << "MongooseServer\t" << "AddEndpoint <" << theEndpoint.first.Get() << ", " << theEndpoint.second.Get() << "> ";
-    if(m_mEndpoints.find(theEndpoint) != m_mEndpoints.end())
+    lg << "MongooseServer\t" << "AddEndpoint <" << theMethodPoint.first.Get() << ", " << theMethodPoint.second.Get() << "> ";
+    if(m_mEndpoints.find(theMethodPoint) != m_mEndpoints.end())
     {
         lg.SetLevel(pml::LOG_WARN);
-        lg << "failed as endpoint already exists";
+        lg << "failed as methodpoint already exists";
         return false;
     }
 
-    m_mEndpoints.insert(std::make_pair(theEndpoint, func));
-    m_mmOptions.insert(std::make_pair(theEndpoint.second.Get(), theEndpoint.first));
+    m_mEndpoints.insert(std::make_pair(theMethodPoint, func));
+    m_mmOptions.insert(std::make_pair(theMethodPoint.second.Get(), theMethodPoint.first));
     lg.SetLevel(pml::LOG_TRACE);
     lg << "success";
     return true;
 }
 
-bool MongooseServer::DeleteEndpoint(const endpoint& theEndpoint)
+bool MongooseServer::DeleteEndpoint(const methodpoint& theMethodPoint)
 {
-    m_mmOptions.erase(theEndpoint.second.Get());
-    return (m_mEndpoints.erase(theEndpoint) != 0);
+    m_mmOptions.erase(theMethodPoint.second.Get());
+    return (m_mEndpoints.erase(theMethodPoint) != 0);
 }
 
 
@@ -735,7 +735,7 @@ bool MongooseServer::MultipartBegin(mg_connection* pConnection, http_message* pM
     lg << "MongooseServer\tUpload: <" << sMethod << ", " << sUri << ">" << std::endl;
 
     ClearMultipartData();
-    m_multipartData.itEndpoint = m_mEndpoints.find(endpoint(httpMethod(sMethod), url(sUri)));
+    m_multipartData.itEndpoint = m_mEndpoints.find(methodpoint(httpMethod(sMethod), endpoint(sUri)));
     if(m_multipartData.itEndpoint == m_mEndpoints.end())
     {
         SendError(pConnection, "Method not allowed.", 405);
@@ -958,7 +958,7 @@ void MongooseServer::SendWSQueue()
                     auto itSubscriber = m_mSubscribers.find(pConnection);
                     if(itSubscriber != m_mSubscribers.end())
                     {
-                        pmlLog(pml::LOG_TRACE) << "Websocket messsage: subscriber: '" << itSubscriber->second.theUrl << "'";
+                        pmlLog(pml::LOG_TRACE) << "Websocket messsage: subscriber: '" << itSubscriber->second.theEndpoint << "'";
 
                         if(itSubscriber->second.bAuthenticated) //authenticated
                         {
@@ -968,7 +968,7 @@ void MongooseServer::SendWSQueue()
                                 for(auto sSub : itSubscriber->second.setEndpoints)
                                 {
                                     if(sSub.length() <= sEndpoint.length() && sEndpoint.substr(0, sSub.length()) == sSub)
-                                    {   //has subscribed to something upstream of this endpoint
+                                    {   //has subscribed to something upstream of this methodpoint
                                         pmlLog(pml::LOG_TRACE) << "Send websocket message from: " << sEndpoint;
                                         mg_ws_send(pConnection, cstr, strlen(cstr), WEBSOCKET_OP_TEXT);
                                         bSent = true;
@@ -983,7 +983,7 @@ void MongooseServer::SendWSQueue()
                         }
                         else
                         {
-                            pmlLog(pml::LOG_TRACE) << itSubscriber->second.theUrl << " not yet authenticated...";
+                            pmlLog(pml::LOG_TRACE) << itSubscriber->second.theEndpoint << " not yet authenticated...";
                         }
                     }
                 }
@@ -1030,9 +1030,9 @@ void MongooseServer::DeleteBAUser(const userName& aUser)
     m_mUsers.erase(aUser);
 }
 
-std::set<endpoint> MongooseServer::GetEndpoints()
+std::set<methodpoint> MongooseServer::GetEndpoints()
 {
-    std::set<endpoint> setEndpoints;
+    std::set<methodpoint> setEndpoints;
     for(auto pairEnd : m_mEndpoints)
     {
         setEndpoints.insert(pairEnd.first);
@@ -1089,7 +1089,7 @@ bool MongooseServer::IsOk()
 }
 
 
-void MongooseServer::AddNotFoundCallback(std::function<response(const query&, const postData&, const url&, const userName&)> func)
+void MongooseServer::AddNotFoundCallback(std::function<response(const query&, const postData&, const endpoint&, const userName&)> func)
 {
     m_callbackNotFound = func;
 }

@@ -1,7 +1,7 @@
 #include "websocketclient.h"
 #include "websocketclientimpl.h"
 
-WebSocketClient::WebSocketClient(std::function<bool(const url& theUrl)> pConnectCallback, std::function<bool(const url& theUrl, const std::string&)> pMessageCallback, unsigned int nTimeout) :
+WebSocketClient::WebSocketClient(std::function<bool(const endpoint& theEndpoint)> pConnectCallback, std::function<bool(const endpoint& theEndpoint, const std::string&)> pMessageCallback, unsigned int nTimeout) :
     m_pImpl(std::make_unique<WebSocketClientImpl>(pConnectCallback, pMessageCallback, nTimeout))
 {
 
@@ -22,18 +22,18 @@ void WebSocketClient::Stop()
     m_pImpl->Stop();
 }
 
-bool WebSocketClient::SendMessage(const url& theUrl, const std::string& sMessage)
+bool WebSocketClient::SendMessage(const endpoint& theEndpoint, const std::string& sMessage)
 {
-    return m_pImpl->SendMessage(theUrl, sMessage);
+    return m_pImpl->SendMessage(theEndpoint, sMessage);
 }
 
 
-bool WebSocketClient::Connect(const url& theUrl)
+bool WebSocketClient::Connect(const endpoint& theEndpoint)
 {
-    return m_pImpl->Connect(theUrl);
+    return m_pImpl->Connect(theEndpoint);
 }
 
-void WebSocketClient::CloseConnection(const url& theUrl)
+void WebSocketClient::CloseConnection(const endpoint& theEndpoint)
 {
-    m_pImpl->CloseConnection(theUrl);
+    m_pImpl->CloseConnection(theEndpoint);
 }
