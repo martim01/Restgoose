@@ -41,8 +41,8 @@ class RG_EXPORT RestGoose
          *  @param funcClose a function that is called when the client closes the websocket connection. The function is passed the methodpoint address and the client ip address
          *  @return <i>bool</i> true if the websocket methodpoint was added
          **/
-        bool AddWebsocketEndpoint(const endpoint& theEndpoint, std::function<bool(const endpoint&, const userName&, const ipAddress& peer)> funcAuthentication,
-        std::function<bool(const endpoint&, const Json::Value&)> funcMessage, std::function<void(const endpoint&, const ipAddress& peer)> funcClose);
+        bool AddWebsocketEndpoint(const endpoint& theEndpoint, std::function<bool(const endpoint&, const userName&, const ipAddress&)> funcAuthentication,
+        std::function<bool(const endpoint&, const Json::Value&)> funcMessage, std::function<void(const endpoint&, const ipAddress&)> funcClose);
 
         /** @brief Adds a function to be called everytime a client attempts to connect to a methodpoint that is not defined
         *   @param func the function to be called. The function is passed the query data, postData (for a PUT,PATCH or POST) the methodpoint and the userName if any.
@@ -76,7 +76,7 @@ class RG_EXPORT RestGoose
         *   @param setEnpoints the set of websocket methodpoints that the message should be sent to
         *   @param jsMessage the message to send
         **/
-        void SendWebsocketMessage(const std::set<std::string>& setEndpoints, const Json::Value& jsMessage);
+        void SendWebsocketMessage(const std::set<endpoint>& setEndpoints, const Json::Value& jsMessage);
 
         /** @brief Gets a set containing all the defined Restful methodpoints
         *   @return <i>set<methodpoint> the methodpoints

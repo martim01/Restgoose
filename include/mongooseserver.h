@@ -22,15 +22,8 @@ extern "C" {
 
 extern RG_EXPORT bool operator<(const methodpoint& e1, const methodpoint& e2);
 
-struct multipartData
-{
-    std::map<methodpoint, std::function<response(const query&, const postData&, const endpoint&, const userName&)>>::const_iterator itEndpoint;
-    std::map<std::string, std::string> mData;
-    std::map<std::string, std::string> mFiles;
-    std::ofstream ofs;
-};
 
-using wsMessage = std::pair<std::set<std::string>, Json::Value>;
+using wsMessage = std::pair<std::set<endpoint>, Json::Value>;
 
 using authorised = std::pair<bool, userName>;
 
@@ -61,7 +54,9 @@ class MongooseServer
         void Stop();
 
 
-        bool AddWebsocketEndpoint(const endpoint& theEndpoint, std::function<bool(const endpoint&, const userName&, const ipAddress& peer)> funcAuthentication, std::function<bool(const endpoint&, const Json::Value&)> funcMessage, std::function<void(const endpoint&, const ipAddress& peer)> funcClose);
+        bool AddWebsocketEndpoint(const endpoint& theEndpoint, std::function<bool(const endpoint&, const userName&, const ipAddress&)> funcAuthentication,
+                                  std::function<bool(const endpoint&, const Json::Value&)> funcMessage,
+                                  std::function<void(const endpoint&, const ipAddress&)> funcClose);
 
         /** Adds a callback handler for an methodpoint
         *   @param theMethodPoint a pair definining the HTTP method and methodpoint address
@@ -85,7 +80,7 @@ class MongooseServer
         **/
         void SetLoopCallback(std::function<void(unsigned int)> func);
 
-        void SendWebsocketMessage(const std::set<std::string>& setEndpoints, const Json::Value& jsMessage);
+        void SendWebsocketMessage(const std::set<endpoint>& setEndpoints, const Json::Value& jsMessage);
 
 
 
@@ -137,6 +132,7 @@ class MongooseServer
 
         void EventHttpWebsocket(mg_connection *pConnection, mg_http_message* pMessage, const endpoint& uri);
         void EventHttpApi(mg_connection *pConnection, mg_http_message* pMessage, const httpMethod& method, const endpoint& uri);
+        void EventHttpApiMultipart(mg_connection *pConnection, mg_http_message* pMessage, const httpMethod& method, const endpoint& uri);
 
         /** @brief Send a JSON encoded error message to the provided connection containing the provided error
         *   @param pConnection the mg_connection to send the data to
@@ -171,7 +167,7 @@ class MongooseServer
             endpoint theEndpoint;
             ipAddress peer;
             bool bAuthenticated;
-            std::set<std::string> setEndpoints;
+            std::set<endpoint> setEndpoints;
         };
 
         void HandleInternalWebsocketMessage(mg_connection* pConnection, subscriber& sub, const Json::Value& jsData);
@@ -218,7 +214,7 @@ class MongooseServer
         std::map<mg_connection*, subscriber > m_mSubscribers;
 
         std::queue<wsMessage> m_qWsMessages;
-        multipartData m_multipartData;
+        size_t m_nChunk;
 
         std::mutex m_mutex;
         bool m_bThreaded;

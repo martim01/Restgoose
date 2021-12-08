@@ -16,11 +16,19 @@ using httpMethod = NamedType<std::string, struct MethodParameter>;
 using endpoint = NamedType<std::string, struct endpointParameter>;
 using methodpoint = std::pair<httpMethod, endpoint>;
 using query = NamedType<std::string, struct QueryParameter>;
-using postData = NamedType<std::string, struct PostDataParameter>;
 using userName = NamedType<std::string, struct userParamater>;
 using password = NamedType<std::string, struct passwordParamater>;
 using ipAddress = NamedType<std::string, struct ipAddressParamater>;
 
+
+struct partData
+{
+    std::string sName;
+    std::string sFilename;
+    std::vector<char> vData;
+};
+
+using postData = std::vector<partData>;
 
 struct RG_EXPORT response
 {

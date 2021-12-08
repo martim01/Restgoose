@@ -46,7 +46,7 @@ void RestGoose::AddNotFoundCallback(std::function<response(const query&, const p
     return m_pImpl->AddNotFoundCallback(func);
 }
 
-bool RestGoose::AddWebsocketEndpoint(const endpoint& theMethodPoint, std::function<bool(const endpoint&, const userName&, const ipAddress& peer)> funcAuthentication, std::function<bool(const endpoint&, const Json::Value&)> funcMessage, std::function<void(const endpoint&, const ipAddress& peer)> funcClose)
+bool RestGoose::AddWebsocketEndpoint(const endpoint& theMethodPoint, std::function<bool(const endpoint&, const userName&, const ipAddress&)> funcAuthentication, std::function<bool(const endpoint&, const Json::Value&)> funcMessage, std::function<void(const endpoint&, const ipAddress&)> funcClose)
 {
     return m_pImpl->AddWebsocketEndpoint(theMethodPoint, funcAuthentication, funcMessage, funcClose);
 }
@@ -61,7 +61,7 @@ void RestGoose::SetLoopCallback(std::function<void(unsigned int)> func)
     m_pImpl->SetLoopCallback(func);
 }
 
-void RestGoose::SendWebsocketMessage(const std::set<std::string>& setEndpoints, const Json::Value& jsMessage)
+void RestGoose::SendWebsocketMessage(const std::set<endpoint>& setEndpoints, const Json::Value& jsMessage)
 {
     m_pImpl->SendWebsocketMessage(setEndpoints, jsMessage);
 }

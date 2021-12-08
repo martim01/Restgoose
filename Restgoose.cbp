@@ -120,6 +120,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../mongoose/mongoose.h" />
+		<Unit filename="include/RestGoose.h" />
+		<Unit filename="include/mongooseserver.h" />
+		<Unit filename="include/namedtype.h" />
+		<Unit filename="include/response.h" />
 		<Unit filename="include/utils.h" />
 		<Unit filename="include/websocketclient.h" />
 		<Unit filename="include/websocketclientimpl.h" />
@@ -132,10 +136,6 @@
 		<Unit filename="src/utils.cpp" />
 		<Unit filename="src/websocketclient.cpp" />
 		<Unit filename="src/websocketclientimpl.cpp" />
-		<Extensions>
-			<code_completion />
-			<envvars />
-			<debugger />
-		</Extensions>
+		<Extensions />
 	</Project>
 </CodeBlocks_project_file>
