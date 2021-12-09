@@ -19,6 +19,7 @@ extern "C" {
 #include <atomic>
 #include <thread>
 #include <condition_variable>
+#include <fstream>
 
 extern RG_EXPORT bool operator<(const methodpoint& e1, const methodpoint& e2);
 
@@ -131,8 +132,8 @@ class MongooseServer
         void EventHttp(mg_connection *pConnection, int nEvent, void* pData);
 
         void EventHttpWebsocket(mg_connection *pConnection, mg_http_message* pMessage, const endpoint& uri);
-        void EventHttpApi(mg_connection *pConnection, mg_http_message* pMessage, const httpMethod& method, const endpoint& uri);
-        void EventHttpApiMultipart(mg_connection *pConnection, mg_http_message* pMessage, const httpMethod& method, const endpoint& uri);
+        void EventHttpApi(mg_connection *pConnection, mg_http_message* pMessage, const methodpoint& thePoint);
+        void EventHttpApiMultipart(mg_connection *pConnection, mg_http_message* pMessage, const methodpoint& thePoint);
 
         /** @brief Send a JSON encoded error message to the provided connection containing the provided error
         *   @param pConnection the mg_connection to send the data to
@@ -154,7 +155,7 @@ class MongooseServer
         void DoReply(mg_connection* pConnection, const response& theResponse);
         void SendAuthenticationRequest(mg_connection* pConnection);
 
-        void SendOptions(mg_connection* pConnection, const std::string& sUrl);
+        void SendOptions(mg_connection* pConnection, const endpoint& thEndpoint);
 
         void SendWSQueue();
         void ClearMultipartData();
@@ -180,8 +181,11 @@ class MongooseServer
 
         void HandleAccept(mg_connection* pConnection);
 
+        void EventHttpChunk(mg_connection *pConnection, int nEvent, void* pData);
 
-        bool InApiTree(const std::string& sUri);
+        methodpoint GetMethodPoint(mg_http_message* pMessage);
+
+        bool InApiTree(const endpoint& theEndpoint);
 
         mg_connection* m_pConnection;
         mg_connection* m_pPipe;
@@ -205,7 +209,7 @@ class MongooseServer
         std::map<endpoint, std::function<bool(const endpoint&, const userName&, const ipAddress& peer)>> m_mWebsocketAuthenticationEndpoints;
         std::map<endpoint, std::function<bool(const endpoint&, const Json::Value&)>> m_mWebsocketMessageEndpoints;
         std::map<endpoint, std::function<void(const endpoint&, const ipAddress& peer)>> m_mWebsocketCloseEndpoints;
-        std::multimap<std::string, httpMethod> m_mmOptions;
+        std::multimap<endpoint, httpMethod> m_mmOptions;
 
 
 
@@ -214,7 +218,6 @@ class MongooseServer
         std::map<mg_connection*, subscriber > m_mSubscribers;
 
         std::queue<wsMessage> m_qWsMessages;
-        size_t m_nChunk;
 
         std::mutex m_mutex;
         bool m_bThreaded;
@@ -230,4 +233,38 @@ class MongooseServer
         std::function<response(const query&, const postData&, const endpoint&, const userName&)> m_callbackNotFound;
 
         std::map<userName, password> m_mUsers;
+
+        struct httpchunks
+        {
+            httpchunks() : nTotalSize(0), nCurrentSize(0), ePlace(BOUNDARY){}
+            size_t nTotalSize;
+            size_t nCurrentSize;
+            std::string sContentType;
+            methodpoint thePoint;
+
+            //multipart stuff
+            enum enumPlace{BOUNDARY, HEADER};
+            enumPlace ePlace;
+
+            std::vector<char> vBuffer;
+
+
+            std::string sBoundary;
+            std::string sBoundaryLast;
+
+            postData vParts;
+
+            std::ofstream ofs;
+        };
+
+        void HandleFirstChunk(httpchunks& chunk, mg_http_message* pMessage);
+        void HandleMultipartChunk(httpchunks& chunk, mg_http_message* pMessage);
+        void WorkoutBoundary(httpchunks& chunk);
+        void MultipartChunkBoundary(httpchunks& chunk, char c);
+        void MultipartChunkHeader(httpchunks& chunk, char c);
+        void MultipartChunkBoundaryFound(httpchunks& chunk, char c);
+        void MultipartChunkLastBoundaryFound(httpchunks& chunk, char c);
+        void MultipartChunkBoundarySearch(httpchunks& chunk, char c);
+
+        std::map<mg_connection*, httpchunks> m_mChunks;
 };

@@ -17,7 +17,9 @@ using namespace std;
 using namespace std::placeholders;
 
 
-
+const std::string DISPOSITION = "Content-Disposition: ";
+const std::string NAME = " name=";
+const std::string FILENAME = " filename=";
 
 static struct mg_http_serve_opts s_ServerOpts;
 
@@ -25,7 +27,7 @@ static struct mg_http_serve_opts s_ServerOpts;
 partData CreatePartData(const mg_str& str)
 {
     partData part;
-    part.vData.assign(str.ptr, str.ptr+str.len);
+    part.sData.assign(str.ptr, str.ptr+str.len);
     return part;
 }
 
@@ -34,7 +36,7 @@ partData CreatePartData(const mg_http_part& mgpart)
     partData part;
     part.sName.assign(mgpart.name.ptr, mgpart.name.len);
     part.sFilename.assign(mgpart.filename.ptr, mgpart.filename.len);
-    part.vData.assign(mgpart.body.ptr, mgpart.body.ptr+mgpart.body.len);
+    part.sData.assign(mgpart.body.ptr, mgpart.body.ptr+mgpart.body.len);
     return part;
 }
 
@@ -349,11 +351,8 @@ authorised MongooseServer::CheckAuthorization(mg_http_message* pMessage)
 
 }
 
-void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pData)
+methodpoint MongooseServer::GetMethodPoint(mg_http_message* pMessage)
 {
-    mg_http_message* pMessage = reinterpret_cast<mg_http_message*>(pData);
-
-
     char decode[6000];
     mg_url_decode(pMessage->uri.ptr, pMessage->uri.len, decode, 6000, 0);
 
@@ -380,36 +379,296 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pDa
     string sMethod(pMessage->method.ptr);
     size_t nSpace = sMethod.find(' ');
     sMethod = sMethod.substr(0, nSpace);
+    return methodpoint(httpMethod(sMethod), endpoint(sUri));
+
+}
+
+void MongooseServer::HandleFirstChunk(httpchunks& chunk, mg_http_message* pMessage)
+{
+    chunk.thePoint = GetMethodPoint(pMessage);
+
+    auto contents = mg_http_get_header(pMessage, "Content-Type");
+    if(contents->len > 0)
+    {
+        chunk.sContentType.assign(contents->ptr, contents->len);
+    }
+
+    if(chunk.sContentType.find("multipart") != std::string::npos)
+    {
+        WorkoutBoundary(chunk);
+    }
+
+    auto totalSize = mg_http_get_header(pMessage, "Content-Length");
+    if(totalSize->len > 0)
+    {
+        try
+        {
+            chunk.nTotalSize = std::stoul(std::string(totalSize->ptr, totalSize->len));
+        }
+        catch(const std::exception& e)
+        {
+            pmlLog(pml::LOG_WARN) << "MongooseServer\tCould not decode message length";
+        }
+    }
+    pmlLog(pml::LOG_DEBUG) << "MongooseServer\tFirst chunk: " << chunk.sContentType << "\t" << chunk.nTotalSize << " bytes";
+}
+
+void MongooseServer::WorkoutBoundary(httpchunks& chunk)
+{
+    auto vSplit = SplitString(chunk.sContentType, ';');
+    if(vSplit.size() > 1)
+    {
+        if(vSplit[1].find("boundary") != std::string::npos)
+        {
+            chunk.sBoundary = "\r\n--"+vSplit[1].substr(10)+"\r\n";
+            chunk.sBoundaryLast = "\r\n--"+vSplit[1].substr(10)+"--\r\n";
+            //chunk.sBoundaryLast = chunk.sBoundary+"--\r\n";
+            chunk.vBuffer.reserve(chunk.sBoundaryLast.length());
+            chunk.vBuffer.push_back('\r');
+            chunk.vBuffer.push_back('\n');
+        }
+    }
+}
+
+void MongooseServer::EventHttpChunk(mg_connection *pConnection, int nEvent, void* pData)
+{
+    mg_http_message* pMessage = reinterpret_cast<mg_http_message*>(pData);
+
+    auto ins  = m_mChunks.insert({pConnection, httpchunks()});
+    if(ins.second)
+    {
+        HandleFirstChunk(ins.first->second, pMessage);
+    }
+
+    //if the content type is multipart then we try to extract
+    if(ins.first->second.sContentType.find("multipart") != std::string::npos)
+    {
+        HandleMultipartChunk(ins.first->second, pMessage);
+    }
+
+    ins.first->second.nCurrentSize += pMessage->chunk.len;
+    if(ins.first->second.nCurrentSize >= ins.first->second.nTotalSize)
+    {   //received all the data
+        ins.first->second.vBuffer.clear();
+        pmlLog(pml::LOG_DEBUG) << "MongooseServer\tAll chunks received. Now do something with them...";
+    }
+
+    mg_http_delete_chunk(pConnection, pMessage);
+}
+
+void MongooseServer::HandleMultipartChunk(httpchunks& chunk, mg_http_message* pMessage)
+{
+    for(size_t i = 0; i < pMessage->chunk.len; i++)
+    {
+        if(chunk.ePlace == httpchunks::BOUNDARY)
+        {
+            MultipartChunkBoundary(chunk, pMessage->chunk.ptr[i]);
+        }
+        else
+        {
+            MultipartChunkHeader(chunk, pMessage->chunk.ptr[i]);
+        }
+    }
+
+    if(chunk.ofs.is_open())
+    {
+        chunk.ofs.flush();    //write to disk
+
+    }
+}
+
+
+
+void MongooseServer::MultipartChunkBoundary(httpchunks& chunk, char c)
+{
+    if(c == chunk.sBoundaryLast[chunk.vBuffer.size()])
+    {
+        chunk.vBuffer.push_back(c);
+        if(chunk.vBuffer.size() == chunk.sBoundaryLast.length())
+        {
+            MultipartChunkLastBoundaryFound(chunk, c);
+        }
+    }
+    else if(c == chunk.sBoundary[chunk.vBuffer.size()])
+    {
+        chunk.vBuffer.push_back(c);
+        if(chunk.vBuffer.size() == chunk.sBoundary.length())
+        {
+            MultipartChunkBoundaryFound(chunk, c);
+        }
+    }
+    else
+    {
+        MultipartChunkBoundarySearch(chunk, c);
+    }
+}
+
+void MongooseServer::MultipartChunkBoundaryFound(httpchunks& chunk, char c)
+{
+    pmlLog(pml::LOG_DEBUG) << "Boundary found! " << chunk.nCurrentSize;
+    // @todo store any data we've got before this boundary
+
+    if(chunk.vParts.empty() == false)
+    {
+        if(chunk.vParts.back().sFilename.empty())
+        {
+            pmlLog() << "CHUNK NAME: '" << chunk.vParts.back().sData << "'";
+        }
+        else
+        {
+            if(chunk.ofs.is_open())
+            {
+                chunk.ofs.close();
+            }
+        }
+    }
+
+    //clear the buffer
+    chunk.vBuffer.clear();
+    //set the checking to find the header data now
+    chunk.ePlace = httpchunks::HEADER;
+
+    //create our partData structure and add the first char of the header
+    chunk.vParts.push_back(partData());
+    chunk.vParts.back().sHeader += c;
+}
+
+void MongooseServer::MultipartChunkLastBoundaryFound(httpchunks& chunk, char c)
+{
+    pmlLog(pml::LOG_DEBUG) << "Last Boundary found! " << chunk.nCurrentSize;
+
+    if(chunk.vParts.empty() == false)
+    {
+        if(chunk.vParts.back().sFilename.empty())
+        {
+            pmlLog() << "CHUNK NAME: '" << chunk.vParts.back().sData << "'";
+        }
+        else
+        {
+            if(chunk.ofs.is_open())
+            {
+                chunk.ofs.close();
+            }
+        }
+    }
+    chunk.vBuffer.clear();
+}
+
+void MongooseServer::MultipartChunkBoundarySearch(httpchunks& chunk, char c)
+{
+    //store the buffered data before clearing it
+    if(chunk.vBuffer.empty() == false && chunk.vParts.empty() == false)
+    {
+        if(chunk.vParts.back().sFilename.empty())
+        {
+            chunk.vParts.back().sData.append(chunk.vBuffer.begin(), chunk.vBuffer.end());
+            //pmlLog() << "Chunk Buffer: '" << std::string(chunk.vBuffer.begin(), chunk.vBuffer.end()) << "'";
+        }
+        else
+        {
+            if(chunk.ofs.is_open())
+            {
+                chunk.ofs.write(chunk.vBuffer.data(), chunk.vBuffer.size());
+            }
+        }
+    }
+    chunk.vBuffer.clear();
+
+    if(c == chunk.sBoundaryLast[0])
+    {   //start the matching process again
+        chunk.vBuffer.push_back(c);
+    }
+    else if(chunk.vParts.empty() == false)
+    {
+        if(chunk.vParts.back().sFilename.empty())
+        {
+            chunk.vParts.back().sData += c;
+        }
+        else
+        {
+            if(chunk.ofs.is_open())
+            {
+                chunk.ofs << c;
+            }
+        }
+    }
+}
+
+void MongooseServer::MultipartChunkHeader(httpchunks& chunk, char c)
+{
+    chunk.vParts.back().sHeader += c;
+    if(chunk.vParts.back().sHeader.length() >= 4 && chunk.vParts.back().sHeader.substr(chunk.vParts.back().sHeader.length()-4) == "\r\n\r\n")
+    {
+        auto vSplit = SplitString(chunk.vParts.back().sHeader, '\n');
+        for(auto sLine : vSplit)
+        {
+            if(sLine.length() > DISPOSITION.length() && sLine.substr(0, DISPOSITION.length()) == DISPOSITION)
+            {
+                auto vSplit2 = SplitString(sLine.substr(DISPOSITION.length()), ';');
+                for(auto sPart : vSplit2)
+                {
+                    if(sPart.length() > NAME.length() && sPart.substr(0, NAME.length()) == NAME)
+                    {
+                        chunk.vParts.back().sName = sPart.substr(NAME.length());
+                        pmlLog() << "Chunk: Name=" << chunk.vParts.back().sName;
+                    }
+                    else if(sPart.length() > FILENAME.length() && sPart.substr(0, FILENAME.length()) == FILENAME)
+                    {
+                        auto nStart = sPart.find('"')+1;
+                        auto nEnd = sPart.find('"', nStart);
+
+                        chunk.vParts.back().sFilename =  sPart.substr(nStart, nEnd-nStart);
+                        pmlLog() << "Chunk: Filename='" << chunk.vParts.back().sFilename << "'";
+                        chunk.ofs.open("/tmp/"+chunk.vParts.back().sFilename);
+                        if(chunk.ofs.is_open() == false)
+                        {
+                            pmlLog(pml::LOG_WARN) << "Could not open file";
+                        }
+
+                    }
+                }
+            }
+        }
+
+        chunk.ePlace = httpchunks::BOUNDARY;
+    }
+}
+
+void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pData)
+{
+    mg_http_message* pMessage = reinterpret_cast<mg_http_message*>(pData);
+
+    auto thePoint = GetMethodPoint(pMessage);
     auto content = mg_http_get_header(pMessage, "Content-Type");
 
-    pmlLog(pml::LOG_DEBUG) << "MongooseServer\tEndpoint: <" << sMethod << ", " << sUri << ">";
+    pmlLog(pml::LOG_DEBUG) << "MongooseServer\tEndpoint: <" << thePoint.first << ", " << thePoint.second << ">";
 
     std::string sContents;
     if(content && content->len > 0)
     {
         sContents = std::string(content->ptr, content->len);
-        pmlLog(pml::LOG_DEBUG) << "MongooseServer\Content: " << sContents;
+        pmlLog(pml::LOG_DEBUG) << "MongooseServer\tContent: " << sContents;
     }
 
-    if(CmpNoCase(sMethod, "OPTIONS"))
+    if(CmpNoCase(thePoint.first.Get(), "OPTIONS"))
     {
-        SendOptions(pConnection, sUri);
+        SendOptions(pConnection, thePoint.second);
     }
-    else if(InApiTree(sUri))
+    else if(InApiTree(thePoint.second))
     {
         pmlLog(pml::LOG_DEBUG) << "API call";
-        auto itWsEndpoint = m_mWebsocketAuthenticationEndpoints.find(endpoint(sUri));
+        auto itWsEndpoint = m_mWebsocketAuthenticationEndpoints.find(thePoint.second);
         if(itWsEndpoint != m_mWebsocketAuthenticationEndpoints.end())
         {
-            EventHttpWebsocket(pConnection, pMessage, endpoint(sUri));
+            EventHttpWebsocket(pConnection, pMessage, thePoint.second);
         }
         else if(sContents.find("multipart") != std::string::npos)
         {
-            EventHttpApiMultipart(pConnection, pMessage, httpMethod(sMethod), endpoint(sUri));
+            EventHttpApiMultipart(pConnection, pMessage, thePoint);
         }
         else
         {
-            EventHttpApi(pConnection, pMessage, httpMethod(sMethod), endpoint(sUri));
+            EventHttpApi(pConnection, pMessage, thePoint);
         }
     }
     else
@@ -447,7 +706,7 @@ void MongooseServer::EventHttpWebsocket(mg_connection *pConnection, mg_http_mess
     itSub->second.setEndpoints.insert(uri);
 }
 
-void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* pMessage, const httpMethod& method, const endpoint& uri)
+void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* pMessage, const methodpoint& thePoint)
 {
     auto auth = CheckAuthorization(pMessage);
     if(auth.first == false)
@@ -466,14 +725,14 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
         }
 
         //find the callback function assigned to the method and endpoint
-        auto itCallback = m_mEndpoints.find(methodpoint(method, uri));
+        auto itCallback = m_mEndpoints.find(thePoint);
         if(itCallback != m_mEndpoints.end())
         {
-            DoReply(pConnection, itCallback->second(query(sQuery), {CreatePartData(pMessage->body)}, uri, auth.second));
+            DoReply(pConnection, itCallback->second(query(sQuery), {CreatePartData(pMessage->body)}, thePoint.second, auth.second));
         }
         else if(m_callbackNotFound)
         {
-            DoReply(pConnection, m_callbackNotFound(query(sQuery), {}, uri, auth.second));
+            DoReply(pConnection, m_callbackNotFound(query(sQuery), {}, thePoint.second, auth.second));
         }
         else
         {
@@ -482,7 +741,7 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
     }
 }
 
-void MongooseServer::EventHttpApiMultipart(mg_connection *pConnection, mg_http_message* pMessage, const httpMethod& method, const endpoint& uri)
+void MongooseServer::EventHttpApiMultipart(mg_connection *pConnection, mg_http_message* pMessage, const methodpoint& thePoint)
 {
     auto auth = CheckAuthorization(pMessage);
     if(auth.first == false)
@@ -500,7 +759,7 @@ void MongooseServer::EventHttpApiMultipart(mg_connection *pConnection, mg_http_m
         }
 
         //find the callback function assigned to the method and endpoint
-        auto itCallback = m_mEndpoints.find(methodpoint(method, uri));
+        auto itCallback = m_mEndpoints.find(thePoint);
         if(itCallback != m_mEndpoints.end())
         {
             postData theData;
@@ -510,11 +769,11 @@ void MongooseServer::EventHttpApiMultipart(mg_connection *pConnection, mg_http_m
             {
                 theData.push_back(CreatePartData(part));
             }
-            DoReply(pConnection, itCallback->second(query(sQuery), theData, uri, auth.second));
+            DoReply(pConnection, itCallback->second(query(sQuery), theData, thePoint.second, auth.second));
         }
         else if(m_callbackNotFound)
         {
-            DoReply(pConnection, m_callbackNotFound(query(sQuery), {}, uri, auth.second));
+            DoReply(pConnection, m_callbackNotFound(query(sQuery), {}, thePoint.second, auth.second));
         }
         else
         {
@@ -551,18 +810,7 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
         case MG_EV_HTTP_CHUNK:  //partial message
             //write the chunk to file and then delete it
             //pmlLog(pml::LOG_TRACE) << "MG_EV_HTTP_CHUNK";
-            {
-                mg_http_message* pMessage = reinterpret_cast<mg_http_message*>(pData);
-                if(m_nChunk == 0)
-                {
-                    pmlLog(pml::LOG_TRACE) << std::string(pMessage->head.ptr, pMessage->head.len);
-                }
-                m_nChunk += pMessage->chunk.len;
-                //pmlLog(pml::LOG_TRACE) << "Size: " << m_nChunk;
-                mg_http_delete_chunk(pConnection, pMessage);
-
-            }
-
+            EventHttpChunk(pConnection, nEvent, pData);
             break;
         case MG_EV_CLOSE:
             pmlLog(pml::LOG_TRACE) << "MG_EV_CLOSE";
@@ -619,7 +867,6 @@ MongooseServer::MongooseServer() :
     m_pThread(nullptr),
     m_callbackNotFound(nullptr)
 {
-    m_nChunk = 0;
     #ifdef __WXDEBUG__
     mg_log_set("2");
     mg_log_set_callback(mgpmlLog, NULL);
@@ -769,7 +1016,7 @@ bool MongooseServer::AddEndpoint(const methodpoint& theMethodPoint, std::functio
     }
 
     m_mEndpoints.insert(std::make_pair(theMethodPoint, func));
-    m_mmOptions.insert(std::make_pair(theMethodPoint.second.Get(), theMethodPoint.first));
+    m_mmOptions.insert(std::make_pair(theMethodPoint.second, theMethodPoint.first));
     lg.SetLevel(pml::LOG_TRACE);
     lg << "success";
     return true;
@@ -777,7 +1024,7 @@ bool MongooseServer::AddEndpoint(const methodpoint& theMethodPoint, std::functio
 
 bool MongooseServer::DeleteEndpoint(const methodpoint& theMethodPoint)
 {
-    m_mmOptions.erase(theMethodPoint.second.Get());
+    m_mmOptions.erase(theMethodPoint.second);
     return (m_mEndpoints.erase(theMethodPoint) != 0);
 }
 
@@ -820,10 +1067,10 @@ void MongooseServer::DoReply(mg_connection* pConnection,const response& theRespo
 }
 
 
-void MongooseServer::SendOptions(mg_connection* pConnection, const std::string& sUrl)
+void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& theEndpoint)
 {
-    auto itOption = m_mmOptions.lower_bound(sUrl);
-    if(itOption == m_mmOptions.upper_bound(sUrl))
+    auto itOption = m_mmOptions.lower_bound(theEndpoint);
+    if(itOption == m_mmOptions.upper_bound(theEndpoint))
     {
         stringstream ssHeaders;
         ssHeaders << "HTTP/1.1 404\r\n"
@@ -847,7 +1094,7 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const std::string& 
                   << "Access-Control-Allow-Origin:*\r\n"
                   << "Access-Control-Allow-Methods: OPTIONS";
 
-        for(; itOption != m_mmOptions.upper_bound(sUrl); ++itOption)
+        for(; itOption != m_mmOptions.upper_bound(theEndpoint); ++itOption)
         {
             ssHeaders << ", " << itOption->second.Get();
         }
@@ -983,9 +1230,9 @@ std::set<methodpoint> MongooseServer::GetEndpoints()
 }
 
 
-bool MongooseServer::InApiTree(const std::string& sUri)
+bool MongooseServer::InApiTree(const endpoint& theEndpoint)
 {
-    return (sUri.length() >= m_sApiRoot.length() && sUri.substr(0, m_sApiRoot.length()) == m_sApiRoot);
+    return (theEndpoint.Get().length() >= m_sApiRoot.length() && theEndpoint.Get().substr(0, m_sApiRoot.length()) == m_sApiRoot);
 }
 
 
@@ -1035,3 +1282,6 @@ void MongooseServer::AddNotFoundCallback(std::function<response(const query&, co
 {
     m_callbackNotFound = func;
 }
+
+
+

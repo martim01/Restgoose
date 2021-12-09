@@ -23,9 +23,10 @@ using ipAddress = NamedType<std::string, struct ipAddressParamater>;
 
 struct partData
 {
+    std::string sHeader;
     std::string sName;
     std::string sFilename;
-    std::vector<char> vData;
+    std::string sData;
 };
 
 using postData = std::vector<partData>;

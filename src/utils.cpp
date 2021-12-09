@@ -12,20 +12,27 @@ using namespace std;
 vector<string> SplitString(string str, char cSplit, size_t nMax)
 {
     vector<string> vSplit;
-    istringstream f(str);
-    string s;
-
-    while (getline(f, s, cSplit))
+    if(str.find(cSplit) == std::string::npos)
     {
-        if(s.empty() == false)
+        vSplit.push_back(str);
+    }
+    else
+    {
+        istringstream f(str);
+        string s;
+
+        while (getline(f, s, cSplit))
         {
-            if(nMax == 0 || vSplit.size() < nMax)
+            if(s.empty() == false)
             {
-                vSplit.push_back(s);
-            }
-            else
-            {
-                vSplit[nMax-1] = vSplit[nMax-1]+cSplit+s;
+                if(nMax == 0 || vSplit.size() < nMax)
+                {
+                    vSplit.push_back(s);
+                }
+                else
+                {
+                    vSplit[nMax-1] = vSplit[nMax-1]+cSplit+s;
+                }
             }
         }
     }
