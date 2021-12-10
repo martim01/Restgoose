@@ -181,7 +181,7 @@ class MongooseServer
 
         void HandleAccept(mg_connection* pConnection);
 
-        void EventHttpChunk(mg_connection *pConnection, int nEvent, void* pData);
+        void EventHttpChunk(mg_connection *pConnection, void* pData);
 
         methodpoint GetMethodPoint(mg_http_message* pMessage);
 
@@ -236,12 +236,15 @@ class MongooseServer
 
         struct httpchunks
         {
-            httpchunks() : nTotalSize(0), nCurrentSize(0), ePlace(BOUNDARY){}
+            httpchunks() : nTotalSize(0), nCurrentSize(0), pCallback(nullptr), ePlace(BOUNDARY){}
             size_t nTotalSize;
             size_t nCurrentSize;
             std::string sContentType;
             methodpoint thePoint;
+            query theQuery;
+            std::function<response(const query&, const postData&, const endpoint&, const userName&)> pCallback;
 
+            userName theUser;
             //multipart stuff
             enum enumPlace{BOUNDARY, HEADER};
             enumPlace ePlace;
@@ -257,8 +260,10 @@ class MongooseServer
             std::ofstream ofs;
         };
 
-        void HandleFirstChunk(httpchunks& chunk, mg_http_message* pMessage);
+        void HandleFirstChunk(httpchunks& chunk, mg_connection* pConnection, mg_http_message* pMessage);
+        void HandleLastChunk(httpchunks& chunk);
         void HandleMultipartChunk(httpchunks& chunk, mg_http_message* pMessage);
+        void HandleGenericChunk(httpchunks& chunk, mg_http_message* pMessage);
         void WorkoutBoundary(httpchunks& chunk);
         void MultipartChunkBoundary(httpchunks& chunk, char c);
         void MultipartChunkHeader(httpchunks& chunk, char c);

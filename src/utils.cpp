@@ -78,45 +78,6 @@ string CreatePath(string sPath)
 
 
 
-std::string GetCurrentTimeAsString(bool bIncludeNano)
-{
-    std::chrono::time_point<std::chrono::system_clock> tp(std::chrono::system_clock::now());
-    return ConvertTimeToString(tp, bIncludeNano);
-}
-
-std::string GetCurrentTimeAsIsoString()
-{
-    std::chrono::time_point<std::chrono::system_clock> tp(std::chrono::system_clock::now());
-    return ConvertTimeToIsoString(tp);
-}
-
-std::string ConvertTimeToString(std::chrono::time_point<std::chrono::system_clock> tp, bool bIncludeNano)
-{
-    std::stringstream sstr;
-    auto seconds = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
-    sstr << seconds.count();
-    if(bIncludeNano)
-    {
-        sstr << ":" << (std::chrono::duration_cast<std::chrono::nanoseconds>(tp.time_since_epoch()).count()%1000000000);
-    }
-    return sstr.str();
-}
-
-std::string ConvertTimeToIsoString(std::chrono::time_point<std::chrono::system_clock> tp)
-{
-    std::time_t  t = std::chrono::system_clock::to_time_t(tp);
-    return ConvertTimeToIsoString(t);
-}
-
-std::string ConvertTimeToIsoString(std::time_t t)
-{
-    std::stringstream ss;
-
-    ss << std::put_time(std::localtime(&t), "%FT%T%z");
-    return ss.str();
-}
-
-
 
 
 
