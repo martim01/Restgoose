@@ -103,7 +103,4 @@ std::string ConvertFromJson(const Json::Value& jsValue)
     builder["commentStyle"] = "None";
     builder["indentation"] = "";
     return Json::writeString(builder, jsValue);
-    //std::stringstream ssJson;
-    //ssJson << jsValue;
-    //return ssJson.str();
 }
