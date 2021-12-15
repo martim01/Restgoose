@@ -8,6 +8,15 @@
 
 using namespace std;
 
+std::string CreateTmpFileName()
+{
+    std::stringstream sstr;
+    auto tp = std::chrono::system_clock::now();
+    auto seconds = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
+    sstr << seconds.count();
+    sstr << "_" << (std::chrono::duration_cast<std::chrono::nanoseconds>(tp.time_since_epoch()).count()%1000000000);
+    return sstr.str();
+}
 
 vector<string> SplitString(string str, char cSplit, size_t nMax)
 {

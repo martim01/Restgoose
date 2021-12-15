@@ -124,6 +124,8 @@
 		<Unit filename="include/mongooseserver.h" />
 		<Unit filename="include/namedtype.h" />
 		<Unit filename="include/response.h" />
+		<Unit filename="include/restfulclient.h" />
+		<Unit filename="include/threadpool.h" />
 		<Unit filename="include/utils.h" />
 		<Unit filename="include/websocketclient.h" />
 		<Unit filename="include/websocketclientimpl.h" />
@@ -133,6 +135,8 @@
 		<Unit filename="src/mongooseserver.h" />
 		<Unit filename="src/namedtype.h" />
 		<Unit filename="src/response.h" />
+		<Unit filename="src/restfulclient.cpp" />
+		<Unit filename="src/threadpool.cpp" />
 		<Unit filename="src/utils.cpp" />
 		<Unit filename="src/websocketclient.cpp" />
 		<Unit filename="src/websocketclientimpl.cpp" />
