@@ -1,6 +1,7 @@
 #pragma once
-#include "json/json.h"
 #include "namedtype.h"
+#include <vector>
+#include "json/json.h"
 
 #ifdef _WIN32
     #ifdef RESTGOOSE_DLL
@@ -20,40 +21,33 @@ using userName = NamedType<std::string, struct userParamater>;
 using password = NamedType<std::string, struct passwordParamater>;
 using ipAddress = NamedType<std::string, struct ipAddressParamater>;
 
+using textData = NamedType<std::string, struct textDataParameter>;
+using fileLocation = NamedType<std::string, struct fileLocationParameter>;
+using partName = NamedType<std::string, struct partNameParameter>;
 
 struct partData
 {
+    partData(){}
+    partData(const partName& n, const textData& d) : name(n), data(d){}
+    partData(const partName& n, const textData& filename, const fileLocation& filelocation) : name(n), data(filename), filepath(filelocation){}
+
     std::string sHeader;
-    std::string sName;
-    std::string sFilename;
-    std::string sData;
+    partName name;
+    textData data;
+    fileLocation filepath;
+
 };
 
 using postData = std::vector<partData>;
 
+
 struct RG_EXPORT response
 {
-    response(unsigned short nCode=200) : nHttpCode(nCode), sContentType("application/json"){}
-    response(unsigned short nCode, const std::string& sReason) : nHttpCode(nCode), sContentType("application/json")
-    {
-        jsonData["success"] = (nCode >= 200 && nCode < 300);
-        jsonData["reason"].append(sReason);
-        jsonData["code"] = nCode;
-    }
-    response(const response& aResponse) : nHttpCode(aResponse.nHttpCode), jsonData(aResponse.jsonData), sContentType(aResponse.sContentType), sData(aResponse.sData){};
-    response& operator=(const response& aResponse)
-    {
-        if(this != &aResponse)
-        {
-            nHttpCode = aResponse.nHttpCode;
-            jsonData = aResponse.jsonData;
-            sContentType = aResponse.sContentType;
-            sData = aResponse.sData;
-        }
-        return *this;
+    response(unsigned short nCode=200);
+    response(unsigned short nCode, const std::string& sReason);
 
-    }
-
+    response(const response& aResponse);
+    response& operator=(const response& aResponse);
     unsigned short nHttpCode;
     Json::Value jsonData;
     std::string sContentType;

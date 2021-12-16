@@ -34,6 +34,12 @@ class NamedType
             return m_value == other.Get();
         }
 
+        T& operator+=(T const& other)
+        {
+            m_value += other.Get();
+            return *this;
+        }
+
         friend std::ostream& operator<<(std::ostream& os, const NamedType<T, Parameter>& type)
         {
             os << type.Get();
