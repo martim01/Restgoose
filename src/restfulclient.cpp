@@ -346,7 +346,7 @@ unsigned long HttpClientImpl::WorkoutFileSize(const fileLocation& filename)
     return nLength;
 }
 
-size_t HttpClientImpl::WorkoutDataSize()
+unsigned long HttpClientImpl::WorkoutDataSize()
 {
     if(m_vPostData.empty())
     {
