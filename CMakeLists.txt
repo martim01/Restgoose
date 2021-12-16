@@ -6,7 +6,9 @@ SET(DIR_JSON ${DIR_BASE}/jsoncpp CACHE STRING "location of jsoncpp")
 SET(DIR_MONGOOSE ${DIR_BASE}/mongoose CACHE STRING "location of mongoose")
 SET(DIR_LOG ${DIR_BASE}/log CACHE STRING "location of pml log")
 
-SET(BUILD_LOG ON CACHE BOOL "set to OFF if pml::log built by parent project")
+if(NOT DEFINED BUILD_LOG)
+        SET(BUILD_LOG ON)
+endif()
 
 #Get JsonCpp
 find_path(RG_TEMP_DIR NAMES "amalgamate.py" PATHS ${DIR_JSON} NO_CACHE)
