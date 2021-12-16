@@ -91,7 +91,9 @@ include_directories(${DIR_LOG}/include)
 include_directories("include")
 
 
-SET(SOURCES "src/RestGoose.cpp" "src/mongooseserver.cpp" "src/utils.cpp" "src/websocketclient.cpp" "src/websocketclientimpl.cpp" "${DIR_MONGOOSE}/mongoose.c" "${DIR_JSON}/dist/jsoncpp.cpp")
+SET(SOURCES "src/RestGoose.cpp" "src/mongooseserver.cpp" "src/utils.cpp" "src/websocketclient.cpp" "src/websocketclientimpl.cpp" 
+ "src/restfulclient.cpp"
+ "${DIR_MONGOOSE}/mongoose.c" "${DIR_JSON}/dist/jsoncpp.cpp")
 
 add_library(restgoose SHARED ${SOURCES})
 set_target_properties(restgoose PROPERTIES DEBUG_POSTFIX "d")

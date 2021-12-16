@@ -16,4 +16,4 @@ RG_EXPORT std::string& rtrim(std::string& s);
 RG_EXPORT std::string& trim(std::string& s);
 RG_EXPORT std::string ConvertFromJson(const Json::Value& jsValue);
 
-RG_EXPORT std::string CreateTmpFileName();
+RG_EXPORT fileLocation CreateTmpFileName(const std::string& sPath);

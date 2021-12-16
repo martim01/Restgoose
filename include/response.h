@@ -21,13 +21,21 @@ using userName = NamedType<std::string, struct userParamater>;
 using password = NamedType<std::string, struct passwordParamater>;
 using ipAddress = NamedType<std::string, struct ipAddressParamater>;
 
+using textData = NamedType<std::string, struct textDataParameter>;
+using fileLocation = NamedType<std::string, struct fileLocationParameter>;
+using partName = NamedType<std::string, struct partNameParameter>;
 
 struct partData
 {
+    partData(){}
+    partData(const partName& n, const textData& d) : name(n), data(d){}
+    partData(const partName& n, const textData& filename, const fileLocation& filelocation) : name(n), data(filename), filepath(filelocation){}
+
     std::string sHeader;
-    std::string sName;
-    std::string sFilename;
-    std::string sData;
+    partName name;
+    textData data;
+    fileLocation filepath;
+
 };
 
 using postData = std::vector<partData>;

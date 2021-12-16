@@ -13,8 +13,7 @@ struct mg_http_message;
 
 using headerName = NamedType<std::string, struct headerNameParameter>;
 using headerValue = NamedType<std::string, struct headerValueParameter>;
-using textData = NamedType<std::string, struct textDataParameter>;
-using fileName = NamedType<std::string, struct fileNameParameter>;
+
 
 
 struct clientResponse
@@ -34,10 +33,10 @@ class clientMessage
 {
     public:
         clientMessage();
-        clientMessage(const methodpoint& point);
-        clientMessage(const methodpoint& point, const textData& data, const headerValue& contentType = headerValue("text/plain"), const std::map<headerName, headerValue> mExtraHeaders = {});
-        clientMessage(const methodpoint& point, const fileName& name, const headerValue& contentType = headerValue("application/octet-stream"), const std::map<headerName, headerValue> mExtraHeaders = {});
-        clientMessage(const methodpoint& point, const postData& vData, const std::map<headerName, headerValue> mExtraHeaders = {}); //multipart
+        clientMessage(const httpMethod& method, const endpoint& target);
+        clientMessage(const httpMethod& method, const endpoint& target, const textData& data, const headerValue& contentType = headerValue("text/plain"), const std::map<headerName, headerValue> mExtraHeaders = {});
+        clientMessage(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType = headerValue("application/octet-stream"), const std::map<headerName, headerValue> mExtraHeaders = {});
+        clientMessage(const httpMethod& method, const endpoint& target, const postData& vData, const std::map<headerName, headerValue> mExtraHeaders = {}); //multipart
 
         const clientResponse& Run(const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0));
 
@@ -61,7 +60,10 @@ class clientMessage
         void HandleSimpleWroteEvent(mg_connection* pConnection);
         void HandleMultipartWroteEvent(mg_connection* pConnection);
 
+        bool SendFile(mg_connection* pConnection, const fileLocation& filename, bool bOpen);
+
         unsigned long WorkoutDataSize();
+        size_t WorkoutFileSize(const fileLocation& filename);
         void SetupRedirect();
 
         methodpoint m_point;
@@ -72,13 +74,14 @@ class clientMessage
         unsigned long m_nContentLength = 0;
         unsigned long m_nBytesSent = 0;
 
-        enum enumStatus{CONNECTING, CONNECTED, SENDING, CHUNKING, COMPLETE, REDIRECTING};
+        enum enumStatus{CONNECTING, CONNECTED, SENDING, RECEIVING, COMPLETE, REDIRECTING};
         enumStatus m_eStatus = CONNECTING;
         std::chrono::milliseconds m_connectionTimeout;
         std::chrono::milliseconds m_processTimeout;
 
         clientResponse m_response;
 
+        size_t m_nPostPart = 0;
 
         std::ofstream m_ofs;
         std::ifstream m_ifs;

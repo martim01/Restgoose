@@ -30,21 +30,17 @@ static struct mg_http_serve_opts s_ServerOpts;
 
 partData CreatePartData(const mg_str& str)
 {
-    partData part;
-    part.sData.assign(str.ptr, str.ptr+str.len);
-    return part;
+    return partData(partName(""), textData(std::string(str.ptr, str.ptr+str.len)));
 }
 
 partData CreatePartData(const mg_http_part& mgpart)
 {
-    partData part;
-    part.sName.assign(mgpart.name.ptr, mgpart.name.len);
-    part.sFilename.assign(mgpart.filename.ptr, mgpart.filename.len);
-    part.sData = "/tmp/"+CreateTmpFileName();
-    if(part.sFilename.empty() == false)
+    partData part(partName(std::string(mgpart.name.ptr, mgpart.name.len)), textData(std::string(mgpart.filename.ptr, mgpart.filename.len)), CreateTmpFileName("/tmp/"));
+
+    if(part.filepath.Get().empty() == false)
     {
         std::ofstream ofs;
-        ofs.open(part.sData);
+        ofs.open(part.filepath.Get());
         if(ofs.is_open())
         {
             ofs.write(mgpart.body.ptr, mgpart.body.len);
@@ -53,7 +49,7 @@ partData CreatePartData(const mg_http_part& mgpart)
     }
     else
     {
-        part.sData.assign(mgpart.body.ptr, mgpart.body.ptr+mgpart.body.len);
+        part.data = textData(std::string(mgpart.body.ptr, mgpart.body.ptr+mgpart.body.len));
     }
     return part;
 }
@@ -439,12 +435,12 @@ void MongooseServer::HandleFirstChunk(httpchunks& chunk, mg_connection* pConnect
         else
         {
             chunk.vParts.push_back(partData());
-            chunk.vParts.back().sFilename = CreateTmpFileName();
-            chunk.vParts.back().sData = "/tmp/"+chunk.vParts.back().sFilename;
-            chunk.ofs.open(chunk.vParts.back().sData);
+            chunk.vParts.back().filepath = CreateTmpFileName("/tmp/");
+            chunk.vParts.back().data = textData(chunk.vParts.back().filepath.Get());
+            chunk.ofs.open(chunk.vParts.back().filepath.Get());
             if(chunk.ofs.is_open() == false)
             {
-                pmlLog(pml::LOG_WARN) << "MongooseServer\tCould not create temp file '" << chunk.vParts.back().sFilename << "' for upload";
+                pmlLog(pml::LOG_WARN) << "MongooseServer\tCould not create temp file '" << chunk.vParts.back().filepath << "' for upload";
             }
         }
 
@@ -558,9 +554,9 @@ void MongooseServer::HandleLastChunk(httpchunks& chunk)
         //for now remove any files that were uploaded
         for(auto data : chunk.vParts)
         {
-            if(data.sData.empty() == false)
+            if(data.data.Get().empty() == false)
             {
-                remove(data.sData.c_str());
+                remove(data.data.Get().c_str());
             }
         }
     }
@@ -598,7 +594,7 @@ void MongooseServer::MultipartChunkBoundaryFound(httpchunks& chunk, char c)
 
     if(chunk.vParts.empty() == false)
     {
-        if(chunk.vParts.back().sFilename.empty() == false && chunk.ofs.is_open())
+        if(chunk.vParts.back().filepath.Get().empty() == false && chunk.ofs.is_open())
         {
             chunk.ofs.close();
         }
@@ -620,7 +616,7 @@ void MongooseServer::MultipartChunkLastBoundaryFound(httpchunks& chunk, char c)
 
     if(chunk.vParts.empty() == false)
     {
-        if(chunk.vParts.back().sFilename.empty() == false && chunk.ofs.is_open())
+        if(chunk.vParts.back().filepath.Get().empty() == false && chunk.ofs.is_open())
         {
             chunk.ofs.close();
         }
@@ -633,9 +629,9 @@ void MongooseServer::MultipartChunkBoundarySearch(httpchunks& chunk, char c)
     //store the buffered data before clearing it
     if(chunk.vBuffer.empty() == false && chunk.vParts.empty() == false)
     {
-        if(chunk.vParts.back().sFilename.empty())
+        if(chunk.vParts.back().filepath.Get().empty())
         {
-            chunk.vParts.back().sData.append(chunk.vBuffer.begin(), chunk.vBuffer.end());
+            chunk.vParts.back().data= textData(chunk.vParts.back().data.Get()+std::string(chunk.vBuffer.begin(), chunk.vBuffer.end()));
         }
         else if(chunk.ofs.is_open())
         {
@@ -650,9 +646,9 @@ void MongooseServer::MultipartChunkBoundarySearch(httpchunks& chunk, char c)
     }
     else if(chunk.vParts.empty() == false)
     {
-        if(chunk.vParts.back().sFilename.empty())
+        if(chunk.vParts.back().filepath.Get().empty())
         {
-            chunk.vParts.back().sData += c;
+            chunk.vParts.back().data.Get() += c;
         }
         else if(chunk.ofs.is_open())
         {
@@ -679,22 +675,22 @@ void MongooseServer::MultipartChunkHeader(httpchunks& chunk, char c)
                         auto nStart = sPart.find('"')+1;
                         auto nEnd = sPart.find('"', nStart);
 
-                        chunk.vParts.back().sName =  sPart.substr(nStart, nEnd-nStart);
+                        chunk.vParts.back().name =  partName(sPart.substr(nStart, nEnd-nStart));
 
-                        pmlLog() << "Chunk: Name='" << chunk.vParts.back().sName << "'";
+                        pmlLog() << "Chunk: Name='" << chunk.vParts.back().name << "'";
                     }
                     else if(sPart.length() > FILENAME.length() && sPart.substr(0, FILENAME.length()) == FILENAME)
                     {
                         auto nStart = sPart.find('"')+1;
                         auto nEnd = sPart.find('"', nStart);
 
-                        chunk.vParts.back().sFilename =  sPart.substr(nStart, nEnd-nStart);
-                        chunk.vParts.back().sData = "/tmp/"+CreateTmpFileName();
+                        chunk.vParts.back().data =  textData(sPart.substr(nStart, nEnd-nStart));
+                        chunk.vParts.back().filepath =CreateTmpFileName("/tmp/");
 
-                        chunk.ofs.open(chunk.vParts.back().sData);
+                        chunk.ofs.open(chunk.vParts.back().filepath.Get());
                         if(chunk.ofs.is_open() == false)
                         {
-                            pmlLog(pml::LOG_WARN) << "MongooseServer\tMultipart upload - Could not open file '" << chunk.vParts.back().sData << "'";
+                            pmlLog(pml::LOG_WARN) << "MongooseServer\tMultipart upload - Could not open file '" << chunk.vParts.back().data << "'";
                         }
 
                     }

@@ -7,57 +7,48 @@
 #include "utils.h"
 
 static const std::string BOUNDARY = "--------44E4975E-3D60";
-static const headerValue MULTIPART = headerValue("multipart/form-data; boundary="+BOUNDARY);
 static const std::string CRLF = "\r\n";
+static const std::string BOUNDARY_DIVIDER = "--"+BOUNDARY+CRLF;
+static const std::string BOUNDARY_LAST = "--"+BOUNDARY+"--"+CRLF;
+static const std::string CONTENT_DISPOSITION = "Content-Disposition: form-data; name=\"";
+static const std::string CLOSE_QUOTE = "\"";
+static const std::string FILENAME = "; filename=\"";
+static const headerValue MULTIPART = headerValue("multipart/form-data; boundary="+BOUNDARY);
 
-clientMessage::clientMessage() :
-    m_eStatus(clientMessage::CONNECTING),
-    m_connectionTimeout(5000),
-    m_processTimeout(10000)
+
+clientMessage::clientMessage()
 {
 
 }
 
-clientMessage::clientMessage(const methodpoint& point) :
-    m_point(point),
-    m_connectionTimeout(5000),
-    m_processTimeout(10000)
+clientMessage::clientMessage(const httpMethod& method, const endpoint& target) :
+    m_point(method, target)
 
 {
 
 }
 
-clientMessage::clientMessage(const methodpoint& point, const textData& data, const headerValue& contentType, const std::map<headerName, headerValue> mExtraHeaders) :
-    m_point(point),
+clientMessage::clientMessage(const httpMethod& method, const endpoint& target, const textData& data, const headerValue& contentType, const std::map<headerName, headerValue> mExtraHeaders) :
+    m_point(method, target),
     m_contentType(contentType),
-    m_mHeaders(mExtraHeaders),
-    m_connectionTimeout(5000),
-    m_processTimeout(10000)
+    m_mHeaders(mExtraHeaders)
 {
-    partData part;
-    part.sData = data.Get();
-    m_vPostData.push_back(part);
+    m_vPostData.push_back(partData(partName(""), data));
 }
 
-clientMessage::clientMessage(const methodpoint& point, const fileName& name, const headerValue& contentType, const std::map<headerName, headerValue> mExtraHeaders) :
-    m_point(point),
+clientMessage::clientMessage(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType, const std::map<headerName, headerValue> mExtraHeaders) :
+    m_point(method, target),
     m_contentType(contentType),
-    m_mHeaders(mExtraHeaders),
-    m_connectionTimeout(5000),
-    m_processTimeout(10000)
+    m_mHeaders(mExtraHeaders)
 {
-    partData part;
-    part.sFilename = name.Get();
-    m_vPostData.push_back(part);
+    m_vPostData.push_back(partData(partName(""), filename, filepath));
 }
 
-clientMessage::clientMessage(const methodpoint& point, const postData& vData, const std::map<headerName, headerValue> mExtraHeaders) :
-    m_point(point),
-    m_contentType(MULTIPART),
+clientMessage::clientMessage(const httpMethod& method, const endpoint& target, const postData& vData, const std::map<headerName, headerValue> mExtraHeaders) :
+    m_point(method, target),
+    m_contentType(MULTIPART),//"text/plain"),
     m_vPostData(vData),
-    m_mHeaders(mExtraHeaders),
-    m_connectionTimeout(5000),
-    m_processTimeout(10000)
+    m_mHeaders(mExtraHeaders)
 {
 
 }
@@ -115,8 +106,8 @@ void clientMessage::GetContentHeaders(mg_http_message* pReply)
 
         if(m_response.bBinary)
         {   //if binary data then we save it to a file and pass back the filename
-            m_response.sData = CreateTmpFileName();
-            m_ofs.open("/tmp/"+m_response.sData);
+            m_response.sData = CreateTmpFileName("/tmp/").Get();
+            m_ofs.open(m_response.sData);
         }
 
         pmlLog(pml::LOG_TRACE) << "clientMessage\tContent-Type: " << m_response.contentType;
@@ -197,7 +188,7 @@ void clientMessage::HandleChunkEvent(mg_connection* pConnection, mg_http_message
         GetResponseCode(pReply);
         GetContentHeaders(pReply);
 
-        m_eStatus = clientMessage::CHUNKING;
+        m_eStatus = clientMessage::RECEIVING;
     }
     m_response.nBytesReceived += pReply->chunk.len;
 
@@ -333,6 +324,22 @@ void clientMessage::DoLoop(mg_mgr& mgr)
     }
 }
 
+size_t clientMessage::WorkoutFileSize(const fileLocation& filename)
+{
+    size_t nLength = 0;
+    m_ifs.open(filename.Get(), std::ifstream::ate | std::ifstream::binary);
+    if(m_ifs.is_open() == false)
+    {
+        m_response.nCode = ERROR_FILE_READ;
+        m_eStatus = COMPLETE;
+    }
+    else
+    {
+        nLength = m_ifs.tellg();
+        m_ifs.close();
+    }
+    return nLength;
+}
 
 size_t clientMessage::WorkoutDataSize()
 {
@@ -342,30 +349,45 @@ size_t clientMessage::WorkoutDataSize()
     }
     else if(m_vPostData.size() == 1)
     {
-        if(m_vPostData.back().sFilename.empty())
+        if(m_vPostData.back().filepath.Get().empty())
         {
-            m_nContentLength =  m_vPostData.back().sData.length();
+            m_nContentLength =  m_vPostData.back().data.Get().length();
         }
         else
         {
-            m_ifs.open(m_vPostData.back().sFilename, std::ifstream::ate | std::ifstream::binary);
-            if(m_ifs.is_open() == false)
-            {
-
-                m_response.nCode = ERROR_FILE_READ;
-                m_eStatus = COMPLETE;
-                m_nContentLength = 0;
-            }
-            else
-            {
-                m_nContentLength = m_ifs.tellg();
-                m_ifs.close();
-            }
+            m_nContentLength = WorkoutFileSize(m_vPostData.back().filepath);
         }
     }
     else
     {
-        // @todo sending a multipart so do all that stuff
+        for(auto& part : m_vPostData)
+        {
+            if(part.filepath.Get().empty())
+            {
+                part.sHeader = BOUNDARY_DIVIDER;
+                part.sHeader += CONTENT_DISPOSITION+part.name.Get()+CLOSE_QUOTE+CRLF;
+                part.sHeader += CRLF;
+
+                m_nContentLength += part.sHeader.length();
+                m_nContentLength += part.data.Get().length();
+                m_nContentLength += CRLF.length();
+            }
+            else
+            {
+                part.sHeader = BOUNDARY_DIVIDER;
+                part.sHeader += CONTENT_DISPOSITION+part.name.Get()+CLOSE_QUOTE+FILENAME+part.data.Get()+CLOSE_QUOTE+CRLF;
+                part.sHeader += "Content-Type: application/octet-stream\r\n";
+                part.sHeader += "Content-Transfer-Encoding: binary\r\n";
+                part.sHeader += CRLF;
+
+                m_nContentLength += part.sHeader.length();
+                m_nContentLength += WorkoutFileSize(part.filepath);
+                m_nContentLength += CRLF.length();
+            }
+        }
+        //last boundary
+        m_nContentLength += BOUNDARY_LAST.length();
+
     }
     return m_nContentLength;
 }
@@ -373,56 +395,70 @@ size_t clientMessage::WorkoutDataSize()
 
 void clientMessage::HandleWroteEvent(mg_connection* pConnection, int nBytes)
 {
+    if(m_eStatus != CONNECTED)
+    {
+        m_nBytesSent += nBytes;
+    }
+
+    if(m_pProgressCallback)
+    {
+        m_pProgressCallback(m_nBytesSent, m_nContentLength);
+    }
+
+
     if(m_vPostData.size() == 1)
     {
         HandleSimpleWroteEvent(pConnection);
     }
     else
     {
-        HandleMultipartWroteEvent(pConnection)
+        HandleMultipartWroteEvent(pConnection);
     }
-    if(m_pProgressCallback)
-    {
-        m_pProgressCallback(m_nBytesSent, m_nContentLength);
-    }
+
+
 }
 
 void clientMessage::HandleSimpleWroteEvent(mg_connection* pConnection)
 {
-    if(m_vPostData.back().sFilename.empty())    //no filename so sending the text
+    if(m_vPostData.back().filepath.Get().empty())    //no filepath so sending the text
     {
         if(m_eStatus == CONNECTED)
         {
-            mg_send(pConnection, m_vPostData.back().sData.c_str(), m_vPostData.back().sData.length());
+            mg_send(pConnection, m_vPostData.back().data.Get().c_str(), m_vPostData.back().data.Get().length());
             m_eStatus = SENDING;
         }
     }
     else
     {
-        if(m_eStatus == CONNECTED)
-        {
-            m_ifs.open(m_vPostData.back().sFilename);
-            if(m_ifs.is_open() == false)
-            {
-                m_response.nCode = ERROR_FILE_READ;
-                m_eStatus = COMPLETE;
-            }
-            m_eStatus = SENDING;
-        }
-        if(m_ifs.is_open())
-        {
-            char buffer[61440];
-            m_ifs.read(buffer, 61440);
-            m_nBytesSent += m_ifs.gcount();
+        SendFile(pConnection, m_vPostData.back().filepath, (m_eStatus == CONNECTED));
+        m_eStatus = SENDING;
+    }
+}
 
-            mg_send(pConnection, buffer, m_ifs.gcount());
-
-            if(m_ifs.eof()) //finished sending
-            {
-                m_ifs.close();
-            }
+bool clientMessage::SendFile(mg_connection* pConnection, const fileLocation& filepath, bool bOpen)
+{
+    if(bOpen)
+    {
+        m_ifs.open(filepath.Get());
+        if(m_ifs.is_open() == false)
+        {
+            m_response.nCode = ERROR_FILE_READ;
+            m_eStatus = COMPLETE;
         }
     }
+    if(m_ifs.is_open())
+    {
+        char buffer[61440];
+        m_ifs.read(buffer, 61440);
+        mg_send(pConnection, buffer, m_ifs.gcount());
+
+        if(m_ifs.eof()) //finished sending
+        {
+            m_ifs.close();
+            return true;
+        }
+    }
+    return false;
 }
 
 void clientMessage::SetProgressCallback(std::function<void(unsigned long, unsigned long)> pCallback)
@@ -430,4 +466,54 @@ void clientMessage::SetProgressCallback(std::function<void(unsigned long, unsign
     m_pProgressCallback = pCallback;
 }
 
+void clientMessage::HandleMultipartWroteEvent(mg_connection* pConnection)
+{
+    pmlLog() << "HandleMultipartWroteEvent\t" << m_nPostPart << ":" << m_vPostData.size();
 
+    //if connected then deal with first part
+    if(m_eStatus == CONNECTED)
+    {
+        m_nPostPart = 0;
+        m_eStatus = SENDING;
+    }
+    if(m_nPostPart < m_vPostData.size())
+    {
+        if(m_ifs.is_open() == false)    //not currently sending a file
+        {
+            pmlLog() << "HandleMultipartWroteEvent\tSendHeader\t" << m_vPostData[m_nPostPart].sHeader;
+
+            mg_send(pConnection, m_vPostData[m_nPostPart].sHeader.c_str(), m_vPostData[m_nPostPart].sHeader.length());
+
+            if(m_vPostData[m_nPostPart].filepath.Get().empty())
+            {
+                pmlLog() << "HandleMultipartWroteEvent\tSendData\t" << m_vPostData[m_nPostPart].data;
+
+                mg_send(pConnection, m_vPostData[m_nPostPart].data.Get().c_str(), m_vPostData[m_nPostPart].data.Get().length());
+                mg_send(pConnection, CRLF.c_str(), CRLF.length());
+
+                ++m_nPostPart;
+            }
+            else
+            {
+                if(SendFile(pConnection, m_vPostData[m_nPostPart].filepath, true) == true)
+                {   //opened and sent in one fell swoop
+                    mg_send(pConnection, CRLF.c_str(), CRLF.length());
+                    ++m_nPostPart;
+                }
+            }
+        }
+        else
+        {
+            if(SendFile(pConnection, m_vPostData[m_nPostPart].filepath, false) == true)
+            {   //all sent
+                mg_send(pConnection, CRLF.c_str(), CRLF.length());
+                ++m_nPostPart;
+            }
+        }
+        if(m_nPostPart == m_vPostData.size())
+        {
+            pmlLog() << "HandleMultipartWroteEvent\tSendLast\t" << BOUNDARY_LAST;
+            mg_send(pConnection, BOUNDARY_LAST.c_str(), BOUNDARY_LAST.length());
+        }
+    }
+}
