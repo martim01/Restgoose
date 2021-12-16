@@ -57,7 +57,7 @@ namespace pml
                 bool SendFile(mg_connection* pConnection, const fileLocation& filename, bool bOpen);
 
                 unsigned long WorkoutDataSize();
-                size_t WorkoutFileSize(const fileLocation& filename);
+                unsigned long WorkoutFileSize(const fileLocation& filename);
                 void SetupRedirect();
 
                 methodpoint m_point;

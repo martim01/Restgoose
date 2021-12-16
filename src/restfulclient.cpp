@@ -329,9 +329,9 @@ void HttpClientImpl::DoLoop(mg_mgr& mgr)
     }
 }
 
-size_t HttpClientImpl::WorkoutFileSize(const fileLocation& filename)
+unsigned long HttpClientImpl::WorkoutFileSize(const fileLocation& filename)
 {
-    size_t nLength = 0;
+    unsigned long nLength = 0;
     m_ifs.open(filename.Get(), std::ifstream::ate | std::ifstream::binary);
     if(m_ifs.is_open() == false)
     {
