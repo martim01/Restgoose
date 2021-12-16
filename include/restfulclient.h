@@ -5,6 +5,7 @@
 #include <thread>
 #include <fstream>
 #include "response.h"
+#include <functional>
 
 struct mg_mgr;
 struct mg_connection;
@@ -36,9 +37,11 @@ class clientMessage
         clientMessage(const methodpoint& point);
         clientMessage(const methodpoint& point, const textData& data, const headerValue& contentType = headerValue("text/plain"), const std::map<headerName, headerValue> mExtraHeaders = {});
         clientMessage(const methodpoint& point, const fileName& name, const headerValue& contentType = headerValue("application/octet-stream"), const std::map<headerName, headerValue> mExtraHeaders = {});
-        clientMessage(const methodpoint& point, const headerValue& contentType, const postData& vData, const std::map<headerName, headerValue> mExtraHeaders = {});
+        clientMessage(const methodpoint& point, const postData& vData, const std::map<headerName, headerValue> mExtraHeaders = {}); //multipart
 
         const clientResponse& Run(const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0));
+
+        void SetProgressCallback(std::function<void(unsigned long, unsigned long)> pCallback);
 
 
         void HandleConnectEvent(mg_connection* pConnection);
@@ -54,6 +57,9 @@ class clientMessage
         void GetResponseCode(mg_http_message* pReply);
 
         void DoLoop(mg_mgr& mgr);
+
+        void HandleSimpleWroteEvent(mg_connection* pConnection);
+        void HandleMultipartWroteEvent(mg_connection* pConnection);
 
         unsigned long WorkoutDataSize();
         void SetupRedirect();
@@ -76,5 +82,7 @@ class clientMessage
 
         std::ofstream m_ofs;
         std::ifstream m_ifs;
+
+        std::function<void(unsigned long, unsigned long)> m_pProgressCallback = nullptr;
 };
 

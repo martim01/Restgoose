@@ -9,12 +9,12 @@ SET(DIR_LOG ${DIR_BASE}/log CACHE STRING "location of pml log")
 SET(BUILD_LOG ON CACHE BOOL "set to OFF if pml::log built by parent project")
 
 #Get JsonCpp
-find_path(RG_TEMP_DIR NAMES "amalgamate.py" PATHS ${DIR_JSON})
+find_path(RG_TEMP_DIR NAMES "amalgamate.py" PATHS ${DIR_JSON} NO_CACHE)
 if((NOT RG_TEMP_DIR) OR (NOT EXISTS ${RG_TEMP_DIR}))
 	message("jsoncpp not found - clone from GitHub")
 	execute_process(COMMAND git clone https://github.com/open-source-parsers/jsoncpp ${DIR_JSON})
 
-	find_path(RG_TEMP_DIR2 NAMES "amalgamate.py" PATHS ${DIR_JSON})
+	find_path(RG_TEMP_DIR2 NAMES "amalgamate.py" PATHS ${DIR_JSON} NO_CACHE)
 	if((NOT RG_TEMP_DIR2) OR (NOT EXISTS ${RG_TEMP_DIR2}))
 		message(FATAL_ERROR "Failed to clone jsoncpp")
 	endif()
@@ -27,26 +27,26 @@ unset(RG_TEMP_DIR)
 
 
 #Amalgamate JsonCpp
-find_path(RG_TEMP_DIR3 NAMES "jsoncpp.cpp" PATHS ${DIR_JSON}/dist)
+find_path(RG_TEMP_DIR3 NAMES "jsoncpp.cpp" PATHS ${DIR_JSON}/dist NO_CACHE)
 if((NOT RG_TEMP_DIR3) OR (NOT EXISTS ${RG_TEMP_DIR3}))
 	message("amalgamate jsoncpp")
 	execute_process(COMMAND python3 amalgamate.py WORKING_DIRECTORY ${DIR_JSON})
 endif()
 unset(RG_TEMP_DIR3)
 
-find_path(RG_TEMP_DIR4 NAMES "jsoncpp.cpp" PATHS ${DIR_JSON}/dist)
+find_path(RG_TEMP_DIR4 NAMES "jsoncpp.cpp" PATHS ${DIR_JSON}/dist NO_CACHE)
 if((NOT RG_TEMP_DIR4) OR (NOT EXISTS ${RG_TEMP_DIR4}))
 	message(FATAL_ERROR "Failed to amalgamate jsoncpp")
 endif()
 unset(RG_TEMP_DIR4)
 
 #Get Mongoose
-find_path(RG_TEMP_DIR5 NAMES "mongoose.c" PATHS ${DIR_MONGOOSE})
+find_path(RG_TEMP_DIR5 NAMES "mongoose.c" PATHS ${DIR_MONGOOSE} NO_CACHE)
 if((NOT RG_TEMP_DIR5) OR (NOT EXISTS ${RG_TEMP_DIR5}))
 	message(STATUS "mongoose not found - clone from GitHub")
 	execute_process(COMMAND git clone https://github.com/cesanta/mongoose/ ${DIR_MONGOOSE})
 
-	find_path(RG_TEMP_DIR6 NAMES "mongoose.c" PATHS ${DIR_MONGOOSE})
+	find_path(RG_TEMP_DIR6 NAMES "mongoose.c" PATHS ${DIR_MONGOOSE} NO_CACHE)
 	if((NOT RG_TEMP_DIR6) OR (NOT EXISTS ${RG_TEMP_DIR6}))
 		message(FATAL_ERROR "Failed to clone Mongoose")
 	endif()
@@ -61,12 +61,12 @@ unset(RG_TEMP_DIR6)
 
 #Get log
 if(${BUILD_LOG})
-	find_path(RG_TEMP_DIR7 NAMES "CMakeLists.txt" PATHS ${DIR_LOG})
+	find_path(RG_TEMP_DIR7 NAMES "CMakeLists.txt" PATHS ${DIR_LOG} NO_CACHE)
 	if((NOT RG_TEMP_DIR7) OR (NOT EXISTS ${RG_TEMP_DIR7}))
 		message(STATUS "log not found - clone from GitHub")
 		execute_process(COMMAND git clone https://github.com/martim01/log/ ${DIR_LOG})
 
-		find_path(RG_TEMP_DIR8 NAMES "CMakeLists.txt" PATHS ${DIR_LOG})
+		find_path(RG_TEMP_DIR8 NAMES "CMakeLists.txt" PATHS ${DIR_LOG} NO_CACHE)
 		if((NOT RG_TEMP_DIR8) OR (NOT EXISTS ${RG_TEMP_DIR8}))
 			message(FATAL_ERROR "Failed to clone pml::Log")
 		endif()

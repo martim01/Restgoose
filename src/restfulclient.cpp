@@ -6,6 +6,9 @@
 #include <chrono>
 #include "utils.h"
 
+static const std::string BOUNDARY = "--------44E4975E-3D60";
+static const headerValue MULTIPART = headerValue("multipart/form-data; boundary="+BOUNDARY);
+static const std::string CRLF = "\r\n";
 
 clientMessage::clientMessage() :
     m_eStatus(clientMessage::CONNECTING),
@@ -48,9 +51,9 @@ clientMessage::clientMessage(const methodpoint& point, const fileName& name, con
     m_vPostData.push_back(part);
 }
 
-clientMessage::clientMessage(const methodpoint& point, const headerValue& contentType, const postData& vData, const std::map<headerName, headerValue> mExtraHeaders) :
+clientMessage::clientMessage(const methodpoint& point, const postData& vData, const std::map<headerName, headerValue> mExtraHeaders) :
     m_point(point),
-    m_contentType(contentType),
+    m_contentType(MULTIPART),
     m_vPostData(vData),
     m_mHeaders(mExtraHeaders),
     m_connectionTimeout(5000),
@@ -77,20 +80,19 @@ void clientMessage::HandleConnectEvent(mg_connection* pConnection)
 
     //send the connection headers
     std::stringstream ss;
-    ss << m_point.first.Get() << " " << m_point.second.Get() << " HTTP/1.1\r\n"
-       << "Host: " << std::string(host.ptr, host.len) << "\r\n"
-       << "Content-Type: " << m_contentType.Get() << "\r\n"
-       << "Content-Length: " << WorkoutDataSize() << "\r\n";
+    ss << m_point.first.Get() << " " << m_point.second.Get() << " HTTP/1.1" << CRLF
+       << "Host: " << std::string(host.ptr, host.len) << CRLF
+       << "Content-Type: " << m_contentType.Get() << CRLF
+       << "Content-Length: " << WorkoutDataSize() << CRLF;
        //<< "Expect: 100-continue\r\n"
     for(auto pairHeader : m_mHeaders)
     {
-        ss << pairHeader.first.Get() << ": " << pairHeader.second.Get() << "\r\n";
+        ss << pairHeader.first.Get() << ": " << pairHeader.second.Get() << CRLF;
     }
-    ss << "\r\n";
+    ss << CRLF;
     auto str = ss.str();
     mg_send(pConnection, str.c_str(), str.length());
 
-    //pmlLog(pml::LOG_TRACE) << "clientMessage\tHeaders\t" << str;
 }
 
 
@@ -371,43 +373,61 @@ size_t clientMessage::WorkoutDataSize()
 
 void clientMessage::HandleWroteEvent(mg_connection* pConnection, int nBytes)
 {
-
     if(m_vPostData.size() == 1)
     {
-        if(m_vPostData.back().sFilename.empty())    //no filename so sending the text
+        HandleSimpleWroteEvent(pConnection);
+    }
+    else
+    {
+        HandleMultipartWroteEvent(pConnection)
+    }
+    if(m_pProgressCallback)
+    {
+        m_pProgressCallback(m_nBytesSent, m_nContentLength);
+    }
+}
+
+void clientMessage::HandleSimpleWroteEvent(mg_connection* pConnection)
+{
+    if(m_vPostData.back().sFilename.empty())    //no filename so sending the text
+    {
+        if(m_eStatus == CONNECTED)
         {
-            if(m_eStatus == CONNECTED)
-            {
-                mg_send(pConnection, m_vPostData.back().sData.c_str(), m_vPostData.back().sData.length());
-                m_eStatus = SENDING;
-            }
+            mg_send(pConnection, m_vPostData.back().sData.c_str(), m_vPostData.back().sData.length());
+            m_eStatus = SENDING;
         }
-        else
+    }
+    else
+    {
+        if(m_eStatus == CONNECTED)
         {
-            if(m_eStatus == CONNECTED)
+            m_ifs.open(m_vPostData.back().sFilename);
+            if(m_ifs.is_open() == false)
             {
-                m_ifs.open(m_vPostData.back().sFilename);
-                if(m_ifs.is_open() == false)
-                {
-                    m_response.nCode = ERROR_FILE_READ;
-                    m_eStatus = COMPLETE;
-                }
-                m_eStatus = SENDING;
+                m_response.nCode = ERROR_FILE_READ;
+                m_eStatus = COMPLETE;
             }
-            if(m_ifs.is_open())
+            m_eStatus = SENDING;
+        }
+        if(m_ifs.is_open())
+        {
+            char buffer[61440];
+            m_ifs.read(buffer, 61440);
+            m_nBytesSent += m_ifs.gcount();
+
+            mg_send(pConnection, buffer, m_ifs.gcount());
+
+            if(m_ifs.eof()) //finished sending
             {
-                char buffer[61440];
-                m_ifs.read(buffer, 61440);
-                m_nBytesSent += m_ifs.gcount();
-
-                mg_send(pConnection, buffer, m_ifs.gcount());
-
-                if(m_ifs.eof()) //finished sending
-                {
-                    m_ifs.close();
-                }
+                m_ifs.close();
             }
         }
     }
-
 }
+
+void clientMessage::SetProgressCallback(std::function<void(unsigned long, unsigned long)> pCallback)
+{
+    m_pProgressCallback = pCallback;
+}
+
+
