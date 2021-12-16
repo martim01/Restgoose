@@ -1,8 +1,10 @@
 #include "websocketclient.h"
 #include "websocketclientimpl.h"
 
+using namespace pml::restgoose;
+
 WebSocketClient::WebSocketClient(std::function<bool(const endpoint& theEndpoint)> pConnectCallback, std::function<bool(const endpoint& theEndpoint, const std::string&)> pMessageCallback, unsigned int nTimeout) :
-    m_pImpl(std::make_unique<WebSocketClientImpl>(pConnectCallback, pMessageCallback, nTimeout))
+    m_pImpl(std::unique_ptr<WebSocketClientImpl>(new WebSocketClientImpl(pConnectCallback, pMessageCallback, nTimeout)))
 {
 
 }

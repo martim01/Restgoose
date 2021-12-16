@@ -2,6 +2,9 @@
 #include "mongoose.h"
 #include "log.h"
 
+using namespace pml::restgoose;
+
+
 static void callback(struct mg_connection* pConnection, int nEvent, void* pEventData, void* pFnData)
 {
     reinterpret_cast<WebSocketClientImpl*>(pFnData)->Callback(pConnection, nEvent, pEventData);

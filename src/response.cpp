@@ -1,6 +1,15 @@
 #include "response.h"
-
 #include "json/json.h"
+
+using namespace pml::restgoose;
+
+const httpMethod pml::restgoose::GET    = httpMethod("GET");
+const httpMethod pml::restgoose::POST   = httpMethod("POST");
+const httpMethod pml::restgoose::PUT    = httpMethod("PUT");
+const httpMethod pml::restgoose::PATCH  = httpMethod("PATCH");
+const httpMethod pml::restgoose::HTTP_DELETE = httpMethod("DELETE");
+const httpMethod pml::restgoose::OPTIONS = httpMethod("OPTIONS");
+
 
 response::response(unsigned short nCode, const std::string& sReason) : nHttpCode(nCode), jsonData(Json::objectValue), sContentType("application/json")
 {
@@ -28,3 +37,4 @@ response& response::operator=(const response& aResponse)
 }
 
 
+response::~response()=default;

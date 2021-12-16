@@ -5,7 +5,7 @@
 #include "utils.h"
 #include <algorithm>
 
-
+using namespace pml::restgoose;
 using namespace std;
 
 fileLocation CreateTmpFileName(const std::string& sPath)

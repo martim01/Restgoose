@@ -6,6 +6,8 @@
 #include <chrono>
 #include "utils.h"
 
+using namespace pml::restgoose;
+
 static const std::string BOUNDARY = "--------44E4975E-3D60";
 static const std::string CRLF = "\r\n";
 static const std::string BOUNDARY_DIVIDER = "--"+BOUNDARY+CRLF;
@@ -16,19 +18,20 @@ static const std::string FILENAME = "; filename=\"";
 static const headerValue MULTIPART = headerValue("multipart/form-data; boundary="+BOUNDARY);
 
 
-clientMessage::clientMessage()
+
+HttpClientImpl::HttpClientImpl()
 {
 
 }
 
-clientMessage::clientMessage(const httpMethod& method, const endpoint& target) :
-    m_point(method, target)
-
+HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const std::map<headerName, headerValue> mExtraHeaders) :
+    m_point(method, target),
+    m_mHeaders(mExtraHeaders)
 {
 
 }
 
-clientMessage::clientMessage(const httpMethod& method, const endpoint& target, const textData& data, const headerValue& contentType, const std::map<headerName, headerValue> mExtraHeaders) :
+HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& data, const headerValue& contentType, const std::map<headerName, headerValue> mExtraHeaders) :
     m_point(method, target),
     m_contentType(contentType),
     m_mHeaders(mExtraHeaders)
@@ -36,7 +39,7 @@ clientMessage::clientMessage(const httpMethod& method, const endpoint& target, c
     m_vPostData.push_back(partData(partName(""), data));
 }
 
-clientMessage::clientMessage(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType, const std::map<headerName, headerValue> mExtraHeaders) :
+HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType, const std::map<headerName, headerValue> mExtraHeaders) :
     m_point(method, target),
     m_contentType(contentType),
     m_mHeaders(mExtraHeaders)
@@ -44,7 +47,7 @@ clientMessage::clientMessage(const httpMethod& method, const endpoint& target, c
     m_vPostData.push_back(partData(partName(""), filename, filepath));
 }
 
-clientMessage::clientMessage(const httpMethod& method, const endpoint& target, const postData& vData, const std::map<headerName, headerValue> mExtraHeaders) :
+HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const std::vector<partData>& vData, const std::map<headerName, headerValue> mExtraHeaders) :
     m_point(method, target),
     m_contentType(MULTIPART),//"text/plain"),
     m_vPostData(vData),
@@ -54,11 +57,11 @@ clientMessage::clientMessage(const httpMethod& method, const endpoint& target, c
 }
 
 
-void clientMessage::HandleConnectEvent(mg_connection* pConnection)
+void HttpClientImpl::HandleConnectEvent(mg_connection* pConnection)
 {
-    pmlLog(pml::LOG_TRACE) << "clientMessage\tConnect event";
+    pmlLog(pml::LOG_TRACE) << "HttpClientImpl\tConnect event";
 
-    m_eStatus = clientMessage::CONNECTED;
+    m_eStatus = HttpClientImpl::CONNECTED;
 
     //if https then do so
     mg_str host = mg_url_host(m_point.second.Get().c_str());
@@ -82,12 +85,14 @@ void clientMessage::HandleConnectEvent(mg_connection* pConnection)
     }
     ss << CRLF;
     auto str = ss.str();
+
+    pmlLog() << "HttpClientImpl\t" << str;
     mg_send(pConnection, str.c_str(), str.length());
 
 }
 
 
-void clientMessage::GetContentHeaders(mg_http_message* pReply)
+void HttpClientImpl::GetContentHeaders(mg_http_message* pReply)
 {
     auto type = mg_http_get_header(pReply, "Content-Type");
     auto len = mg_http_get_header(pReply, "Content-Length");
@@ -110,23 +115,23 @@ void clientMessage::GetContentHeaders(mg_http_message* pReply)
             m_ofs.open(m_response.sData);
         }
 
-        pmlLog(pml::LOG_TRACE) << "clientMessage\tContent-Type: " << m_response.contentType;
+        pmlLog(pml::LOG_TRACE) << "HttpClientImpl\tContent-Type: " << m_response.contentType;
     }
     if(len)
     {
         try
         {
             m_response.nContentLength = std::stoul(std::string(len->ptr, len->len));
-            pmlLog(pml::LOG_TRACE) << "clientMessage\tContent-Length: " << m_response.nContentLength;
+            pmlLog(pml::LOG_TRACE) << "HttpClientImpl\tContent-Length: " << m_response.nContentLength;
         }
         catch(const std::exception& e)
         {
-            pmlLog(pml::LOG_WARN) << "clientMessage\t" << e.what();
+            pmlLog(pml::LOG_WARN) << "HttpClientImpl\t" << e.what();
         }
     }
 }
 
-void clientMessage::GetResponseCode(mg_http_message* pReply)
+void HttpClientImpl::GetResponseCode(mg_http_message* pReply)
 {
     try
     {
@@ -135,13 +140,13 @@ void clientMessage::GetResponseCode(mg_http_message* pReply)
     catch(const std::exception& e)
     {
         m_response.nCode = ERROR_REPLY;
-        m_eStatus = clientMessage::COMPLETE;
+        m_eStatus = HttpClientImpl::COMPLETE;
     }
 }
 
-void clientMessage::HandleMessageEvent(mg_http_message* pReply)
+void HttpClientImpl::HandleMessageEvent(mg_http_message* pReply)
 {
-    pmlLog(pml::LOG_TRACE) << "clientMessage\tMessage event";
+    pmlLog(pml::LOG_TRACE) << "HttpClientImpl\tMessage event";
 
     //Check the response code for relocation...
     GetResponseCode(pReply);
@@ -149,13 +154,13 @@ void clientMessage::HandleMessageEvent(mg_http_message* pReply)
 
     if(m_response.nCode == 300 || m_response.nCode == 301 || m_response.nCode == 302)
     {   //redirects
-        pmlLog(pml::LOG_TRACE) << "clientMessage\tRedirecting";
+        pmlLog(pml::LOG_TRACE) << "HttpClientImpl\tRedirecting";
         auto var = mg_http_get_header(pReply, "Location");
         if(var && var->len > 0)
         {
             m_response.sData.assign(var->ptr, var->len);
         }
-        m_eStatus = clientMessage::REDIRECTING;
+        m_eStatus = HttpClientImpl::REDIRECTING;
     }
     else
     {
@@ -172,23 +177,23 @@ void clientMessage::HandleMessageEvent(mg_http_message* pReply)
         }
         else
         {
-            pmlLog(pml::LOG_WARN) << "clientMessage\tSent binary data but could not open a file to write it to";
+            pmlLog(pml::LOG_WARN) << "HttpClientImpl\tSent binary data but could not open a file to write it to";
         }
-        m_eStatus = clientMessage::COMPLETE;
+        m_eStatus = HttpClientImpl::COMPLETE;
     }
 
 }
 
 
-void clientMessage::HandleChunkEvent(mg_connection* pConnection, mg_http_message* pReply)
+void HttpClientImpl::HandleChunkEvent(mg_connection* pConnection, mg_http_message* pReply)
 {
-    if(m_eStatus == clientMessage::CONNECTED || m_eStatus == clientMessage::SENDING)
+    if(m_eStatus == HttpClientImpl::CONNECTED || m_eStatus == HttpClientImpl::SENDING)
     {
-        pmlLog(pml::LOG_TRACE) << "clientMessage\tFirst Chunk event";
+        pmlLog(pml::LOG_TRACE) << "HttpClientImpl\tFirst Chunk event";
         GetResponseCode(pReply);
         GetContentHeaders(pReply);
 
-        m_eStatus = clientMessage::RECEIVING;
+        m_eStatus = HttpClientImpl::RECEIVING;
     }
     m_response.nBytesReceived += pReply->chunk.len;
 
@@ -211,14 +216,14 @@ void clientMessage::HandleChunkEvent(mg_connection* pConnection, mg_http_message
         {
             m_ofs.close();
         }
-        m_eStatus = clientMessage::COMPLETE;
+        m_eStatus = HttpClientImpl::COMPLETE;
     }
 }
 
 
-void clientMessage::SetupRedirect()
+void HttpClientImpl::SetupRedirect()
 {
-    m_eStatus = clientMessage::CONNECTING;
+    m_eStatus = HttpClientImpl::CONNECTING;
     if(m_response.sData.find("://") != std::string::npos)
     {
         m_point.second = endpoint(m_response.sData);
@@ -229,18 +234,18 @@ void clientMessage::SetupRedirect()
     }
 }
 
-void clientMessage::HandleErrorEvent(const char* error)
+void HttpClientImpl::HandleErrorEvent(const char* error)
 {
     m_response.nCode = ERROR_CONNECTION;
     m_response.sData = error;
-    m_eStatus = clientMessage::COMPLETE;
+    m_eStatus = HttpClientImpl::COMPLETE;
 
-    pmlLog(pml::LOG_TRACE) << "clientMessage\tError event: " << m_response.sData;
+    pmlLog(pml::LOG_TRACE) << "HttpClientImpl\tError event: " << m_response.sData;
 }
 
 static void evt_handler(mg_connection* pConnection, int nEvent, void* pEventData, void* pfnData)
 {
-    clientMessage* pMessage = reinterpret_cast<clientMessage*>(pfnData);
+    HttpClientImpl* pMessage = reinterpret_cast<HttpClientImpl*>(pfnData);
 
     if(nEvent == MG_EV_CONNECT)
     {
@@ -268,7 +273,7 @@ static void evt_handler(mg_connection* pConnection, int nEvent, void* pEventData
 
 
 
-const clientResponse& clientMessage::Run(const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout)
+const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout)
 {
     mg_log_set("0");
 
@@ -288,12 +293,12 @@ const clientResponse& clientMessage::Run(const std::chrono::milliseconds& connec
     {
         DoLoop(mgr);
 
-        if(m_eStatus == clientMessage::REDIRECTING)
+        if(m_eStatus == HttpClientImpl::REDIRECTING)
         {
             SetupRedirect();
             return Run();
         }
-        else if(m_eStatus == clientMessage::COMPLETE)
+        else if(m_eStatus == HttpClientImpl::COMPLETE)
         {
             pmlLog() << "Complete";
         }
@@ -307,10 +312,10 @@ const clientResponse& clientMessage::Run(const std::chrono::milliseconds& connec
     return m_response;
 }
 
-void clientMessage::DoLoop(mg_mgr& mgr)
+void HttpClientImpl::DoLoop(mg_mgr& mgr)
 {
     auto start = std::chrono::system_clock::now();
-    while(m_eStatus != clientMessage::REDIRECTING && m_eStatus != clientMessage::COMPLETE)
+    while(m_eStatus != HttpClientImpl::REDIRECTING && m_eStatus != HttpClientImpl::COMPLETE)
     {
         mg_mgr_poll(&mgr, 500);
 
@@ -324,7 +329,7 @@ void clientMessage::DoLoop(mg_mgr& mgr)
     }
 }
 
-size_t clientMessage::WorkoutFileSize(const fileLocation& filename)
+size_t HttpClientImpl::WorkoutFileSize(const fileLocation& filename)
 {
     size_t nLength = 0;
     m_ifs.open(filename.Get(), std::ifstream::ate | std::ifstream::binary);
@@ -341,7 +346,7 @@ size_t clientMessage::WorkoutFileSize(const fileLocation& filename)
     return nLength;
 }
 
-size_t clientMessage::WorkoutDataSize()
+size_t HttpClientImpl::WorkoutDataSize()
 {
     if(m_vPostData.empty())
     {
@@ -393,7 +398,7 @@ size_t clientMessage::WorkoutDataSize()
 }
 
 
-void clientMessage::HandleWroteEvent(mg_connection* pConnection, int nBytes)
+void HttpClientImpl::HandleWroteEvent(mg_connection* pConnection, int nBytes)
 {
     if(m_eStatus != CONNECTED)
     {
@@ -418,7 +423,7 @@ void clientMessage::HandleWroteEvent(mg_connection* pConnection, int nBytes)
 
 }
 
-void clientMessage::HandleSimpleWroteEvent(mg_connection* pConnection)
+void HttpClientImpl::HandleSimpleWroteEvent(mg_connection* pConnection)
 {
     if(m_vPostData.back().filepath.Get().empty())    //no filepath so sending the text
     {
@@ -435,7 +440,7 @@ void clientMessage::HandleSimpleWroteEvent(mg_connection* pConnection)
     }
 }
 
-bool clientMessage::SendFile(mg_connection* pConnection, const fileLocation& filepath, bool bOpen)
+bool HttpClientImpl::SendFile(mg_connection* pConnection, const fileLocation& filepath, bool bOpen)
 {
     if(bOpen)
     {
@@ -461,12 +466,12 @@ bool clientMessage::SendFile(mg_connection* pConnection, const fileLocation& fil
     return false;
 }
 
-void clientMessage::SetProgressCallback(std::function<void(unsigned long, unsigned long)> pCallback)
+void HttpClientImpl::SetProgressCallback(std::function<void(unsigned long, unsigned long)> pCallback)
 {
     m_pProgressCallback = pCallback;
 }
 
-void clientMessage::HandleMultipartWroteEvent(mg_connection* pConnection)
+void HttpClientImpl::HandleMultipartWroteEvent(mg_connection* pConnection)
 {
     pmlLog() << "HandleMultipartWroteEvent\t" << m_nPostPart << ":" << m_vPostData.size();
 
@@ -517,3 +522,5 @@ void clientMessage::HandleMultipartWroteEvent(mg_connection* pConnection)
         }
     }
 }
+
+HttpClientImpl::~HttpClientImpl() = default;
