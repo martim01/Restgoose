@@ -94,7 +94,7 @@ include_directories("include")
 
 
 SET(SOURCES "src/RestGoose.cpp" "src/mongooseserver.cpp" "src/utils.cpp" "src/websocketclient.cpp" "src/websocketclientimpl.cpp" 
- "src/restfulclient.cpp" "src/httpclient.cpp"
+ "src/restfulclient.cpp" "src/httpclient.cpp" "response.cpp"
  "${DIR_MONGOOSE}/mongoose.c" "${DIR_JSON}/dist/jsoncpp.cpp")
 
 add_library(restgoose SHARED ${SOURCES})
