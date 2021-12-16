@@ -15,7 +15,7 @@
 
 using namespace std;
 using namespace std::placeholders;
-
+using namespace pml::restgoose;
 
 const std::string DISPOSITION = "Content-Disposition: ";
 const std::string NAME = " name=";
@@ -114,7 +114,7 @@ void ev_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_da
     pThread->HandleEvent(pConnection, nEvent, pData);
 }
 
-void pipe_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_data)
+void pipe_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_dat)
 {
     if(nEvent == MG_EV_READ)
     {
@@ -830,14 +830,14 @@ void MongooseServer::EventHttpApiMultipart(mg_connection *pConnection, mg_http_m
         auto itCallback = m_mEndpoints.find(thePoint);
         if(itCallback != m_mEndpoints.end())
         {
-            postData theData;
+            std::vector<partData> vData;
             struct mg_http_part part;
             size_t nOffset=0;
             while((nOffset = mg_http_next_multipart(pMessage->body, nOffset, &part)) > 0)
             {
-                theData.push_back(CreatePartData(part));
+                vData.push_back(CreatePartData(part));
             }
-            DoReply(pConnection, itCallback->second(query(sQuery), theData, thePoint.second, auth.second));
+            DoReply(pConnection, itCallback->second(query(sQuery), vData, thePoint.second, auth.second));
         }
         else if(m_callbackNotFound)
         {
@@ -1070,7 +1070,7 @@ bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, std::func
            m_mWebsocketCloseEndpoints.insert(std::make_pair(theEndpoint, funcClose)).second;
 }
 
-bool MongooseServer::AddEndpoint(const methodpoint& theMethodPoint, std::function<response(const query&, const postData&, const endpoint&, const userName& )> func)
+bool MongooseServer::AddEndpoint(const methodpoint& theMethodPoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName& )> func)
 {
     pml::LogStream lg;
     lg << "MongooseServer\t" << "AddEndpoint <" << theMethodPoint.first.Get() << ", " << theMethodPoint.second.Get() << "> ";
@@ -1344,7 +1344,7 @@ bool MongooseServer::IsOk()
 }
 
 
-void MongooseServer::AddNotFoundCallback(std::function<response(const query&, const postData&, const endpoint&, const userName&)> func)
+void MongooseServer::AddNotFoundCallback(std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> func)
 {
     m_callbackNotFound = func;
 }
