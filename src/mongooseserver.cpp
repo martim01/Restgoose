@@ -440,7 +440,7 @@ void MongooseServer::HandleFirstChunk(httpchunks& chunk, mg_connection* pConnect
             chunk.ofs.open(chunk.vParts.back().filepath.Get());
             if(chunk.ofs.is_open() == false)
             {
-                pmlLog(pml::LOG_WARN) << "Restgoose\tCould not create temp file '" << chunk.vParts.back().sFilename << "' for upload";
+                pmlLog(pml::LOG_WARN) << "Restgoose\tCould not create temp file '" << chunk.vParts.back().filepath << "' for upload";
             }
         }
 
@@ -687,7 +687,7 @@ void MongooseServer::MultipartChunkHeader(httpchunks& chunk, char c)
                         chunk.ofs.open(chunk.vParts.back().filepath.Get());
                         if(chunk.ofs.is_open() == false)
                         {
-                            pmlLog(pml::LOG_WARN) << "Restgoose\tMultipart upload - Could not open file '" << chunk.vParts.back().sData << "'";
+                            pmlLog(pml::LOG_WARN) << "Restgoose\tMultipart upload - Could not open file '" << chunk.vParts.back().data << "'";
                         }
 
                     }
