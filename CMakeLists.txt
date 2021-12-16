@@ -77,7 +77,7 @@ if(${BUILD_LOG})
 	unset(RG_TEMP_DIR7)
 	unset(RG_TEMP_DIR8)
 
-	add_subdirectory(${DIR_LOG} ${DIR_LOG}/build)
+	add_subdirectory(${DIR_LOG} ${CMAKE_SOURCE_DIR}/build/log)
 else()
 	message(STATUS "Restgoose - pml::log being build elsewhere")
 endif()
