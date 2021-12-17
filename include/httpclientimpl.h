@@ -6,6 +6,8 @@
 #include <fstream>
 #include "response.h"
 #include <functional>
+#include <atomic>
+
 
 struct mg_mgr;
 struct mg_connection;
@@ -24,8 +26,11 @@ namespace pml
                 ~HttpClientImpl();
 
                 const clientResponse& Run(const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0));
+                void RunAsync(std::function<void(const clientResponse&, unsigned int)> pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0));
 
                 void SetProgressCallback(std::function<void(unsigned long, unsigned long)> pCallback);
+
+                void Cancel();
 
 
                 void HandleConnectEvent(mg_connection* pConnection);
@@ -34,7 +39,7 @@ namespace pml
                 void HandleChunkEvent(mg_connection* pConnection, mg_http_message* pReply);
                 void HandleErrorEvent(const char* error);
 
-                enum {ERROR_SETUP, ERROR_TIMEOUT, ERROR_CONNECTION, ERROR_REPLY, ERROR_FILE_READ, ERROR_FILE_WRITE};
+                enum {ERROR_SETUP, ERROR_TIMEOUT, ERROR_CONNECTION, ERROR_REPLY, ERROR_FILE_READ, ERROR_FILE_WRITE, USER_CANCELLED};
 
             private:
 
@@ -69,7 +74,7 @@ namespace pml
                 unsigned long m_nBytesSent = 0;
 
                 enum enumStatus{CONNECTING, CONNECTED, SENDING, RECEIVING, COMPLETE, REDIRECTING};
-                enumStatus m_eStatus = CONNECTING;
+                std::atomic<enumStatus> m_eStatus{enumStatus::CONNECTING};
                 std::chrono::milliseconds m_connectionTimeout;
                 std::chrono::milliseconds m_processTimeout;
 
@@ -79,8 +84,9 @@ namespace pml
 
                 std::ofstream m_ofs;
                 std::ifstream m_ifs;
-
+                unsigned int m_nRunId = 0;
                 std::function<void(unsigned long, unsigned long)> m_pProgressCallback = nullptr;
+                std::function<void(const clientResponse&, unsigned int )> m_pAsyncCallback = nullptr;
         };
     }
 }

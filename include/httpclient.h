@@ -21,8 +21,10 @@ namespace pml
                 ~HttpClient();
 
                 const clientResponse& Run(const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0));
-
+                void RunAsync(std::function<void(const clientResponse&, unsigned int )> pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0));
                 void SetProgressCallback(std::function<void(unsigned long, unsigned long)> pCallback);
+
+                void Cancel();
 
             private:
                 std::unique_ptr<HttpClientImpl> m_pImpl;

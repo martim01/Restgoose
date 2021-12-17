@@ -10,39 +10,42 @@
 
 namespace pml
 {
-    class ThreadPool
+    namespace restgoose
     {
-        public:
-            static ThreadPool& Get();
-            template<typename FunctionType> void Submit(FunctionType f)
-            {
+        class ThreadPool
+        {
+            public:
+                static ThreadPool& Get();
+                template<typename FunctionType> void Submit(FunctionType f)
                 {
-                    std::unique_lock<std::mutex> lock(m_mutex);
-                    m_qWork.push(std::function<void()>(f));
+                    {
+                        std::unique_lock<std::mutex> lock(m_mutex);
+                        m_qWork.push(std::function<void()>(f));
+                    }
+                    m_condition.notify_one();
+
                 }
-                m_condition.notify_one();
+                template<typename Callable, typename... Args> void Submit(Callable&& func, Args&&... args)
+                {
+                    Submit([=]{func(args...);});
+                }
 
-            }
-            template<typename Callable, typename... Args> void Submit(Callable&& func, Args&&... args)
-            {
-                Submit([=]{func(args...);});
-            }
+                size_t CreateWorkers(size_t nMinThreads, size_t nMaxThreads);
+                size_t AddWorkers(size_t nWorkers);
 
-            size_t CreateWorkers(size_t nMinThreads, size_t nMaxThreads);
-            size_t AddWorkers(size_t nWorkers);
-
-        private:
-            ThreadPool();
-            ~ThreadPool();
+            private:
+                ThreadPool();
+                ~ThreadPool();
 
 
-            void WorkerThread();
+                void WorkerThread();
 
-            std::atomic_bool m_bDone;
-            std::queue<std::function<void()>> m_qWork;
-            std::vector<std::thread> m_vThreads;
+                std::atomic_bool m_bDone;
+                std::queue<std::function<void()>> m_qWork;
+                std::vector<std::thread> m_vThreads;
 
-            std::mutex m_mutex;
-            std::condition_variable m_condition;
+                std::mutex m_mutex;
+                std::condition_variable m_condition;
+        };
     };
 };

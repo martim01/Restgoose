@@ -14,7 +14,7 @@ namespace pml
         class RG_EXPORT WebSocketClient
         {
             public:
-                WebSocketClient(std::function<bool(const endpoint& theEndpoint)> pConnectCallback, std::function<bool(const endpoint& theEndpoint, const std::string&)> pMessageCallback, unsigned int nTimeout=250);
+                WebSocketClient(std::function<bool(const endpoint&, bool)> pConnectCallback, std::function<bool(const endpoint&, const std::string&)> pMessageCallback, unsigned int nTimeout=250);
                 ~WebSocketClient();
 
                 bool Run();

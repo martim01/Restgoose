@@ -12,7 +12,7 @@ static void callback(struct mg_connection* pConnection, int nEvent, void* pEvent
 
 
 
-WebSocketClientImpl::WebSocketClientImpl(std::function<bool(const endpoint& theEndpoint)> pConnectCallback, std::function<bool(const endpoint& theEndpoint, const std::string&)> pMessageCallback, unsigned int nTimeout) :
+WebSocketClientImpl::WebSocketClientImpl(std::function<bool(const endpoint& theEndpoint, bool)> pConnectCallback, std::function<bool(const endpoint& theEndpoint, const std::string&)> pMessageCallback, unsigned int nTimeout) :
     m_pConnectCallback(pConnectCallback),
     m_pMessageCallback(pMessageCallback),
     m_nTimeout(nTimeout),
@@ -70,18 +70,17 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
     switch(nEvent)
     {
         case MG_EV_ERROR:
-            pmlLog(pml::LOG_ERROR) << "RestGoose: Websocket error: " << (char*)pEventData;
+            pmlLog(pml::LOG_ERROR) << "RestGoose:WebsocketClient\tWebsocket error: " << (char*)pEventData;
             CloseConnection(pConnection, false);
             break;
         case MG_EV_WS_OPEN:
-            pmlLog(pml::LOG_DEBUG) << "RestGoose: Websocket connected";
-            if(m_pConnectCallback && m_pConnectCallback(FindUrl(pConnection)) == false)
+            pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\tWebsocket connected";
+            if(m_pConnectCallback && m_pConnectCallback(FindUrl(pConnection), true) == false)
             {
                 CloseConnection(pConnection, true);
             }
             break;
         case MG_EV_WS_MSG:
-            pmlLog(pml::LOG_DEBUG) << "RestGoose: Websocket message from: " << pConnection->id;
             if(m_pMessageCallback)
             {
                 mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
@@ -91,12 +90,20 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
                     CloseConnection(pConnection, true);
                 }
             }
+            else
+            {
+                pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\tWebsocket message no callback";
+            }
             break;
         case MG_EV_WS_CTL:
+            if(m_pConnectCallback)
             {
                 mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
                 std::string sMessage(pMessage->data.ptr, pMessage->data.len);
-                pmlLog(pml::LOG_DEBUG) << "RestGoose: Websocket ctl from: " << pConnection->id << ": " << sMessage;
+                if(pMessage->flags & 15 == 8)   //this is the close flag apparently
+                {
+                    m_pConnectCallback(FindUrl(pConnection), false);
+                }
             }
             break;
     }

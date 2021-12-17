@@ -3,7 +3,7 @@
 
 using namespace pml::restgoose;
 
-WebSocketClient::WebSocketClient(std::function<bool(const endpoint& theEndpoint)> pConnectCallback, std::function<bool(const endpoint& theEndpoint, const std::string&)> pMessageCallback, unsigned int nTimeout) :
+WebSocketClient::WebSocketClient(std::function<bool(const endpoint&, bool)> pConnectCallback, std::function<bool(const endpoint&, const std::string&)> pMessageCallback, unsigned int nTimeout) :
     m_pImpl(std::unique_ptr<WebSocketClientImpl>(new WebSocketClientImpl(pConnectCallback, pMessageCallback, nTimeout)))
 {
 

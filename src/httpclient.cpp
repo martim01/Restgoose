@@ -1,5 +1,5 @@
 #include "httpclient.h"
-#include "restfulclient.h"
+#include "httpclientimpl.h"
 
 using namespace pml::restgoose;
 
@@ -36,7 +36,17 @@ const clientResponse& HttpClient::Run(const std::chrono::milliseconds& connectio
     return m_pImpl->Run(connectionTimeout, processTimeout);
 }
 
+void HttpClient::RunAsync(std::function<void(const clientResponse&, unsigned int )> pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout)
+{
+    m_pImpl->RunAsync(pCallback, nRunId, connectionTimeout, processTimeout);
+}
+
 void HttpClient::SetProgressCallback(std::function<void(unsigned long, unsigned long)> pCallback)
 {
     m_pImpl->SetProgressCallback(pCallback);
+}
+
+void HttpClient::Cancel()
+{
+    m_pImpl->Cancel();
 }

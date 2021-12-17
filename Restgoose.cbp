@@ -122,10 +122,10 @@
 		<Unit filename="../mongoose/mongoose.h" />
 		<Unit filename="include/RestGoose.h" />
 		<Unit filename="include/httpclient.h" />
+		<Unit filename="include/httpclientimpl.h" />
 		<Unit filename="include/mongooseserver.h" />
 		<Unit filename="include/namedtype.h" />
 		<Unit filename="include/response.h" />
-		<Unit filename="include/restfulclient.h" />
 		<Unit filename="include/threadpool.h" />
 		<Unit filename="include/utils.h" />
 		<Unit filename="include/websocketclient.h" />
@@ -133,12 +133,12 @@
 		<Unit filename="src/RestGoose.cpp" />
 		<Unit filename="src/RestGoose.h" />
 		<Unit filename="src/httpclient.cpp" />
+		<Unit filename="src/httpclientimpl.cpp" />
 		<Unit filename="src/mongooseserver.cpp" />
 		<Unit filename="src/mongooseserver.h" />
 		<Unit filename="src/namedtype.h" />
 		<Unit filename="src/response.cpp" />
 		<Unit filename="src/response.h" />
-		<Unit filename="src/restfulclient.cpp" />
 		<Unit filename="src/threadpool.cpp" />
 		<Unit filename="src/utils.cpp" />
 		<Unit filename="src/websocketclient.cpp" />

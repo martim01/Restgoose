@@ -1,7 +1,7 @@
 #include "threadpool.h"
 #include "log.h"
 
-using namespace pml;
+using namespace pml::restgoose;
 
 ThreadPool& ThreadPool::Get()
 {

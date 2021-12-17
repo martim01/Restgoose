@@ -33,7 +33,7 @@ namespace pml
                 void Callback(mg_connection* pConnection, int nEvent, void * pEventData);
 
             private:
-                WebSocketClientImpl(std::function<bool(const endpoint& theEndpoint)> pConnectCallback, std::function<bool(const endpoint& theEndpoint, const std::string&)> pMessageCallback, unsigned int nTimeout=250);
+                WebSocketClientImpl(std::function<bool(const endpoint& theEndpoint, bool)> pConnectCallback, std::function<bool(const endpoint& theEndpoint, const std::string&)> pMessageCallback, unsigned int nTimeout=250);
 
                 void Loop();
 
@@ -45,7 +45,7 @@ namespace pml
 
                 mg_mgr m_mgr;
 
-                std::function<bool(const endpoint& theEndpoint)> m_pConnectCallback;
+                std::function<bool(const endpoint& theEndpoint, bool)> m_pConnectCallback;
                 std::function<bool(const endpoint& theEndpoint, const std::string&)> m_pMessageCallback;
                 unsigned int m_nTimeout;
 
