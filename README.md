@@ -200,16 +200,20 @@ In the same thread as the Server (e.g. in an Endpoint Callback function). Call `
 
 Once you want the thread to continue call `Signal` passing a pml::restgoose::response object back.
 
-Eg. In and endpoint callback
+Eg. In an endpoint callback
 ```
+ ...
 server.PrimeWait();
 //Signal to main thread that we need some data
+ ...
+//Wait for the main thread to reply
 server.Wait();
-//Now do something with the data
+//Do something with the data
 return server.GetSignalData();
 ```
 and in the main thread
 ```
+ ...
 //Get some data
 response resp;
 resp.nHttpCode = 200;
