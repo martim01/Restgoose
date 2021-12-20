@@ -38,8 +38,8 @@ Build the library as above and link to the compiled library.
 - [Callback](#Callbacks)
 - [Run](#Run)
 - [Websockets](#Websockets)
-- [Basic Authentication](#Basic Authentication)
-- [Thread Mode](#Thread Mode)
+- [Basic Authentication](#BasicAuthentication)
+- [Thread Mode](#ThreadMode)
 
 ### Creation
 Create a Server instance
@@ -185,14 +185,14 @@ It can also remove subscription by sending
     "endpoints" : [ array of relative URL endpoints ]
 }
 ```
-### Basic Authentication
+### BasicAuthentication
 The server currently only supports Basic Authentication. It only makes sense to use this if you are also using TLS.
 To enable Basic Authentication simply add a user with their password
 ```
 server.AddBAUser(theUserName, thePassword);
 ```
 
-### Thread Mode
+### ThreadMode
 The server can either be run in the same thread as the main program or in a separate thread. You set this in the `Run` function.
 If running as a separate thread it may be necessary to freeze the Server thread whilst the main thread gets some data for the Server thread to send back. There are a number of functions to facilitate this.
 
