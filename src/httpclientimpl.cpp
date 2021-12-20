@@ -116,8 +116,8 @@ void HttpClientImpl::GetContentHeaders(mg_http_message* pReply)
 
         if(m_response.bBinary)
         {   //if binary data then we save it to a file and pass back the filename
-            m_response.sData = CreateTmpFileName("/tmp/").Get();
-            m_ofs.open(m_response.sData);
+            m_response.data.Get() = CreateTmpFileName("/tmp/").Get();
+            m_ofs.open(m_response.data.Get());
         }
 
     }
@@ -161,7 +161,7 @@ void HttpClientImpl::HandleMessageEvent(mg_http_message* pReply)
         auto var = mg_http_get_header(pReply, "Location");
         if(var && var->len > 0)
         {
-            m_response.sData.assign(var->ptr, var->len);
+            m_response.data.Get().assign(var->ptr, var->len);
         }
         m_eStatus = HttpClientImpl::REDIRECTING;
     }
@@ -171,7 +171,7 @@ void HttpClientImpl::HandleMessageEvent(mg_http_message* pReply)
 
         if(m_response.bBinary == false)
         {
-            m_response.sData.assign(pReply->body.ptr, pReply->body.len);
+            m_response.data.Get().assign(pReply->body.ptr, pReply->body.len);
         }
         else if(m_ofs.is_open())
         {
@@ -208,7 +208,7 @@ void HttpClientImpl::HandleChunkEvent(mg_connection* pConnection, mg_http_messag
     }
     else
     {
-        m_response.sData.append(pReply->chunk.ptr, pReply->chunk.len);
+        m_response.data.Get().append(pReply->chunk.ptr, pReply->chunk.len);
     }
     mg_http_delete_chunk(pConnection, pReply);
 
@@ -226,23 +226,23 @@ void HttpClientImpl::HandleChunkEvent(mg_connection* pConnection, mg_http_messag
 void HttpClientImpl::SetupRedirect()
 {
     m_eStatus = HttpClientImpl::CONNECTING;
-    if(m_response.sData.find("://") != std::string::npos)
+    if(m_response.data.Get().find("://") != std::string::npos)
     {
-        m_point.second = endpoint(m_response.sData);
+        m_point.second = endpoint(m_response.data.Get());
     }
     else
     {
-        m_point.second = endpoint(m_point.second.Get()+m_response.sData);
+        m_point.second = endpoint(m_point.second.Get()+m_response.data.Get());
     }
 }
 
 void HttpClientImpl::HandleErrorEvent(const char* error)
 {
     m_response.nCode = ERROR_CONNECTION;
-    m_response.sData = error;
+    m_response.data.Get() = error;
     m_eStatus = HttpClientImpl::COMPLETE;
 
-    pmlLog(pml::LOG_TRACE) << "RestGoose:HttpClient\tError event: " << m_response.sData;
+    pmlLog(pml::LOG_TRACE) << "RestGoose:HttpClient\tError event: " << m_response.data.Get();
 }
 
 static void evt_handler(mg_connection* pConnection, int nEvent, void* pEventData, void* pfnData)
@@ -277,8 +277,8 @@ void HttpClientImpl::RunAsync(std::function<void(const clientResponse&, unsigned
 {
     m_pAsyncCallback = pCallback;
     m_nRunId = nRunId;
-    ThreadPool::Get().CreateWorkers(1,4);
-    ThreadPool::Get().Submit(std::bind(&HttpClientImpl::Run, this, _1, _2), connectionTimeout, processTimeout);
+    pmlLog(pml::LOG_TRACE) << "RunAsync: nRunId = " << nRunId << " Endpoint: " << m_point.second << " data: " << m_vPostData.back().filepath;
+    Run(connectionTimeout, processTimeout);
 }
 
 

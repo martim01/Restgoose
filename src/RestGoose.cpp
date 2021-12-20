@@ -16,14 +16,14 @@ Server::~Server()
     m_pImpl->Stop();
 }
 
-bool Server::Init(const std::string& sCert, const std::string& sKey, int nPort, const std::string& sRootApi, bool bEnableWebsocket)
+bool Server::Init(const fileLocation& cert, const fileLocation& key, int nPort, const endpoint& apiRoot, bool bEnableWebsocket)
 {
-    return m_pImpl->Init(sCert, sKey, nPort, sRootApi, bEnableWebsocket);
+    return m_pImpl->Init(cert, key, nPort, apiRoot, bEnableWebsocket);
 }
 
-void Server:: Run(bool bThread, unsigned int nTimeoutMs)
+void Server:: Run(bool bThread, const std::chrono::milliseconds& timeout)
 {
-    m_pImpl->Run(bThread, nTimeoutMs);
+    m_pImpl->Run(bThread, timeout);
 }
 
 
@@ -32,9 +32,9 @@ void Server::Stop()
     m_pImpl->Stop();
 }
 
-bool Server::AddEndpoint(const methodpoint& theMethodPoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> func)
+bool Server::AddEndpoint(const httpMethod& method, const endpoint& theEndpoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> func)
 {
-    return m_pImpl->AddEndpoint(theMethodPoint, func);
+    return m_pImpl->AddEndpoint(methodpoint(method, theEndpoint), func);
 }
 
 void Server::AddNotFoundCallback(std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> func)
@@ -47,12 +47,12 @@ bool Server::AddWebsocketEndpoint(const endpoint& theMethodPoint, std::function<
     return m_pImpl->AddWebsocketEndpoint(theMethodPoint, funcAuthentication, funcMessage, funcClose);
 }
 
-bool Server::DeleteEndpoint(const methodpoint& theMethodPoint)
+bool Server::DeleteEndpoint(const httpMethod& method, const endpoint& theEndpoint)
 {
-    return m_pImpl->DeleteEndpoint(theMethodPoint);
+    return m_pImpl->DeleteEndpoint(methodpoint(method, theEndpoint));
 }
 
-void Server::SetLoopCallback(std::function<void(unsigned int)> func)
+void Server::SetLoopCallback(std::function<void(std::chrono::milliseconds)> func)
 {
     m_pImpl->SetLoopCallback(func);
 }
@@ -103,17 +103,13 @@ void Server::PrimeWait()
     m_pImpl->PrimeWait();
 }
 
-bool Server::IsOk()
+
+void Server::Signal(const response& resp)
 {
-    return m_pImpl->IsOk();
+    m_pImpl->Signal(resp);
 }
 
-void Server::Signal(bool bOk, const std::string& sData)
+const response& Server::GetSignalResponse() const
 {
-    m_pImpl->Signal(bOk, sData);
-}
-
-const std::string& Server::GetSignalData()
-{
-    return m_pImpl->GetSignalData();
+    return m_pImpl->GetSignalResponse();
 }

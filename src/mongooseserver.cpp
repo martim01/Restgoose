@@ -423,10 +423,10 @@ void MongooseServer::HandleFirstChunk(httpchunks& chunk, mg_connection* pConnect
         auto contents = mg_http_get_header(pMessage, "Content-Type");
         if(contents->len > 0)
         {
-            chunk.sContentType.assign(contents->ptr, contents->len);
+            chunk.contentType.Get().assign(contents->ptr, contents->len);
         }
 
-        if(chunk.sContentType.find("multipart") != std::string::npos)
+        if(chunk.contentType.Get().find("multipart") != std::string::npos)
         {
             WorkoutBoundary(chunk);
         }
@@ -454,13 +454,13 @@ void MongooseServer::HandleFirstChunk(httpchunks& chunk, mg_connection* pConnect
                 pmlLog(pml::LOG_WARN) << "RestGoose:Server\tCould not decode message length";
             }
         }
-        pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tFirst chunk: " << chunk.sContentType << "\t" << chunk.nTotalSize << " bytes";
+        pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tFirst chunk: " << chunk.contentType << "\t" << chunk.nTotalSize << " bytes";
     }
 }
 
 void MongooseServer::WorkoutBoundary(httpchunks& chunk)
 {
-    auto vSplit = SplitString(chunk.sContentType, ';');
+    auto vSplit = SplitString(chunk.contentType.Get(), ';');
     if(vSplit.size() > 1)
     {
         if(vSplit[1].find("boundary") != std::string::npos)
@@ -486,7 +486,7 @@ void MongooseServer::EventHttpChunk(mg_connection *pConnection, void* pData)
     }
 
     //if the content type is multipart then we try to extract
-    if(ins.first->second.sContentType.find("multipart") != std::string::npos)
+    if(ins.first->second.contentType.Get().find("multipart") != std::string::npos)
     {
         HandleMultipartChunk(ins.first->second, pMessage);
     }
@@ -891,8 +891,8 @@ void MongooseServer::HandleAccept(mg_connection* pConnection)
         tls_opts.ca = NULL;
         tls_opts.srvname.len = 0;
         tls_opts.srvname.ptr = NULL;
-        tls_opts.cert = m_sCert.c_str();
-        tls_opts.certkey = m_sKey.c_str();
+        tls_opts.cert = m_Cert.Get().c_str();
+        tls_opts.certkey = m_Key.Get().c_str();
         tls_opts.ciphers = NULL;
         //tls_opts.ciphers = "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256";
         mg_tls_init(pConnection, &tls_opts);
@@ -909,7 +909,7 @@ MongooseServer::MongooseServer() :
     m_pPipe(nullptr),
     m_bWebsocket(false),
     m_nPort(0),
-    m_nPollTimeout(100),
+    m_PollTimeout{100},
     m_loopCallback(nullptr),
     m_bLoop(true),
     m_pThread(nullptr),
@@ -931,14 +931,14 @@ MongooseServer::~MongooseServer()
 
 }
 
-bool MongooseServer::Init(const std::string& sCert, const std::string& sKey, int nPort, const std::string& sApiRoot, bool bEnableWebsocket)
+bool MongooseServer::Init(const fileLocation& cert, const fileLocation& key, int nPort, const endpoint& apiRoot, bool bEnableWebsocket)
 {
     m_nPort = nPort;
     //check for ssl
-    m_sKey = sKey;
-    m_sCert = sCert;
+    m_Key = key;
+    m_Cert = cert;
 
-    m_sApiRoot = sApiRoot;
+    m_ApiRoot = apiRoot;
 
     char hostname[255];
     gethostname(hostname, 255);
@@ -955,7 +955,7 @@ bool MongooseServer::Init(const std::string& sCert, const std::string& sKey, int
 
     stringstream ss;
 
-    if(sCert.empty())
+    if(m_Cert.Get().empty())
     {
         ss << "http://0.0.0.0:";
     }
@@ -969,10 +969,10 @@ bool MongooseServer::Init(const std::string& sCert, const std::string& sKey, int
     return true;
 }
 
-void MongooseServer::Run(bool bThread, unsigned int nTimeoutMs)
+void MongooseServer::Run(bool bThread, const std::chrono::milliseconds& timeout)
 {
     m_bLoop = true;
-    m_nPollTimeout = nTimeoutMs;
+    m_PollTimeout = timeout;
 
     if(bThread)
     {
@@ -999,16 +999,16 @@ void MongooseServer::Loop()
             m_pPipe->fn_data = reinterpret_cast<void*>(this);
         }
 
-        pmlLog(pml::LOG_INFO) << "RestGoose:Server\tStarted: " << m_sServerName;
+        pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tStarted: " << m_sServerName;
 
         auto now = std::chrono::high_resolution_clock::now();
         while (m_bLoop)
         {
-            mg_mgr_poll(&m_mgr, m_nPollTimeout);
+            mg_mgr_poll(&m_mgr, m_PollTimeout.count());
 
             if(m_loopCallback)
             {   //call the loopback functoin saying how long it is since we last called the loopback function
-                m_loopCallback((std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()-now.time_since_epoch())).count());
+                m_loopCallback((std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()-now.time_since_epoch())));
                 now = std::chrono::high_resolution_clock::now();
             }
 
@@ -1059,8 +1059,8 @@ bool MongooseServer::AddEndpoint(const methodpoint& theMethodPoint, std::functio
     lg << "MongooseServer\t" << "AddEndpoint <" << theMethodPoint.first.Get() << ", " << theMethodPoint.second.Get() << "> ";
     if(m_mEndpoints.find(theMethodPoint) != m_mEndpoints.end())
     {
-        lg.SetLevel(pml::LOG_WARN);
-        lg << "failed as methodpoint already exists";
+        //lg.SetLevel(pml::LOG_TRACE);
+        lg(pml::LOG_TRACE) << "failed as methodpoint already exists";
         return false;
     }
 
@@ -1086,13 +1086,13 @@ void MongooseServer::SendError(mg_connection* pConnection, const string& sError,
 void MongooseServer::DoReply(mg_connection* pConnection,const response& theResponse)
 {
     std::string sReply;
-    if(theResponse.sContentType == "application/json")
+    if(theResponse.contentType.Get() == "application/json")
     {
         sReply = ConvertFromJson(theResponse.jsonData);
     }
     else
     {
-        sReply = theResponse.sData;
+        sReply = theResponse.data.Get();
     }
 
     pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tDoReply " << theResponse.nHttpCode;
@@ -1102,7 +1102,7 @@ void MongooseServer::DoReply(mg_connection* pConnection,const response& theRespo
 
     stringstream ssHeaders;
     ssHeaders << "HTTP/1.1 " << theResponse.nHttpCode << " \r\n"
-              << "Content-Type: " << theResponse.sContentType << "\r\n"
+              << "Content-Type: " << theResponse.contentType.Get() << "\r\n"
               << "Content-Length: " << sReply.length() << "\r\n"
               << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
               << "Access-Control-Allow-Origin:*\r\n"
@@ -1238,7 +1238,7 @@ void MongooseServer::SendWebsocketMessage(const std::set<endpoint>& setEndpoints
     }
 }
 
-void MongooseServer::SetLoopCallback(std::function<void(unsigned int)> func)
+void MongooseServer::SetLoopCallback(std::function<void(std::chrono::milliseconds)> func)
 {
     std::lock_guard<std::mutex> lg(m_mutex);
     m_loopCallback = func;
@@ -1275,49 +1275,35 @@ std::set<methodpoint> MongooseServer::GetEndpoints()
 
 bool MongooseServer::InApiTree(const endpoint& theEndpoint)
 {
-    return (theEndpoint.Get().length() >= m_sApiRoot.length() && theEndpoint.Get().substr(0, m_sApiRoot.length()) == m_sApiRoot);
+    return (theEndpoint.Get().length() >= m_ApiRoot.Get().length() && theEndpoint.Get().substr(0, m_ApiRoot.Get().length()) == m_ApiRoot.Get());
 }
 
 
 void MongooseServer::PrimeWait()
 {
     lock_guard<mutex> lock(m_mutex);
-    m_eOk = WAIT;
+    m_signal.nHttpCode = 0;
 }
 
 void MongooseServer::Wait()
 {
     std::unique_lock<std::mutex> lk(m_mutex);
-    while(m_eOk == WAIT)
+    while(m_signal.nHttpCode == 0)
     {
         m_cvSync.wait(lk);
     }
 }
 
-const std::string& MongooseServer::GetSignalData()
+const response& MongooseServer::GetSignalResponse() const
 {
-    return m_sSignalData;
+    return m_signal;
 }
 
-void MongooseServer::Signal(bool bOk, const std::string& sData)
+void MongooseServer::Signal(const response& resp)
 {
     lock_guard<mutex> lock(m_mutex);
-    if(bOk)
-    {
-        m_eOk = SUCCESS;
-    }
-    else
-    {
-        m_eOk = FAIL;
-    }
-    m_sSignalData = sData;
+    m_signal = resp;
     m_cvSync.notify_one();
-}
-
-bool MongooseServer::IsOk()
-{
-    lock_guard<mutex> lock(m_mutex);
-    return (m_eOk == SUCCESS);
 }
 
 

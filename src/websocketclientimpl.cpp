@@ -100,7 +100,7 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
             {
                 mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
                 std::string sMessage(pMessage->data.ptr, pMessage->data.len);
-                if(pMessage->flags & 15 == 8)   //this is the close flag apparently
+                if((pMessage->flags & 15) == 8)   //this is the close flag apparently
                 {
                     m_pConnectCallback(FindUrl(pConnection), false);
                 }

@@ -3,6 +3,8 @@
 #include "json/json.h"
 #include <set>
 #include <functional>
+#include <chrono>
+
 
 namespace pml
 {
@@ -16,13 +18,13 @@ namespace pml
                 Server();
                 ~Server();
 
-                bool Init(const std::string& sCert, const std::string& sKey, int nPort, const std::string& sApiRoot, bool bEnableWebsocket);
+                bool Init(const fileLocation& cert, const fileLocation& key, int nPort, const endpoint& apiRoot, bool bEnableWebsocket);
 
                 /** @brief Creates the thread that runs the webserver loop
                 *   @param bThread if true will run in a separate thread, if false will run in main thread
                 *   @param nTimeoutms the time in milliseconds to wait for a mongoose event to happen
                 **/
-                void Run(bool bThread, unsigned int nTimeoutMs=100);
+                void Run(bool bThread, const std::chrono::milliseconds& timeout=std::chrono::milliseconds(100));
 
 
                 /** @brief Adds a basic authentication user/password pair to the server
@@ -63,18 +65,18 @@ namespace pml
                 The function should return a response which will be sent back to the client
                 *   @return <i>bool</i> true on success
                 **/
-                bool AddEndpoint(const methodpoint& theEndpoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> func);
+                bool AddEndpoint(const httpMethod& method, const endpoint& theEndpoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> func);
 
                 /** Removes a callback handler for an methodpoint
                 *   @param theEndpoint a pair definining the HTTP method and methodpoint address
                 *   @return <i>bool</i> true on success
                 **/
-                bool DeleteEndpoint(const methodpoint& theEndpoint);
+                bool DeleteEndpoint(const httpMethod& method, const endpoint& theEndpoint);
 
                 /** Sets the function that will be called every time the poll function times out or an event happens
                 *   @param func the function to call. It will be passed one argument, the number of milliseconds since it was last called
                 **/
-                void SetLoopCallback(std::function<void(unsigned int)> func);
+                void SetLoopCallback(std::function<void(std::chrono::milliseconds)> func);
 
                 /** @brief Sends a JSON formatted websocket message
                 *   @param setEnpoints the set of websocket methodpoints that the message should be sent to
@@ -117,15 +119,12 @@ namespace pml
                 *   @param sData signalling data
                 *   @note this must be called from another thread
                 **/
-                void Signal(bool bOk, const std::string& sData);
+                void Signal(const response& resp);
 
-                /** @brief Get the boolean value passed in the Signal routine
-                **/
-                bool IsOk();
 
                 /** @brief Get the string value passed in the Signal routine
                 **/
-                const std::string& GetSignalData();
+                const response& GetSignalResponse() const;
 
 
 

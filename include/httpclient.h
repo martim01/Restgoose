@@ -27,7 +27,7 @@ namespace pml
                 void Cancel();
 
             private:
-                std::unique_ptr<HttpClientImpl> m_pImpl;
+                std::shared_ptr<HttpClientImpl> m_pImpl;
         };
     }
 }

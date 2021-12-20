@@ -42,7 +42,7 @@ namespace pml
 
                 friend class Server;
 
-                bool Init(const std::string& sCert, const std::string& sKey, int nPort, const std::string& sApiRoot, bool bEnableWebsocket);
+                bool Init(const fileLocation& cert, const fileLocation& key, int nPort, const endpoint& apiRoot, bool bEnableWebsocket);
 
 
                 void AddBAUser(const userName& aUser, const password& aPassword);
@@ -53,7 +53,7 @@ namespace pml
                 *   @param bThread if true will run in a separate thread, if false will run in main thread
                 *   @param nTimeoutms the time in milliseconds to wait for a mongoose event to happen
                 **/
-                void Run(bool bThread, unsigned int nTimeoutMs=100);
+                void Run(bool bThread, const std::chrono::milliseconds& timeout);
 
 
                 ///< @brief Stops the server
@@ -84,7 +84,7 @@ namespace pml
                 /** Sets the function that will be called every time the poll function times out or an event happens
                 *   @param func the function to call. It will be passed one argument, the number of milliseconds since it was last called
                 **/
-                void SetLoopCallback(std::function<void(unsigned int)> func);
+                void SetLoopCallback(std::function<void(std::chrono::milliseconds)> func);
 
                 void SendWebsocketMessage(const std::set<endpoint>& setEndpoints, const Json::Value& jsMessage);
 
@@ -102,8 +102,8 @@ namespace pml
                 void Wait();
                 void PrimeWait();
                 bool IsOk();
-                void Signal(bool bOk, const std::string& sData);
-                const std::string& GetSignalData();
+                void Signal(const response& resp);
+                const response& GetSignalResponse() const;
 
 
                 /** Handles an event
@@ -207,19 +207,19 @@ namespace pml
                 std::string m_sIniPath;
                 std::string m_sServerName;
 
-                std::string m_sCert;
-                std::string m_sKey;
+                fileLocation m_Cert;
+                fileLocation m_Key;
 
                 std::string m_sStaticRootDir;
-                std::string m_sApiRoot;
+                endpoint m_ApiRoot;
 
                 bool m_bWebsocket;
                 mg_mgr m_mgr;
                 unsigned long m_nPort;
 
-                int m_nPollTimeout;
+                std::chrono::milliseconds m_PollTimeout;
 
-                std::function<void(unsigned int)> m_loopCallback;
+                std::function<void(std::chrono::milliseconds)> m_loopCallback;
                 std::map<methodpoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)>> m_mEndpoints;
                 std::map<endpoint, std::function<bool(const endpoint&, const userName&, const ipAddress& peer)>> m_mWebsocketAuthenticationEndpoints;
                 std::map<endpoint, std::function<bool(const endpoint&, const Json::Value&)>> m_mWebsocketMessageEndpoints;
@@ -237,11 +237,8 @@ namespace pml
                 std::mutex m_mutex;
                 bool m_bThreaded;
                 std::condition_variable m_cvSync;
-                enum enumSignal{WAIT, FAIL, SUCCESS};
 
-                enumSignal m_eOk;
-
-                std::string m_sSignalData;
+                response m_signal;
 
                 std::atomic<bool> m_bLoop;
                 std::unique_ptr<std::thread> m_pThread;
@@ -254,7 +251,7 @@ namespace pml
                     httpchunks() : nTotalSize(0), nCurrentSize(0), pCallback(nullptr), ePlace(BOUNDARY){}
                     size_t nTotalSize;
                     size_t nCurrentSize;
-                    std::string sContentType;
+                    headerValue contentType;
                     methodpoint thePoint;
                     query theQuery;
                     std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> pCallback;

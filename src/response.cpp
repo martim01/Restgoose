@@ -11,17 +11,17 @@ const httpMethod pml::restgoose::HTTP_DELETE = httpMethod("DELETE");
 const httpMethod pml::restgoose::OPTIONS = httpMethod("OPTIONS");
 
 
-response::response(unsigned short nCode, const std::string& sReason) : nHttpCode(nCode), jsonData(Json::objectValue), sContentType("application/json")
+response::response(unsigned short nCode, const std::string& sReason) : nHttpCode(nCode), jsonData(Json::objectValue), contentType("application/json")
 {
     jsonData["success"] = (nCode >= 200 && nCode < 300);
     jsonData["reason"].append(sReason);
     jsonData["code"] = nCode;
 }
 
-response::response(unsigned short nCode) : nHttpCode(nCode), jsonData(Json::objectValue), sContentType("application/json")
+response::response(unsigned short nCode) : nHttpCode(nCode), jsonData(Json::objectValue), contentType("application/json")
 {}
 
-response::response(const response& aResponse) : nHttpCode(aResponse.nHttpCode), jsonData(aResponse.jsonData), sContentType(aResponse.sContentType), sData(aResponse.sData){};
+response::response(const response& aResponse) : nHttpCode(aResponse.nHttpCode), jsonData(aResponse.jsonData), contentType(aResponse.contentType), data(aResponse.data){};
 
 response& response::operator=(const response& aResponse)
 {
@@ -29,8 +29,8 @@ response& response::operator=(const response& aResponse)
     {
         nHttpCode = aResponse.nHttpCode;
         jsonData = aResponse.jsonData;
-        sContentType = aResponse.sContentType;
-        sData = aResponse.sData;
+        contentType = aResponse.contentType;
+        data = aResponse.data;
     }
     return *this;
 

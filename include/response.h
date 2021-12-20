@@ -62,8 +62,8 @@ namespace pml
             ~response();
             unsigned short nHttpCode;
             Json::Value jsonData;
-            std::string sContentType;
-            std::string sData;
+            headerValue contentType;
+            textData data;
         };
 
         struct RG_EXPORT clientResponse
@@ -75,7 +75,7 @@ namespace pml
             unsigned long nContentLength;
             unsigned long nBytesReceived;
             bool bBinary;
-            std::string sData;
+            textData data;
 
         };
     };
