@@ -209,7 +209,7 @@ server.PrimeWait();
 //Wait for the main thread to reply
 server.Wait();
 //Do something with the data
-return server.GetSignalData();
+return server.GetSignalResponse();
 ```
 and in the main thread
 ```
