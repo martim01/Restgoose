@@ -21,6 +21,11 @@ bool Server::Init(const fileLocation& cert, const fileLocation& key, int nPort, 
     return m_pImpl->Init(cert, key, nPort, apiRoot, bEnableWebsocket);
 }
 
+bool Server::Init(int nPort, const endpoint& apiRoot, bool bEnableWebsocket)
+{
+    return m_pImpl->Init(fileLocation(""), fileLocation(""), nPort, apiRoot, bEnableWebsocket);
+}
+
 void Server:: Run(bool bThread, const std::chrono::milliseconds& timeout)
 {
     m_pImpl->Run(bThread, timeout);

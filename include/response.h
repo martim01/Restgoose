@@ -40,15 +40,20 @@ namespace pml
 
         struct RG_EXPORT partData
         {
+            friend class HttpClientImpl;
+            friend class MongooseServer;
+
             partData(){}
             partData(const partName& n, const textData& d) : name(n), data(d){}
             partData(const partName& n, const textData& filename, const fileLocation& filelocation) : name(n), data(filename), filepath(filelocation){}
 
-            std::string sHeader;
+
             partName name;
             textData data;
             fileLocation filepath;
 
+            private:
+                std::string sHeader;
         };
 
 

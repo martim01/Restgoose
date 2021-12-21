@@ -42,6 +42,14 @@ HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target,
     m_vPostData.push_back(partData(partName(""), data));
 }
 
+HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const Json::Value& jsData, const std::map<headerName, headerValue> mExtraHeaders) :
+    m_point(method, target),
+    m_contentType(headerValue("application/json")),
+    m_mHeaders(mExtraHeaders)
+{
+    m_vPostData.push_back(partData(partName(""), textData(ConvertFromJson(jsData))));
+}
+
 HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType, const std::map<headerName, headerValue> mExtraHeaders) :
     m_point(method, target),
     m_contentType(contentType),
@@ -211,6 +219,11 @@ void HttpClientImpl::HandleChunkEvent(mg_connection* pConnection, mg_http_messag
         m_response.data.Get().append(pReply->chunk.ptr, pReply->chunk.len);
     }
     mg_http_delete_chunk(pConnection, pReply);
+
+    if(m_pDownloadProgressCallback)
+    {
+        m_pDownloadProgressCallback(m_response.nBytesReceived, m_response.nContentLength);
+    }
 
     if(m_response.nBytesReceived >= m_response.nContentLength)
     {
@@ -418,9 +431,9 @@ void HttpClientImpl::HandleWroteEvent(mg_connection* pConnection, int nBytes)
         m_nBytesSent += nBytes;
     }
 
-    if(m_pProgressCallback)
+    if(m_pUploadProgressCallback)
     {
-        m_pProgressCallback(m_nBytesSent, m_nContentLength);
+        m_pUploadProgressCallback(m_nBytesSent, m_nContentLength);
     }
 
 
@@ -479,9 +492,14 @@ bool HttpClientImpl::SendFile(mg_connection* pConnection, const fileLocation& fi
     return false;
 }
 
-void HttpClientImpl::SetProgressCallback(std::function<void(unsigned long, unsigned long)> pCallback)
+void HttpClientImpl::SetUploadProgressCallback(std::function<void(unsigned long, unsigned long)> pCallback)
 {
-    m_pProgressCallback = pCallback;
+    m_pUploadProgressCallback = pCallback;
+}
+
+void HttpClientImpl::SetDownloadProgressCallback(std::function<void(unsigned long, unsigned long)> pCallback)
+{
+    m_pDownloadProgressCallback = pCallback;
 }
 
 void HttpClientImpl::HandleMultipartWroteEvent(mg_connection* pConnection)

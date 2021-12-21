@@ -10,7 +10,14 @@ static void callback(struct mg_connection* pConnection, int nEvent, void* pEvent
     reinterpret_cast<WebSocketClientImpl*>(pFnData)->Callback(pConnection, nEvent, pEventData);
 }
 
-
+static void pipe_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_dat)
+{
+    if(nEvent == MG_EV_READ)
+    {
+        WebSocketClientImpl* pThread = reinterpret_cast<WebSocketClientImpl*>(pConnection->fn_data);
+        pThread->SendMessages();
+    }
+}
 
 WebSocketClientImpl::WebSocketClientImpl(std::function<bool(const endpoint& theEndpoint, bool)> pConnectCallback, std::function<bool(const endpoint& theEndpoint, const std::string&)> pMessageCallback, unsigned int nTimeout) :
     m_pConnectCallback(pConnectCallback),
@@ -20,6 +27,12 @@ WebSocketClientImpl::WebSocketClientImpl(std::function<bool(const endpoint& theE
     m_bRun(true)
 {
     mg_mgr_init(&m_mgr);        // Initialise event manager
+
+    m_pPipe = mg_mkpipe(&m_mgr, pipe_handler, nullptr);
+    if(m_pPipe)
+    {
+        m_pPipe->fn_data = reinterpret_cast<void*>(this);
+    }
 }
 
 WebSocketClientImpl::~WebSocketClientImpl()
@@ -45,7 +58,7 @@ void WebSocketClientImpl::Loop()
     while (m_bRun)
     {
         mg_mgr_poll(&m_mgr, m_nTimeout);
-        SendMessages();
+        //SendMessages();
     }
 }
 
@@ -121,13 +134,19 @@ void WebSocketClientImpl::Stop()
 
 bool WebSocketClientImpl::SendMessage(const endpoint& theEndpoint, const std::string& sMessage)
 {
-    std::lock_guard<std::mutex> lg(m_mutex);
+    m_mutex.lock();
     auto itConnection = m_mConnection.find(theEndpoint);
     if(itConnection != m_mConnection.end())
     {
         itConnection->second.q.push(sMessage);
+        m_mutex.unlock();
+        if(m_pPipe)
+        {
+            mg_mgr_wakeup(m_pPipe);
+        }
         return true;
     }
+    m_mutex.unlock();
     return false;
 }
 

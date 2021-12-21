@@ -1059,7 +1059,6 @@ bool MongooseServer::AddEndpoint(const methodpoint& theMethodPoint, std::functio
     lg << "MongooseServer\t" << "AddEndpoint <" << theMethodPoint.first.Get() << ", " << theMethodPoint.second.Get() << "> ";
     if(m_mEndpoints.find(theMethodPoint) != m_mEndpoints.end())
     {
-        //lg.SetLevel(pml::LOG_TRACE);
         lg(pml::LOG_TRACE) << "failed as methodpoint already exists";
         return false;
     }

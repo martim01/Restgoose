@@ -32,12 +32,14 @@ namespace pml
 
                 void Callback(mg_connection* pConnection, int nEvent, void * pEventData);
 
+                void SendMessages();
+
             private:
                 WebSocketClientImpl(std::function<bool(const endpoint& theEndpoint, bool)> pConnectCallback, std::function<bool(const endpoint& theEndpoint, const std::string&)> pMessageCallback, unsigned int nTimeout=250);
 
                 void Loop();
 
-                void SendMessages();
+
 
                 void CloseConnection(mg_connection* pConnection, bool bTellServer);
 
@@ -62,6 +64,8 @@ namespace pml
                 };
 
                 std::map<endpoint, connection> m_mConnection;
+
+                mg_connection* m_pPipe;
         };
     }
 }

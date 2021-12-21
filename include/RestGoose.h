@@ -18,9 +18,25 @@ namespace pml
                 Server();
                 ~Server();
 
+                /** @brief Initialises the server
+                *   @param cert the full path and file name to a TLS certificate if one is being used
+                *   @param key the full path and file name to a TLC key if one is being used
+                *   @param nPort the TCP/IP port number to listen on
+                *   @param apiRoot the relative URL that is the base of the API tree
+                *   @param bEnableWebsocket set to true to act as a websocket server as well
+                *   @return <i>bool</i> true if the server has been successufully intialised
+                **/
                 bool Init(const fileLocation& cert, const fileLocation& key, int nPort, const endpoint& apiRoot, bool bEnableWebsocket);
 
-                /** @brief Creates the thread that runs the webserver loop
+                /** @brief Initialises the server
+                *   @param nPort the TCP/IP port number to listen on
+                *   @param apiRoot the relative URL that is the base of the API tree
+                *   @param bEnableWebsocket set to true to act as a websocket server as well
+                *   @return <i>bool</i> true if the server has been successufully intialised
+                **/
+                bool Init(int nPort, const endpoint& apiRoot, bool bEnableWebsocket);
+
+                /** @brief Runs the webserver
                 *   @param bThread if true will run in a separate thread, if false will run in main thread
                 *   @param nTimeoutms the time in milliseconds to wait for a mongoose event to happen
                 **/
@@ -39,7 +55,7 @@ namespace pml
                 void DeleteBAUser(const userName& aUser);
 
                 /** @brief Adds an enpoint that a websocket client can connect to along with callback functions
-                *   @param theEnpoint the address the client is allowed to connect to
+                *   @param theEndpoint the address the client is allowed to connect to
                 *   @param funcAuthentication a function that will be called when a client first attempts to connect to the methodpoint. The function is passed the methodpoint address,
                 the username that has been passed by the websocket and the ip address if the connecting client. The function should return true to allow the connection to continue and false to close it
                 *   @param funcMessage a function that is called everytime the client sends a websocket message to the server. The function is passed the methodpoint address and the message passed (as Json).
@@ -109,20 +125,20 @@ namespace pml
                 **/
                 void PrimeWait();
 
-                /** @brief Pauses the server thread - allowuing another thread to gather data before the server replies
+                /** @brief Pauses the server thread - allowing another thread to gather data before the server replies
                 **/
                 void Wait();
 
 
                 /** @brief Restarts a paused server thread
-                *   @param bOk true/false
-                *   @param sData signalling data
+                *   @param resp a response object containing data from the signalling thread
                 *   @note this must be called from another thread
                 **/
                 void Signal(const response& resp);
 
 
-                /** @brief Get the string value passed in the Signal routine
+                /** @brief Get the response value passed in the Signal routine
+                *   @return <i>response</i> the data sent from the signalling thread
                 **/
                 const response& GetSignalResponse() const;
 

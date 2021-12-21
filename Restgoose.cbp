@@ -131,14 +131,10 @@
 		<Unit filename="include/websocketclient.h" />
 		<Unit filename="include/websocketclientimpl.h" />
 		<Unit filename="src/RestGoose.cpp" />
-		<Unit filename="src/RestGoose.h" />
 		<Unit filename="src/httpclient.cpp" />
 		<Unit filename="src/httpclientimpl.cpp" />
 		<Unit filename="src/mongooseserver.cpp" />
-		<Unit filename="src/mongooseserver.h" />
-		<Unit filename="src/namedtype.h" />
 		<Unit filename="src/response.cpp" />
-		<Unit filename="src/response.h" />
 		<Unit filename="src/threadpool.cpp" />
 		<Unit filename="src/utils.cpp" />
 		<Unit filename="src/websocketclient.cpp" />

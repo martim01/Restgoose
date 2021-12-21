@@ -7,7 +7,7 @@
 #include "response.h"
 #include <functional>
 #include <atomic>
-
+#include "json/json.h"
 
 struct mg_mgr;
 struct mg_connection;
@@ -28,7 +28,8 @@ namespace pml
                 const clientResponse& Run(const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0));
                 void RunAsync(std::function<void(const clientResponse&, unsigned int)> pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0));
 
-                void SetProgressCallback(std::function<void(unsigned long, unsigned long)> pCallback);
+                void SetUploadProgressCallback(std::function<void(unsigned long, unsigned long)> pCallback);
+                void SetDownloadProgressCallback(std::function<void(unsigned long, unsigned long)> pCallback);
 
                 void Cancel();
 
@@ -45,6 +46,7 @@ namespace pml
 
                 HttpClientImpl();
                 HttpClientImpl(const httpMethod& method, const endpoint& target, const std::map<headerName, headerValue> mExtraHeaders = {});
+                HttpClientImpl(const httpMethod& method, const endpoint& target, const Json::Value& jsData, const std::map<headerName, headerValue> mExtraHeaders = {});
                 HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& data, const headerValue& contentType = headerValue("text/plain"), const std::map<headerName, headerValue> mExtraHeaders = {});
                 HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType = headerValue("application/octet-stream"), const std::map<headerName, headerValue> mExtraHeaders = {});
                 HttpClientImpl(const httpMethod& method, const endpoint& target, const std::vector<partData>& vData, const std::map<headerName, headerValue> mExtraHeaders = {}); //multipart
@@ -85,7 +87,8 @@ namespace pml
                 std::ofstream m_ofs;
                 std::ifstream m_ifs;
                 unsigned int m_nRunId = 0;
-                std::function<void(unsigned long, unsigned long)> m_pProgressCallback = nullptr;
+                std::function<void(unsigned long, unsigned long)> m_pUploadProgressCallback = nullptr;
+                std::function<void(unsigned long, unsigned long)> m_pDownloadProgressCallback = nullptr;
                 std::function<void(const clientResponse&, unsigned int )> m_pAsyncCallback = nullptr;
         };
     }
