@@ -437,7 +437,7 @@ void MongooseServer::HandleFirstChunk(httpchunks& chunk, mg_connection* pConnect
             chunk.vParts.back().filepath = CreateTmpFileName("/tmp/");
             chunk.vParts.back().data = textData(chunk.vParts.back().filepath.Get());
             chunk.pofs = std::make_shared<std::ofstream>(chunk.vParts.back().filepath.Get());
-            if(chunk.pofs == false)
+            if(chunk.is_open() == false)
             {
                 chunk.pofs = nullptr;
                 pmlLog(pml::LOG_WARN) << "RestGoose:Server\tCould not create temp file '" << chunk.vParts.back().filepath << "' for upload";
@@ -688,7 +688,7 @@ void MongooseServer::MultipartChunkHeader(httpchunks& chunk, char c)
                         chunk.vParts.back().filepath =CreateTmpFileName("/tmp/");
 
                         chunk.pofs = std::make_shared<std::ofstream>(chunk.vParts.back().filepath.Get());
-                        if(chunk.pofs == false)
+                        if(chunk.is_open() == false)
                         {
                             chunk.pofs = nullptr;
                             pmlLog(pml::LOG_WARN) << "RestGoose:Server\tMultipart upload - Could not open file '" << chunk.vParts.back().data << "'";
