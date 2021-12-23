@@ -31,12 +31,12 @@ namespace pml
 {
     namespace restgoose
     {
-        extern const httpMethod GET;
-        extern const httpMethod POST;
-        extern const httpMethod PUT;
-        extern const httpMethod PATCH;
-        extern const httpMethod HTTP_DELETE;
-        extern const httpMethod OPTIONS;
+        extern RG_EXPORT const httpMethod GET;
+        extern RG_EXPORT const httpMethod POST;
+        extern RG_EXPORT const httpMethod PUT;
+        extern RG_EXPORT const httpMethod PATCH;
+        extern RG_EXPORT const httpMethod HTTP_DELETE;
+        extern RG_EXPORT const httpMethod OPTIONS;
 
         struct RG_EXPORT partData
         {

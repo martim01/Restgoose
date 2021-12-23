@@ -44,6 +44,7 @@
 					<Add library="pml_log" />
 					<Add library="libssl-1_1" />
 					<Add library="libcrypto-1_1" />
+					<Add library="ws2_32" />
 				</Linker>
 			</Target>
 			<Target title="Linux Release">
@@ -115,8 +116,8 @@
 			<Add directory="../../log/lib" />
 			<Add directory="$(#openssl_32.LIB)" />
 		</Linker>
-		<Unit filename="../jsoncpp/dist/jsoncpp.cpp" />
-		<Unit filename="../mongoose/mongoose.c">
+		<Unit filename="../../external/jsoncpp/dist/jsoncpp.cpp" />
+		<Unit filename="../../external/mongoose/mongoose.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../mongoose/mongoose.h" />
@@ -139,6 +140,10 @@
 		<Unit filename="src/utils.cpp" />
 		<Unit filename="src/websocketclient.cpp" />
 		<Unit filename="src/websocketclientimpl.cpp" />
-		<Extensions />
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+		</Extensions>
 	</Project>
 </CodeBlocks_project_file>

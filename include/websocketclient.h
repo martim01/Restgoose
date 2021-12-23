@@ -45,7 +45,7 @@ namespace pml
                 *   @param sMessage the message to send
                 *   @return <i>bool</i> returns true if the endpoint has an active connection and false if not
                 **/
-                bool SendMessage(const endpoint& theEndpoint, const std::string& sMessage);
+                bool Send(const endpoint& theEndpoint, const std::string& sMessage);
 
                 /** @brief Closes a websocket connection to the given endpoint
                 *   @param theEndpoint the absolute url

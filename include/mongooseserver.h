@@ -19,7 +19,6 @@ extern "C" {
 #include <atomic>
 #include <thread>
 #include <condition_variable>
-#include <fstream>
 
 extern RG_EXPORT bool operator<(const methodpoint& e1, const methodpoint& e2);
 
@@ -248,7 +247,8 @@ namespace pml
 
                 struct httpchunks
                 {
-                    httpchunks() : nTotalSize(0), nCurrentSize(0), pCallback(nullptr), ePlace(BOUNDARY){}
+                    httpchunks() : nTotalSize(0), nCurrentSize(0), pCallback(nullptr), ePlace(BOUNDARY), pofs(nullptr){}
+                    ~httpchunks();
                     size_t nTotalSize;
                     size_t nCurrentSize;
                     headerValue contentType;
@@ -262,14 +262,11 @@ namespace pml
                     enumPlace ePlace;
 
                     std::vector<char> vBuffer;
-
-
                     std::string sBoundary;
                     std::string sBoundaryLast;
-
                     std::vector<partData> vParts;
 
-                    std::ofstream ofs;
+                    std::shared_ptr<std::ofstream> pofs;
                 };
 
                 void HandleFirstChunk(httpchunks& chunk, mg_connection* pConnection, mg_http_message* pMessage);

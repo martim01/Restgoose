@@ -24,7 +24,7 @@ void WebSocketClient::Stop()
     m_pImpl->Stop();
 }
 
-bool WebSocketClient::SendMessage(const endpoint& theEndpoint, const std::string& sMessage)
+bool WebSocketClient::Send(const endpoint& theEndpoint, const std::string& sMessage)
 {
     return m_pImpl->SendMessage(theEndpoint, sMessage);
 }

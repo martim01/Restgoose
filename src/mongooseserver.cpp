@@ -123,6 +123,7 @@ void pipe_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_
     }
 }
 
+MongooseServer::httpchunks::~httpchunks(){}
 
 void MongooseServer::EventWebsocketOpen(mg_connection *pConnection, int nEvent, void* pData)
 {
@@ -435,9 +436,10 @@ void MongooseServer::HandleFirstChunk(httpchunks& chunk, mg_connection* pConnect
             chunk.vParts.push_back(partData());
             chunk.vParts.back().filepath = CreateTmpFileName("/tmp/");
             chunk.vParts.back().data = textData(chunk.vParts.back().filepath.Get());
-            chunk.ofs.open(chunk.vParts.back().filepath.Get());
-            if(chunk.ofs.is_open() == false)
+            chunk.pofs = std::make_shared<std::ofstream>(chunk.vParts.back().filepath.Get());
+            if(chunk.pofs == false)
             {
+                chunk.pofs = nullptr;
                 pmlLog(pml::LOG_WARN) << "RestGoose:Server\tCould not create temp file '" << chunk.vParts.back().filepath << "' for upload";
             }
         }
@@ -506,10 +508,10 @@ void MongooseServer::EventHttpChunk(mg_connection *pConnection, void* pData)
 
 void MongooseServer::HandleGenericChunk(httpchunks& chunk, mg_http_message* pMessage)
 {
-    if(chunk.ofs.is_open())
+    if(chunk.pofs)
     {
-        chunk.ofs.write(pMessage->chunk.ptr, pMessage->chunk.len);
-        chunk.ofs.flush();
+        chunk.pofs->write(pMessage->chunk.ptr, pMessage->chunk.len);
+        chunk.pofs->flush();
     }
 }
 void MongooseServer::HandleMultipartChunk(httpchunks& chunk, mg_http_message* pMessage)
@@ -526,9 +528,9 @@ void MongooseServer::HandleMultipartChunk(httpchunks& chunk, mg_http_message* pM
         }
     }
 
-    if(chunk.ofs.is_open())
+    if(chunk.pofs)
     {
-        chunk.ofs.flush();    //write to disk
+        chunk.pofs->flush();    //write to disk
 
     }
 }
@@ -537,9 +539,10 @@ void MongooseServer::HandleLastChunk(httpchunks& chunk)
 {
     pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tAll chunks received. Now do something with them...";
     chunk.vBuffer.clear();
-    if(chunk.ofs.is_open())
+    if(chunk.pofs)
     {
-        chunk.ofs.close();
+        chunk.pofs->close();
+        chunk.pofs = nullptr;
     }
     if(chunk.pCallback)
     {
@@ -591,9 +594,10 @@ void MongooseServer::MultipartChunkBoundaryFound(httpchunks& chunk, char c)
 
     if(chunk.vParts.empty() == false)
     {
-        if(chunk.vParts.back().filepath.Get().empty() == false && chunk.ofs.is_open())
+        if(chunk.vParts.back().filepath.Get().empty() == false && chunk.pofs)
         {
-            chunk.ofs.close();
+            chunk.pofs->close();
+            chunk.pofs = nullptr;
         }
     }
 
@@ -612,9 +616,10 @@ void MongooseServer::MultipartChunkLastBoundaryFound(httpchunks& chunk, char c)
 
     if(chunk.vParts.empty() == false)
     {
-        if(chunk.vParts.back().filepath.Get().empty() == false && chunk.ofs.is_open())
+        if(chunk.vParts.back().filepath.Get().empty() == false && chunk.pofs)
         {
-            chunk.ofs.close();
+            chunk.pofs->close();
+            chunk.pofs = nullptr;
         }
     }
     chunk.vBuffer.clear();
@@ -629,9 +634,9 @@ void MongooseServer::MultipartChunkBoundarySearch(httpchunks& chunk, char c)
         {
             chunk.vParts.back().data= textData(chunk.vParts.back().data.Get()+std::string(chunk.vBuffer.begin(), chunk.vBuffer.end()));
         }
-        else if(chunk.ofs.is_open())
+        else if(chunk.pofs)
         {
-            chunk.ofs.write(chunk.vBuffer.data(), chunk.vBuffer.size());
+            chunk.pofs->write(chunk.vBuffer.data(), chunk.vBuffer.size());
         }
     }
     chunk.vBuffer.clear();
@@ -646,9 +651,9 @@ void MongooseServer::MultipartChunkBoundarySearch(httpchunks& chunk, char c)
         {
             chunk.vParts.back().data.Get() += c;
         }
-        else if(chunk.ofs.is_open())
+        else if(chunk.pofs)
         {
-            chunk.ofs << c;
+            *(chunk.pofs) << c;
         }
     }
 }
@@ -682,9 +687,10 @@ void MongooseServer::MultipartChunkHeader(httpchunks& chunk, char c)
                         chunk.vParts.back().data =  textData(sPart.substr(nStart, nEnd-nStart));
                         chunk.vParts.back().filepath =CreateTmpFileName("/tmp/");
 
-                        chunk.ofs.open(chunk.vParts.back().filepath.Get());
-                        if(chunk.ofs.is_open() == false)
+                        chunk.pofs = std::make_shared<std::ofstream>(chunk.vParts.back().filepath.Get());
+                        if(chunk.pofs == false)
                         {
+                            chunk.pofs = nullptr;
                             pmlLog(pml::LOG_WARN) << "RestGoose:Server\tMultipart upload - Could not open file '" << chunk.vParts.back().data << "'";
                         }
 

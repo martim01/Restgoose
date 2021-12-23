@@ -78,7 +78,8 @@ void HttpClientImpl::HandleConnectEvent(mg_connection* pConnection)
     mg_str host = mg_url_host(m_point.second.Get().c_str());
     if(mg_url_is_ssl(m_point.second.Get().c_str()))
     {
-        mg_tls_opts opts = { .srvname = host};
+        mg_tls_opts opts;
+        opts.srvname = host;
         mg_tls_init(pConnection, &opts);
     }
 
