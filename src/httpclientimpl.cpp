@@ -70,7 +70,6 @@ HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target,
 
 void HttpClientImpl::HandleConnectEvent(mg_connection* pConnection)
 {
-    pmlLog(pml::LOG_TRACE) << "RestGoose:HttpClient\tConnect event";
 
     m_eStatus = HttpClientImpl::CONNECTED;
 
@@ -158,7 +157,6 @@ void HttpClientImpl::GetResponseCode(mg_http_message* pReply)
 
 void HttpClientImpl::HandleMessageEvent(mg_http_message* pReply)
 {
-    pmlLog(pml::LOG_TRACE) << "RestGoose:HttpClient\tMessage event";
 
     //Check the response code for relocation...
     GetResponseCode(pReply);
@@ -166,7 +164,6 @@ void HttpClientImpl::HandleMessageEvent(mg_http_message* pReply)
 
     if(m_response.nCode == 300 || m_response.nCode == 301 || m_response.nCode == 302)
     {   //redirects
-        pmlLog(pml::LOG_TRACE) << "RestGoose:HttpClient\tRedirecting";
         auto var = mg_http_get_header(pReply, "Location");
         if(var && var->len > 0)
         {
@@ -351,6 +348,7 @@ void HttpClientImpl::DoLoop(mg_mgr& mgr)
         if((m_eStatus == CONNECTING && std::chrono::duration_cast<std::chrono::milliseconds>(now-start) > m_connectionTimeout) ||
            (m_eStatus != CONNECTING && m_processTimeout.count() != 0 && std::chrono::duration_cast<std::chrono::milliseconds>(now-start) > m_processTimeout))
         {
+            pmlLog(pml::LOG_DEBUG) << "HttpClientImpl\tTimeout";
             break;
         }
     }
@@ -474,6 +472,7 @@ bool HttpClientImpl::SendFile(mg_connection* pConnection, const fileLocation& fi
         m_ifs.open(filepath.Get());
         if(m_ifs.is_open() == false)
         {
+            pmlLog(pml::LOG_ERROR) << "HttpClient: Unable to open file " << filepath << " to upload.";
             m_response.nCode = ERROR_FILE_READ;
             m_eStatus = COMPLETE;
         }
@@ -481,13 +480,21 @@ bool HttpClientImpl::SendFile(mg_connection* pConnection, const fileLocation& fi
     if(m_ifs.is_open())
     {
         char buffer[61440];
-        m_ifs.read(buffer, 61440);
-        mg_send(pConnection, buffer, m_ifs.gcount());
-
-        if(m_ifs.eof()) //finished sending
+        if(m_ifs.read(buffer, 61440) || m_ifs.eof())
         {
-            m_ifs.close();
-            return true;
+            mg_send(pConnection, buffer, m_ifs.gcount());
+
+            if(m_ifs.eof()) //finished sending
+            {
+                m_ifs.close();
+                return true;
+            }
+        }
+        else if(m_ifs.bad())
+        {
+            pmlLog(pml::LOG_ERROR) << "HttpClient: Unable to read file " << filepath << " to upload.";
+            m_response.nCode = ERROR_FILE_READ;
+            m_eStatus = COMPLETE;
         }
     }
     return false;
@@ -516,7 +523,6 @@ void HttpClientImpl::HandleMultipartWroteEvent(mg_connection* pConnection)
     {
         if(m_ifs.is_open() == false)    //not currently sending a file
         {
-
             mg_send(pConnection, m_vPostData[m_nPostPart].sHeader.c_str(), m_vPostData[m_nPostPart].sHeader.length());
 
             if(m_vPostData[m_nPostPart].filepath.Get().empty())
@@ -537,6 +543,7 @@ void HttpClientImpl::HandleMultipartWroteEvent(mg_connection* pConnection)
         }
         else
         {
+
             if(SendFile(pConnection, m_vPostData[m_nPostPart].filepath, false) == true)
             {   //all sent
                 mg_send(pConnection, CRLF.c_str(), CRLF.length());
@@ -550,7 +557,9 @@ void HttpClientImpl::HandleMultipartWroteEvent(mg_connection* pConnection)
     }
 }
 
-HttpClientImpl::~HttpClientImpl() = default;
+HttpClientImpl::~HttpClientImpl()
+{
+}
 
 
 void HttpClientImpl::Cancel()

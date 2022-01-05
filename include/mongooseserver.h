@@ -270,7 +270,7 @@ namespace pml
                 };
 
                 void HandleFirstChunk(httpchunks& chunk, mg_connection* pConnection, mg_http_message* pMessage);
-                void HandleLastChunk(httpchunks& chunk);
+                void HandleLastChunk(httpchunks& chunk, mg_connection* pConnection);
                 void HandleMultipartChunk(httpchunks& chunk, mg_http_message* pMessage);
                 void HandleGenericChunk(httpchunks& chunk, mg_http_message* pMessage);
                 void WorkoutBoundary(httpchunks& chunk);

@@ -479,6 +479,7 @@ void MongooseServer::WorkoutBoundary(httpchunks& chunk)
 
 void MongooseServer::EventHttpChunk(mg_connection *pConnection, void* pData)
 {
+    pmlLog(pml::LOG_TRACE) << "MongooseServer::EventHttpChunk";
     mg_http_message* pMessage = reinterpret_cast<mg_http_message*>(pData);
 
     auto ins  = m_mChunks.insert({pConnection, httpchunks()});
@@ -500,7 +501,7 @@ void MongooseServer::EventHttpChunk(mg_connection *pConnection, void* pData)
     ins.first->second.nCurrentSize += pMessage->chunk.len;
     if(ins.first->second.nCurrentSize >= ins.first->second.nTotalSize)
     {   //received all the data
-        HandleLastChunk(ins.first->second);
+        HandleLastChunk(ins.first->second, pConnection);
     }
 
     mg_http_delete_chunk(pConnection, pMessage);
@@ -535,7 +536,7 @@ void MongooseServer::HandleMultipartChunk(httpchunks& chunk, mg_http_message* pM
     }
 }
 
-void MongooseServer::HandleLastChunk(httpchunks& chunk)
+void MongooseServer::HandleLastChunk(httpchunks& chunk, mg_connection* pConnection)
 {
     pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tAll chunks received. Now do something with them...";
     chunk.vBuffer.clear();
@@ -546,7 +547,7 @@ void MongooseServer::HandleLastChunk(httpchunks& chunk)
     }
     if(chunk.pCallback)
     {
-        chunk.pCallback(chunk.theQuery, chunk.vParts, chunk.thePoint.second, chunk.theUser);
+        DoReply(pConnection, chunk.pCallback(chunk.theQuery, chunk.vParts, chunk.thePoint.second, chunk.theUser));
     }
     else
     {

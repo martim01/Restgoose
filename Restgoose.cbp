@@ -116,8 +116,8 @@
 			<Add directory="../../log/lib" />
 			<Add directory="$(#openssl_32.LIB)" />
 		</Linker>
-		<Unit filename="../../external/jsoncpp/dist/jsoncpp.cpp" />
-		<Unit filename="../../external/mongoose/mongoose.c">
+		<Unit filename="../jsoncpp/dist/jsoncpp.cpp" />
+		<Unit filename="../mongoose/mongoose.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../mongoose/mongoose.h" />
