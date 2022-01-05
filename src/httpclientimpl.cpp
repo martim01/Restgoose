@@ -272,6 +272,7 @@ static void evt_handler(mg_connection* pConnection, int nEvent, void* pEventData
     {
         mg_http_message* pReply = reinterpret_cast<mg_http_message*>(pEventData);
         pMessage->HandleMessageEvent(pReply);
+        pConnection->is_closing = 1;
     }
     else if(nEvent == MG_EV_HTTP_CHUNK)
     {

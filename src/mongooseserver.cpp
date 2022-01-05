@@ -538,31 +538,31 @@ void MongooseServer::HandleMultipartChunk(httpchunks& chunk, mg_http_message* pM
 
 void MongooseServer::HandleLastChunk(httpchunks& chunk, mg_connection* pConnection)
 {
-    pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tAll chunks received. Now do something with them...";
+    pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tAll chunks received. Now do something with them..." << chunk.nCurrentSize << "/" << chunk.nTotalSize;
     chunk.vBuffer.clear();
     if(chunk.pofs)
     {
         chunk.pofs->close();
         chunk.pofs = nullptr;
     }
-    if(chunk.pCallback)
-    {
-        DoReply(pConnection, chunk.pCallback(chunk.theQuery, chunk.vParts, chunk.thePoint.second, chunk.theUser));
-    }
-    else
+    if(chunk.pCallback == nullptr)
     {
         pmlLog(pml::LOG_ERROR) << "RestGoose:Server\tSomeone uploaded a big file to a non allowed endpoint";
         //@todo in the end we shouldn't get here.
         //for now remove any files that were uploaded
         for(auto data : chunk.vParts)
         {
-            if(data.data.Get().empty() == false)
+            if(data.filepath.Get().empty() == false)
             {
-                remove(data.data.Get().c_str());
+                remove(data.filepath.Get().c_str());
             }
         }
     }
-
+    else
+    {
+        DoReply(pConnection, chunk.pCallback(chunk.theQuery, chunk.vParts, chunk.thePoint.second, chunk.theUser));
+    }
+    m_mChunks.erase(pConnection);
 }
 
 
@@ -868,9 +868,11 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
             EventWebsocketMessage(pConnection, nEvent, pData);
             break;
         case MG_EV_HTTP_MSG:
+            pmlLog(pml::LOG_TRACE) << "HTTP_MSG: " << pConnection;
             EventHttp(pConnection, nEvent, pData);
             break;
         case MG_EV_HTTP_CHUNK:  //partial message
+            pmlLog(pml::LOG_TRACE) << "HTTP_CHUNK: " << pConnection;
             EventHttpChunk(pConnection, pData);
             break;
         case MG_EV_CLOSE:
