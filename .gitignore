@@ -33,3 +33,6 @@
 /*.depend
 /*.layout
 build/
+
+#cmake generated version.cpp
+src/version.cpp
