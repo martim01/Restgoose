@@ -8,12 +8,13 @@ namespace pml
 	namespace restgoose
 	{
 	    extern const char* GIT_TAG;
-   	    extern const char* GIT_REV;
-            extern const char* GIT_BRANCH;
+		extern const char* GIT_REV;
+		extern const char* GIT_BRANCH;
 	    extern const char* GIT_DATE;
 	    extern unsigned long VERSION_MAJOR;
-            extern unsigned long VERSION_MINOR;
-	    extern const char* VERSION_DATE;
+		extern unsigned long VERSION_MINOR;
+		extern unsigned long VERSION_PATCH;
+		extern const char* VERSION_STRING;
 	}
 }
 #endif

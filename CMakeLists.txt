@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
-project(restgoose LANGUAGES CXX C)
+project(restgoose LANGUAGES CXX C VERSION 1.0.0)
+
+message(STATUS "Restgoose Version: ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
+
+execute_process(COMMAND ${CMAKE_COMMAND} -DNAMESPACE=restgoose -DMAJOR=${PROJECT_VERSION_MAJOR} -DMINOR=${PROJECT_VERSION_MINOR} -DPATCH=${PROJECT_VERSION_PATCH} -P ${CMAKE_CURRENT_SOURCE_DIR}/version.cmake)
 
 SET(DIR_BASE $ENV{HOME} CACHE STRING "base location for libraries")
 SET(DIR_JSON ${DIR_BASE}/jsoncpp CACHE STRING "location of jsoncpp")
@@ -91,10 +95,6 @@ include_directories(${DIR_MONGOOSE})
 include_directories(${DIR_JSON}/dist)
 include_directories(${DIR_LOG}/include)
 include_directories("include")
-
-
-
-execute_process(COMMAND ${CMAKE_COMMAND} -DNAMESPACE=restgoose -P ${CMAKE_CURRENT_SOURCE_DIR}/version.cmake)
 
 
 SET(SOURCES "src/RestGoose.cpp" "src/mongooseserver.cpp" "src/utils.cpp" "src/websocketclient.cpp" "src/websocketclientimpl.cpp" 
