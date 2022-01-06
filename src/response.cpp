@@ -18,7 +18,7 @@ response::response(unsigned short nCode, const std::string& sReason) : nHttpCode
     jsonData["code"] = nCode;
 }
 
-response::response(unsigned short nCode) : nHttpCode(nCode), jsonData(Json::objectValue), contentType("application/json")
+response::response(unsigned short nCode) : nHttpCode(nCode), contentType("application/json")
 {}
 
 response::response(const response& aResponse) : nHttpCode(aResponse.nHttpCode), jsonData(aResponse.jsonData), contentType(aResponse.contentType), data(aResponse.data){};
