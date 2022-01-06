@@ -93,9 +93,9 @@ include_directories(${DIR_LOG}/include)
 include_directories("include")
 
 
-# Add a custom command that produces version.cpp, plus a dummy output that's not actually produced, in order to force version.cmake to always be re-run before the build
-execute_process(COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/version.cmake -- pml::restgoose)
-#ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/version.cpp ${CMAKE_CURRENT_BINARY_DIR}/_version.cpp COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/version.cmake -- pml::restgoose)
+
+execute_process(COMMAND ${CMAKE_COMMAND} -DNAMESPACE=restgoose -P ${CMAKE_CURRENT_SOURCE_DIR}/version.cmake)
+
 
 SET(SOURCES "src/RestGoose.cpp" "src/mongooseserver.cpp" "src/utils.cpp" "src/websocketclient.cpp" "src/websocketclientimpl.cpp" 
  "src/httpclientimpl.cpp" "src/httpclient.cpp" "src/response.cpp" "src/threadpool.cpp" "src/version.cpp"
