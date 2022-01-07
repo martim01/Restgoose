@@ -1116,7 +1116,7 @@ void MongooseServer::DoReply(mg_connection* pConnection,const response& theRespo
               << "Access-Control-Allow-Origin:*\r\n"
               << "Access-Control-Allow-Methods:GET, PUT, POST, HEAD, OPTIONS, DELETE\r\n"
               << "Access-Control-Allow-Headers:Content-Type, Accept, Authorization\r\n"
-              << "Access-Control-Max-AgeL3600\r\n\r\n";
+              << "Access-Control-Max-Age:3600\r\n\r\n";
 
 
         mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
