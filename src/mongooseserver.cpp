@@ -1242,7 +1242,7 @@ void MongooseServer::SendWebsocketMessage(const std::set<endpoint>& setEndpoints
     m_mutex.unlock();
     if(m_pPipe)
     {
-        mg_mgr_wakeup(m_pPipe);
+        mg_mgr_wakeup(m_pPipe, nullptr, 0);
     }
 }
 

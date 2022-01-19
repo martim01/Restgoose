@@ -142,7 +142,7 @@ bool WebSocketClientImpl::SendMessage(const endpoint& theEndpoint, const std::st
         m_mutex.unlock();
         if(m_pPipe)
         {
-            mg_mgr_wakeup(m_pPipe);
+            mg_mgr_wakeup(m_pPipe, nullptr, 0);
         }
         return true;
     }
