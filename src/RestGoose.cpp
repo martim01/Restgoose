@@ -1,9 +1,6 @@
 #include "RestGoose.h"
 #include "mongooseserver.h"
-
 using namespace pml::restgoose;
-
-
 
 
 Server::Server() : m_pImpl(std::unique_ptr<MongooseServer>(new MongooseServer()))

@@ -98,10 +98,11 @@ include_directories("include")
 
 
 SET(SOURCES "src/RestGoose.cpp" "src/mongooseserver.cpp" "src/utils.cpp" "src/websocketclient.cpp" "src/websocketclientimpl.cpp" 
- "src/httpclientimpl.cpp" "src/httpclient.cpp" "src/response.cpp" "src/threadpool.cpp" "src/version.cpp"
+ "src/httpclientimpl.cpp" "src/httpclient.cpp" "src/response.cpp" "src/threadpool.cpp" ${CMAKE_BINARY_DIR}/src/restgoose_version.cpp
  "${DIR_MONGOOSE}/mongoose.c" "${DIR_JSON}/dist/jsoncpp.cpp")
 
 add_library(restgoose SHARED ${SOURCES})
+target_include_directories(restgoose PUBLIC ${CMAKE_BINARY_DIR}/include)
 set_target_properties(restgoose PROPERTIES DEBUG_POSTFIX "d")
 
 list(APPEND flags "-fPIC" "-Wall" "-fpermissive"  "-std=c++14")
