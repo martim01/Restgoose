@@ -54,10 +54,15 @@ partData CreatePartData(const mg_http_part& mgpart)
     return part;
 }
 
+bool caseInsLess(const string& s1, const string& s2) 
+{
+    return std::lexicographical_compare(s1.begin(), s1.end(), s2.begin(), s2.end(), [](unsigned char a, unsigned char b){ return toupper(a) < toupper(b); });
+}
+
 
 bool RG_EXPORT operator<(const methodpoint& e1, const methodpoint& e2)
 {
-    return (e1.first.Get() < e2.first.Get() || (e1.first.Get() == e2.first.Get() && e1.second.Get() < e2.second.Get()));
+    return (e1.first.Get() < e2.first.Get() || (e1.first.Get() == e2.first.Get() && caseInsLess(e1.second.Get(), e2.second.Get())));
 }
 
 void mgpmlLog(const void* buff, int nLength, void* param)
@@ -792,7 +797,7 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
         }
 
         //find the callback function assigned to the method and endpoint
-        auto itCallback = m_mEndpoints.find(thePoint);
+            auto itCallback = m_mEndpoints.find(thePoint);
         if(itCallback != m_mEndpoints.end())
         {
             DoReply(pConnection, itCallback->second(query(sQuery), {CreatePartData(pMessage->body)}, thePoint.second, auth.second));
