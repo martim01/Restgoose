@@ -54,7 +54,7 @@ partData CreatePartData(const mg_http_part& mgpart)
     return part;
 }
 
-bool caseInsLess(const string& s1, const string& s2) 
+bool caseInsLess(const string& s1, const string& s2)
 {
     return std::lexicographical_compare(s1.begin(), s1.end(), s2.begin(), s2.end(), [](unsigned char a, unsigned char b){ return toupper(a) < toupper(b); });
 }
@@ -767,9 +767,9 @@ void MongooseServer::EventHttpWebsocket(mg_connection *pConnection, mg_http_mess
 
     mg_ws_upgrade(pConnection, pMessage, nullptr);
     char buffer[256];
-    mg_ntoa(&pConnection->peer, buffer, 256);
+    mg_ntoa(&pConnection->rem, buffer, 256);
     std::stringstream ssPeer;
-    ssPeer << buffer << ":" << pConnection->peer.port;
+    ssPeer << buffer << ":" << pConnection->rem.port;
     auto itSub = m_mSubscribers.insert(std::make_pair(pConnection, subscriber(uri, ipAddress(ssPeer.str())))).first;
     if(m_mUsers.empty())
     {   //if we have not set up any users then we are not using authentication so we don't need to authenticate the websocket
