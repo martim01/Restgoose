@@ -25,7 +25,25 @@ static struct mg_http_serve_opts s_ServerOpts;
 
 
 
+bool is_chunked(struct mg_http_message *hm) {
+  struct mg_str needle = mg_str_n("chunked", 7);
+  struct mg_str *te = mg_http_get_header(hm, "Transfer-Encoding");
+  return te != NULL && mg_strstr(*te, needle) != NULL;
+}
 
+void http_delete_chunk(struct mg_connection *c, struct mg_http_message *hm) {
+  struct mg_str ch = hm->chunk;
+  const char *end = (char *) &c->recv.buf[c->recv.len], *ce;
+  bool chunked = is_chunked(hm);
+  if (chunked) {
+    ch.len += 4, ch.ptr -= 2;  // \r\n before and after the chunk
+    while (ch.ptr > hm->body.ptr && *ch.ptr != '\n') ch.ptr--, ch.len++;
+  }
+  ce = &ch.ptr[ch.len];
+  if (ce < end) memmove((void *) ch.ptr, ce, (size_t) (end - ce));
+  c->recv.len -= ch.len;
+  if (c->pfn_data != NULL) c->pfn_data = (char *) c->pfn_data - ch.len;
+}
 
 
 partData CreatePartData(const mg_str& str)
@@ -403,9 +421,12 @@ methodpoint MongooseServer::GetMethodPoint(mg_http_message* pMessage)
 
 void MongooseServer::HandleFirstChunk(httpchunks& chunk, mg_connection* pConnection, mg_http_message* pMessage)
 {
+    pmlLog() << "Restgoose:Server\tHandleFirstChunk";
+
     auto auth = CheckAuthorization(pMessage);
     if(auth.first == false)
     {
+        pmlLog() << "Restgoose:Server\tHandleFirstChunk: SendAuthentication...";
         SendAuthenticationRequest(pConnection);
     }
     else
@@ -484,7 +505,6 @@ void MongooseServer::WorkoutBoundary(httpchunks& chunk)
 
 void MongooseServer::EventHttpChunk(mg_connection *pConnection, void* pData)
 {
-    pmlLog(pml::LOG_TRACE) << "MongooseServer::EventHttpChunk";
     mg_http_message* pMessage = reinterpret_cast<mg_http_message*>(pData);
 
     auto ins  = m_mChunks.insert({pConnection, httpchunks()});
@@ -504,12 +524,11 @@ void MongooseServer::EventHttpChunk(mg_connection *pConnection, void* pData)
     }
 
     ins.first->second.nCurrentSize += pMessage->chunk.len;
-    if(ins.first->second.nCurrentSize >= ins.first->second.nTotalSize)
+    if(pMessage->chunk.len == 0 && ins.first->second.nCurrentSize >= ins.first->second.nTotalSize)
     {   //received all the data
         HandleLastChunk(ins.first->second, pConnection);
     }
-
-    mg_http_delete_chunk(pConnection, pMessage);
+    http_delete_chunk(pConnection, pMessage);
 }
 
 void MongooseServer::HandleGenericChunk(httpchunks& chunk, mg_http_message* pMessage)
@@ -573,6 +592,8 @@ void MongooseServer::HandleLastChunk(httpchunks& chunk, mg_connection* pConnecti
 
 void MongooseServer::MultipartChunkBoundary(httpchunks& chunk, char c)
 {
+    //pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tMCB: " << c << "\t" << std::string(chunk.vBuffer.begin(), chunk.vBuffer.end());
+
     if(c == chunk.sBoundaryLast[chunk.vBuffer.size()])
     {
         chunk.vBuffer.push_back(c);
@@ -597,13 +618,17 @@ void MongooseServer::MultipartChunkBoundary(httpchunks& chunk, char c)
 
 void MongooseServer::MultipartChunkBoundaryFound(httpchunks& chunk, char c)
 {
-
     if(chunk.vParts.empty() == false)
     {
         if(chunk.vParts.back().filepath.Get().empty() == false && chunk.pofs)
         {
+            pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tClose file" << chunk.vParts.back().filepath;
             chunk.pofs->close();
             chunk.pofs = nullptr;
+        }
+        else
+        {
+            pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tName=" << chunk.vParts.back().name << "\tData=" << chunk.vParts.back().data;
         }
     }
 
@@ -633,6 +658,7 @@ void MongooseServer::MultipartChunkLastBoundaryFound(httpchunks& chunk, char c)
 
 void MongooseServer::MultipartChunkBoundarySearch(httpchunks& chunk, char c)
 {
+
     //store the buffered data before clearing it
     if(chunk.vBuffer.empty() == false && chunk.vParts.empty() == false)
     {
@@ -877,7 +903,6 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
             EventHttp(pConnection, nEvent, pData);
             break;
         case MG_EV_HTTP_CHUNK:  //partial message
-            pmlLog(pml::LOG_TRACE) << "HTTP_CHUNK: " << pConnection;
             EventHttpChunk(pConnection, pData);
             break;
         case MG_EV_CLOSE:
