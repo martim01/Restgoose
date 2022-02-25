@@ -970,7 +970,7 @@ MongooseServer::~MongooseServer()
 
 }
 
-bool MongooseServer::Init(const fileLocation& cert, const fileLocation& key, int nPort, const endpoint& apiRoot, bool bEnableWebsocket)
+bool MongooseServer::Init(const fileLocation& cert, const fileLocation& key, const ipAddress& addr, int nPort, const endpoint& apiRoot, bool bEnableWebsocket)
 {
     m_nPort = nPort;
     //check for ssl
@@ -992,20 +992,24 @@ bool MongooseServer::Init(const fileLocation& cert, const fileLocation& key, int
 
     mg_mgr_init(&m_mgr);
 
-    stringstream ss;
+    SetInterface(ipAddress("0.0.0.0"), nPort);
 
+    return true;
+}
+
+void MongooseServer::SetInterface(const ipAddress& addr, unsigned short nPort)
+{
+    stringstream ss;
     if(m_Cert.Get().empty())
     {
-        ss << "http://0.0.0.0:";
+        ss << "http://";
     }
     else
     {
-        ss << "https://0.0.0.0:";
+        ss << "https://";
     }
-    ss << nPort;
+    ss << addr << ":" << nPort;
     m_sServerName = ss.str();
-
-    return true;
 }
 
 void MongooseServer::Run(bool bThread, const std::chrono::milliseconds& timeout)

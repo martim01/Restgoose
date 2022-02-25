@@ -13,14 +13,19 @@ Server::~Server()
     m_pImpl->Stop();
 }
 
-bool Server::Init(const fileLocation& cert, const fileLocation& key, int nPort, const endpoint& apiRoot, bool bEnableWebsocket)
+bool Server::Init(const fileLocation& cert, const fileLocation& key,const ipAddress& addr, int nPort, const endpoint& apiRoot, bool bEnableWebsocket)
 {
-    return m_pImpl->Init(cert, key, nPort, apiRoot, bEnableWebsocket);
+    return m_pImpl->Init(cert, key, addr, nPort, apiRoot, bEnableWebsocket);
 }
 
-bool Server::Init(int nPort, const endpoint& apiRoot, bool bEnableWebsocket)
+bool Server::Init(const ipAddress& addr, int nPort, const endpoint& apiRoot, bool bEnableWebsocket)
 {
-    return m_pImpl->Init(fileLocation(""), fileLocation(""), nPort, apiRoot, bEnableWebsocket);
+    return m_pImpl->Init(fileLocation(""), fileLocation(""), addr, nPort, apiRoot, bEnableWebsocket);
+}
+
+void Server::SetInterface(const ipAddress& addr, unsigned short nPort)
+{
+    m_pImpl->SetInterface(addr, nPort);
 }
 
 void Server:: Run(bool bThread, const std::chrono::milliseconds& timeout)

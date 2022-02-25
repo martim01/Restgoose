@@ -41,8 +41,9 @@ namespace pml
 
                 friend class Server;
 
-                bool Init(const fileLocation& cert, const fileLocation& key, int nPort, const endpoint& apiRoot, bool bEnableWebsocket);
+                bool Init(const fileLocation& cert, const fileLocation& key, const ipAddress& addr,  int nPort, const endpoint& apiRoot, bool bEnableWebsocket);
 
+                void SetInterface(const ipAddress& addr, unsigned short nPort);
 
                 void AddBAUser(const userName& aUser, const password& aPassword);
                 void DeleteBAUser(const userName& aUser);
