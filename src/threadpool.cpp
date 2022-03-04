@@ -44,12 +44,20 @@ size_t ThreadPool::AddWorkers(size_t nWorkers)
 
 ThreadPool::~ThreadPool()
 {
+    Stop();
+}
+
+void ThreadPool::Stop()
+{
+    pmlLog(pml::LOG_TRACE) << "ThreadPool\tStop";
     m_bDone = true;
     m_condition.notify_all();
     for(auto& th : m_vThreads)
     {
         th.join();
     }
+    m_vThreads.clear();
+    pmlLog(pml::LOG_TRACE) << "ThreadPool\tStopped";
 }
 
 void ThreadPool::WorkerThread()

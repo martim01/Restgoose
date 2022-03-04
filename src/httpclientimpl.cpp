@@ -289,7 +289,7 @@ void HttpClientImpl::RunAsync(std::function<void(const clientResponse&, unsigned
 {
     m_pAsyncCallback = pCallback;
     m_nRunId = nRunId;
-    pmlLog(pml::LOG_TRACE) << "RunAsync: nRunId = " << nRunId << " Endpoint: " << m_point.second << " data: " << m_vPostData.back().filepath;
+    pmlLog(pml::LOG_TRACE) << "RunAsync: nRunId = " << nRunId << " Endpoint: " << m_point.second;// << " data: " << m_vPostData.back().filepath;
     Run(connectionTimeout, processTimeout);
 }
 

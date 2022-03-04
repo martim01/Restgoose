@@ -37,6 +37,7 @@
 					<Add option="-Wall" />
 					<Add option="-std=c++14" />
 					<Add option="-DBUILD_DLL" />
+					<Add option="-D_WIN32" />
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
@@ -116,8 +117,8 @@
 			<Add directory="../../log/lib" />
 			<Add directory="$(#openssl_32.LIB)" />
 		</Linker>
-		<Unit filename="../jsoncpp/dist/jsoncpp.cpp" />
-		<Unit filename="../mongoose/mongoose.c">
+		<Unit filename="../../external/jsoncpp/dist/jsoncpp.cpp" />
+		<Unit filename="../../external/mongoose/mongoose.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../mongoose/mongoose.h" />

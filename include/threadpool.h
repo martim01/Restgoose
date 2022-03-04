@@ -7,12 +7,13 @@
 #include <mutex>
 #include <condition_variable>
 #include <queue>
+#include "response.h"
 
 namespace pml
 {
     namespace restgoose
     {
-        class ThreadPool
+        class RG_EXPORT ThreadPool
         {
             public:
                 static ThreadPool& Get();
@@ -33,6 +34,7 @@ namespace pml
                 size_t CreateWorkers(size_t nMinThreads, size_t nMaxThreads);
                 size_t AddWorkers(size_t nWorkers);
 
+                void Stop();
             private:
                 ThreadPool();
                 ~ThreadPool();
