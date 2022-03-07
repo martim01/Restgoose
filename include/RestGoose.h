@@ -77,7 +77,7 @@ namespace pml
                 *   @param func the function to be called. The function is passed the query data, std::vector<partData> (for a PUT,PATCH or POST) the methodpoint and the userName if any.
                 The function should return a response which will be sent back to the client
                 **/
-                void AddNotFoundCallback(std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> func);
+                void AddNotFoundCallback(std::function<response(const httpMethod&, const query&, const std::vector<partData>&, const endpoint&, const userName&)> func);
 
                 ///< @brief Stops the server
                 void Stop();

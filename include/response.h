@@ -69,6 +69,7 @@ namespace pml
             Json::Value jsonData;
             headerValue contentType;
             textData data;
+            bool bFile;
         };
 
         struct RG_EXPORT clientResponse

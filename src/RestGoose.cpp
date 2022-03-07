@@ -44,7 +44,7 @@ bool Server::AddEndpoint(const httpMethod& method, const endpoint& theEndpoint, 
     return m_pImpl->AddEndpoint(methodpoint(method, theEndpoint), func);
 }
 
-void Server::AddNotFoundCallback(std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> func)
+void Server::AddNotFoundCallback(std::function<response(const httpMethod&, const query&, const std::vector<partData>&, const endpoint&, const userName&)> func)
 {
     return m_pImpl->AddNotFoundCallback(func);
 }
