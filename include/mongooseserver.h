@@ -73,7 +73,7 @@ namespace pml
 
                 /** @brief Adds a callback handler that is called if no handler is found for the endpoint
                 **/
-                void AddNotFoundCallback(std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> func);
+                void AddNotFoundCallback(std::function<response(const httpMethod&, const query&, const std::vector<partData>&, const endpoint&, const userName&)> func);
 
                 /** Removes a callback handler for an methodpoint
                 *   @param theMethodPoint a pair definining the HTTP method and methodpoint address
@@ -145,7 +145,7 @@ namespace pml
                 *   @param pData any associated data
                 **/
                 void EventHttp(mg_connection *pConnection, int nEvent, void* pData);
-
+                void EventWrite(mg_connection* pConnection);
                 void EventHttpWebsocket(mg_connection *pConnection, mg_http_message* pMessage, const endpoint& uri);
                 void EventHttpApi(mg_connection *pConnection, mg_http_message* pMessage, const methodpoint& thePoint);
                 void EventHttpApiMultipart(mg_connection *pConnection, mg_http_message* pMessage, const methodpoint& thePoint);
@@ -168,6 +168,8 @@ namespace pml
 
 
                 void DoReply(mg_connection* pConnection, const response& theResponse);
+                void DoReplyText(mg_connection* pConnection, const response& theResponse);
+                void DoReplyFile(mg_connection* pConnection, const response& theResponse);
                 void SendAuthenticationRequest(mg_connection* pConnection);
 
                 void SendOptions(mg_connection* pConnection, const endpoint& thEndpoint);
@@ -242,7 +244,7 @@ namespace pml
 
                 std::atomic<bool> m_bLoop;
                 std::unique_ptr<std::thread> m_pThread;
-                std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> m_callbackNotFound;
+                std::function<response(const httpMethod&, const query&, const std::vector<partData>&, const endpoint&, const userName&)> m_callbackNotFound;
 
                 std::map<userName, password> m_mUsers;
 
@@ -282,6 +284,8 @@ namespace pml
                 void MultipartChunkBoundarySearch(httpchunks& chunk, char c);
 
                 std::map<mg_connection*, httpchunks> m_mChunks;
+
+                std::map<mg_connection*, std::unique_ptr<std::ifstream> > m_mFileDownloads;
         };
     };
 };

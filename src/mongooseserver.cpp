@@ -830,7 +830,7 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
         }
         else if(m_callbackNotFound)
         {
-            DoReply(pConnection, m_callbackNotFound(query(sQuery), {}, thePoint.second, auth.second));
+            DoReply(pConnection, m_callbackNotFound(thePoint.first, query(sQuery), {}, thePoint.second, auth.second));
         }
         else
         {
@@ -871,7 +871,7 @@ void MongooseServer::EventHttpApiMultipart(mg_connection *pConnection, mg_http_m
         }
         else if(m_callbackNotFound)
         {
-            DoReply(pConnection, m_callbackNotFound(query(sQuery), {}, thePoint.second, auth.second));
+            DoReply(pConnection, m_callbackNotFound(thePoint.first, query(sQuery), {}, thePoint.second, auth.second));
         }
         else
         {
@@ -905,17 +905,23 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
         case MG_EV_HTTP_CHUNK:  //partial message
             EventHttpChunk(pConnection, pData);
             break;
+        case MG_EV_WRITE:
+            EventWrite(pConnection);
+            break;
         case MG_EV_CLOSE:
             if (is_websocket(pConnection))
             {
                 pConnection->fn_data = nullptr;
                 m_mSubscribers.erase(pConnection);
             }
+            else
+            {
+                m_mFileDownloads.erase(pConnection);
+            }
             break;
         case 0:
         case MG_EV_POLL:
         case MG_EV_READ:
-        case MG_EV_WRITE:
             break;
     }
 }
@@ -1127,6 +1133,19 @@ void MongooseServer::SendError(mg_connection* pConnection, const string& sError,
 
 void MongooseServer::DoReply(mg_connection* pConnection,const response& theResponse)
 {
+
+    if(theResponse.bFile == false)
+    {
+        DoReplyText(pConnection, theResponse);
+    }
+    else
+    {
+        DoReplyFile(pConnection, theResponse);
+    }
+}
+
+void MongooseServer::DoReplyText(mg_connection* pConnection, const response& theResponse)
+{
     std::string sReply;
     if(theResponse.contentType.Get() == "application/json")
     {
@@ -1139,8 +1158,6 @@ void MongooseServer::DoReply(mg_connection* pConnection,const response& theRespo
 
     pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tDoReply " << theResponse.nHttpCode;
     pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tDoReply " << sReply;
-
-
 
     stringstream ssHeaders;
     ssHeaders << "HTTP/1.1 " << theResponse.nHttpCode << " \r\n"
@@ -1155,6 +1172,54 @@ void MongooseServer::DoReply(mg_connection* pConnection,const response& theRespo
 
         mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
         mg_send(pConnection, sReply.c_str(), sReply.length());
+}
+
+void MongooseServer::DoReplyFile(mg_connection* pConnection, const response& theResponse)
+{
+    pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tDoReplyFile " << theResponse.nHttpCode;
+    pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tDoReplyFile " << theResponse.data;
+
+    auto itIfs = m_mFileDownloads.insert({pConnection, std::make_unique<std::ifstream>()}).first;
+    itIfs->second->open(theResponse.data.Get(), std::ifstream::ate | std::ifstream::binary);
+    if(itIfs->second->is_open())
+    {
+        itIfs->second->seekg(0, itIfs->second->end);
+        auto nLength = itIfs->second->tellg();
+        itIfs->second->seekg(0, itIfs->second->beg);
+
+        stringstream ssHeaders;
+        ssHeaders << "HTTP/1.1 " << theResponse.nHttpCode << " \r\n"
+                << "Content-Type: " << theResponse.contentType.Get() << "\r\n"
+                << "Content-Length: " << nLength << "\r\n"
+                << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
+                << "Access-Control-Allow-Origin:*\r\n"
+                << "Access-Control-Allow-Methods:GET, PUT, POST, HEAD, OPTIONS, DELETE\r\n"
+                << "Access-Control-Allow-Headers:Content-Type, Accept, Authorization\r\n"
+                << "Access-Control-Max-Age:3600\r\n\r\n";
+
+        mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
+        EventWrite(pConnection);
+    }
+    else
+    {
+        //send a 404 response
+        m_mFileDownloads.erase(pConnection);
+    }
+}
+
+void MongooseServer::EventWrite(mg_connection* pConnection)
+{
+    auto itFile = m_mFileDownloads.find(pConnection);
+    if(itFile != m_mFileDownloads.end())
+    {
+        char buffer[65535];
+        itFile->second->read(buffer, 65535);
+        mg_send(pConnection, reinterpret_cast<void*>(buffer), itFile->second->gcount());
+        if(itFile->second->gcount() < 65535)
+        {
+            m_mFileDownloads.erase(pConnection);
+        }
+    }
 }
 
 
@@ -1349,7 +1414,7 @@ void MongooseServer::Signal(const response& resp)
 }
 
 
-void MongooseServer::AddNotFoundCallback(std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> func)
+void MongooseServer::AddNotFoundCallback(std::function<response(const httpMethod&, const query&, const std::vector<partData>&, const endpoint&, const userName&)> func)
 {
     m_callbackNotFound = func;
 }
