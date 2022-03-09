@@ -1083,6 +1083,7 @@ void MongooseServer::Stop()
         m_pThread->join();
         m_pThread = nullptr;
     }
+    mg_mgr_free(&m_mgr);
 }
 
 bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, std::function<bool(const endpoint&, const userName&, const ipAddress& )> funcAuthentication, std::function<bool(const endpoint&, const Json::Value&)> funcMessage, std::function<void(const endpoint&, const ipAddress&)> funcClose)
@@ -1179,7 +1180,7 @@ void MongooseServer::DoReplyFile(mg_connection* pConnection, const response& the
     pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tDoReplyFile " << theResponse.nHttpCode;
     pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tDoReplyFile " << theResponse.data;
 
-    auto itIfs = m_mFileDownloads.insert({pConnection, std::make_unique<std::ifstream>()}).first;
+    auto itIfs = m_mFileDownloads.insert(std::make_pair(pConnection, std::make_unique<std::ifstream>())).first;
     itIfs->second->open(theResponse.data.Get(), std::ifstream::ate | std::ifstream::binary);
     if(itIfs->second->is_open())
     {

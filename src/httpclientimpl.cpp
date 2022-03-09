@@ -334,6 +334,7 @@ const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& conne
     {
         m_pAsyncCallback(m_response, m_nRunId);
     }
+    mg_mgr_free(&mgr);
     return m_response;
 }
 
@@ -560,6 +561,7 @@ void HttpClientImpl::HandleMultipartWroteEvent(mg_connection* pConnection)
 
 HttpClientImpl::~HttpClientImpl()
 {
+
 }
 
 
