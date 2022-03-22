@@ -40,7 +40,7 @@ namespace pml
                 void HandleChunkEvent(mg_connection* pConnection, mg_http_message* pReply);
                 void HandleErrorEvent(const char* error);
 
-                enum {ERROR_SETUP, ERROR_TIMEOUT, ERROR_CONNECTION, ERROR_REPLY, ERROR_FILE_READ, ERROR_FILE_WRITE, USER_CANCELLED};
+
 
             private:
 

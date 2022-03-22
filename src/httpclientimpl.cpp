@@ -7,7 +7,6 @@
 #include "utils.h"
 #include "threadpool.h"
 
-
 using namespace pml::restgoose;
 using namespace std::placeholders;
 
@@ -77,7 +76,8 @@ void HttpClientImpl::HandleConnectEvent(mg_connection* pConnection)
     mg_str host = mg_url_host(m_point.second.Get().c_str());
     if(mg_url_is_ssl(m_point.second.Get().c_str()))
     {
-        mg_tls_opts opts;
+        pmlLog(pml::LOG_TRACE) << "HttpClient\tConnection is https";
+        mg_tls_opts opts{};
         opts.srvname = host;
         mg_tls_init(pConnection, &opts);
     }
@@ -150,7 +150,7 @@ void HttpClientImpl::GetResponseCode(mg_http_message* pReply)
     }
     catch(const std::exception& e)
     {
-        m_response.nCode = ERROR_REPLY;
+        m_response.nCode = clientResponse::enumError::ERROR_REPLY;
         m_eStatus = HttpClientImpl::COMPLETE;
     }
 }
@@ -249,7 +249,7 @@ void HttpClientImpl::SetupRedirect()
 
 void HttpClientImpl::HandleErrorEvent(const char* error)
 {
-    m_response.nCode = ERROR_CONNECTION;
+    m_response.nCode = clientResponse::enumError::ERROR_CONNECTION;
     m_response.data.Get() = error;
     m_eStatus = HttpClientImpl::COMPLETE;
 
@@ -308,7 +308,7 @@ const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& conne
     if(pConnection == nullptr)
     {
         pmlLog(pml::LOG_ERROR) << "RestGoose:HttpClient\tCould not create connection";
-        m_response.nCode = ERROR_SETUP;
+        m_response.nCode = clientResponse::enumError::ERROR_SETUP;
     }
     else
     {
@@ -327,7 +327,7 @@ const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& conne
         {
             pmlLog(pml::LOG_TRACE) << "RestGoose:HttpClient\tTimed out";
             //timed out
-            m_response.nCode = ERROR_TIMEOUT;
+            m_response.nCode = clientResponse::enumError::ERROR_TIME;
         }
     }
     if(m_pAsyncCallback)
@@ -362,7 +362,7 @@ unsigned long HttpClientImpl::WorkoutFileSize(const fileLocation& filename)
     m_ifs.open(filename.Get(), std::ifstream::ate | std::ifstream::binary);
     if(m_ifs.is_open() == false)
     {
-        m_response.nCode = ERROR_FILE_READ;
+        m_response.nCode = clientResponse::enumError::ERROR_FILE_READ;
         m_eStatus = COMPLETE;
     }
     else
@@ -475,7 +475,7 @@ bool HttpClientImpl::SendFile(mg_connection* pConnection, const fileLocation& fi
         if(m_ifs.is_open() == false)
         {
             pmlLog(pml::LOG_ERROR) << "HttpClient: Unable to open file " << filepath << " to upload.";
-            m_response.nCode = ERROR_FILE_READ;
+            m_response.nCode = clientResponse::enumError::ERROR_FILE_READ;
             m_eStatus = COMPLETE;
         }
     }
@@ -495,7 +495,7 @@ bool HttpClientImpl::SendFile(mg_connection* pConnection, const fileLocation& fi
         else if(m_ifs.bad())
         {
             pmlLog(pml::LOG_ERROR) << "HttpClient: Unable to read file " << filepath << " to upload.";
-            m_response.nCode = ERROR_FILE_READ;
+            m_response.nCode = clientResponse::enumError::ERROR_FILE_READ;
             m_eStatus = COMPLETE;
         }
     }
@@ -568,5 +568,5 @@ HttpClientImpl::~HttpClientImpl()
 void HttpClientImpl::Cancel()
 {
     m_eStatus = COMPLETE;
-    m_response.nCode = USER_CANCELLED;
+    m_response.nCode = clientResponse::enumError::USER_CANCELLED;
 }
