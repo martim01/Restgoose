@@ -27,42 +27,47 @@ HttpClientImpl::HttpClientImpl()
 
 }
 
-HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const std::map<headerName, headerValue> mExtraHeaders) :
+HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const std::map<headerName, headerValue> mExtraHeaders, clientResponse::enumResponse eResponse) :
     m_point(method, target),
-    m_mHeaders(mExtraHeaders)
+    m_mHeaders(mExtraHeaders),
+    m_eResponse(eResponse)
 {
 
 }
 
-HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& data, const headerValue& contentType, const std::map<headerName, headerValue> mExtraHeaders) :
+HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& data, const headerValue& contentType, const std::map<headerName, headerValue> mExtraHeaders, clientResponse::enumResponse eResponse) :
     m_point(method, target),
     m_contentType(contentType),
-    m_mHeaders(mExtraHeaders)
+    m_mHeaders(mExtraHeaders),
+    m_eResponse(eResponse)
 {
     m_vPostData.push_back(partData(partName(""), data));
 }
 
-HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const Json::Value& jsData, const std::map<headerName, headerValue> mExtraHeaders) :
+HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const Json::Value& jsData, const std::map<headerName, headerValue> mExtraHeaders, clientResponse::enumResponse eResponse) :
     m_point(method, target),
     m_contentType(headerValue("application/json")),
-    m_mHeaders(mExtraHeaders)
+    m_mHeaders(mExtraHeaders),
+    m_eResponse(eResponse)
 {
     m_vPostData.push_back(partData(partName(""), textData(ConvertFromJson(jsData))));
 }
 
-HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType, const std::map<headerName, headerValue> mExtraHeaders) :
+HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType, const std::map<headerName, headerValue> mExtraHeaders, clientResponse::enumResponse eResponse) :
     m_point(method, target),
     m_contentType(contentType),
-    m_mHeaders(mExtraHeaders)
+    m_mHeaders(mExtraHeaders),
+    m_eResponse(eResponse)
 {
     m_vPostData.push_back(partData(partName(""), filename, filepath));
 }
 
-HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const std::vector<partData>& vData, const std::map<headerName, headerValue> mExtraHeaders) :
+HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const std::vector<partData>& vData, const std::map<headerName, headerValue> mExtraHeaders, clientResponse::enumResponse eResponse) :
     m_point(method, target),
     m_contentType(MULTIPART),//"text/plain"),
     m_vPostData(vData),
-    m_mHeaders(mExtraHeaders)
+    m_mHeaders(mExtraHeaders),
+    m_eResponse(eResponse)
 {
 
 }
@@ -133,10 +138,20 @@ void HttpClientImpl::GetContentHeaders(mg_http_message* pReply)
 
         //if not text or application/json or sdp then treat as a file for now
         //@todo we need to work out how to decide if binary or text...
-        m_response.bBinary = (m_response.contentType.Get().find("text/") == std::string::npos &&
+        switch(m_eResponse)
+        {
+            case clientResponse::enumResponse::FILE:
+                m_response.bBinary = true;
+                break;
+            case clientResponse::enumResponse::TEXT:
+                m_response.bBinary = false;
+                break;
+            default:
+                m_response.bBinary = (m_response.contentType.Get().find("text/") == std::string::npos &&
                               m_response.contentType.Get().find("application/json") == std::string::npos &&
                               m_response.contentType.Get().find("application/sdp") == std::string::npos &&
                               m_response.contentType.Get().find("application/xml") == std::string::npos);
+        }
 
         if(m_response.bBinary)
         {   //if binary data then we save it to a file and pass back the filename

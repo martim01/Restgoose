@@ -17,20 +17,23 @@ namespace pml
         {
             public:
 
+
                 /** @brief Constructor - creates an HttpClient object that does not send any data to the server. Usually used for GET, DELETE or OPTIONS
                 *   @param method the HTTP action - one of GET, POST, PUT, PATCH, DELETE, OPTIONS
                 *   @param target the absolute url to connect to
                 *   @param mExtraHeaders map of extra headers to send.
+                *   @param eResponse one of clientResponse::enumResponse::TEXT, FILE or AUTO, decides whether the response data should be saved to a file or stored in the clientResponse data variable. If set to AUTO then the content-type header is looked at.
                 **/
-                HttpClient(const httpMethod& method, const endpoint& target, const std::map<headerName, headerValue> mExtraHeaders = {});
+                HttpClient(const httpMethod& method, const endpoint& target, const std::map<headerName, headerValue> mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO);
 
                 /** @brief Constructor - creates an HttpClient object that sends JSON formatted data to the server
                 *   @param method the HTTP action - one of POST, PUT, PATCH
                 *   @param target the absolute url to connect to
                 *   @param jsData the data to send to the server in JSON format
                 *   @param mExtraHeaders map of extra headers to send.
+                *   @param eResponse one of clientResponse::enumResponse::TEXT, FILE or AUTO, decides whether the response data should be saved to a file or stored in the clientResponse data variable. If set to AUTO then the content-type header is looked at.
                 **/
-                HttpClient(const httpMethod& method, const endpoint& target, const Json::Value& jsData, const std::map<headerName, headerValue> mExtraHeaders = {});
+                HttpClient(const httpMethod& method, const endpoint& target, const Json::Value& jsData, const std::map<headerName, headerValue> mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO);
 
                 /** @brief Constructor - creates an HttpClient object that sends arbitrary formatted data to the server
                 *   @param method the HTTP action - one of POST, PUT, PATCh
@@ -38,8 +41,9 @@ namespace pml
                 *   @param data the data to send to the server
                 *   @param contentType the media type of the data being sent to the server
                 *   @param mExtraHeaders map of extra headers to send.
+                *   @param eResponse one of clientResponse::enumResponse::TEXT, FILE or AUTO, decides whether the response data should be saved to a file or stored in the clientResponse data variable. If set to AUTO then the content-type header is looked at.
                 **/
-                HttpClient(const httpMethod& method, const endpoint& target, const textData& data, const headerValue& contentType = headerValue("text/plain"), const std::map<headerName, headerValue> mExtraHeaders = {});
+                HttpClient(const httpMethod& method, const endpoint& target, const textData& data, const headerValue& contentType = headerValue("text/plain"), const std::map<headerName, headerValue> mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO);
 
                 /** @brief Constructor - creates an HttpClient object that will upload a file to the server
                 *   @param method the HTTP action - one of POST, PUT, PATCH
@@ -48,8 +52,9 @@ namespace pml
                 *   @param filepath the location of the file
                 *   @param contentType the media type of the data being sent to the server
                 *   @param mExtraHeaders map of extra headers to send.
+                *   @param eResponse one of clientResponse::enumResponse::TEXT, FILE or AUTO, decides whether the response data should be saved to a file or stored in the clientResponse data variable. If set to AUTO then the content-type header is looked at.
                 **/
-                HttpClient(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType = headerValue("application/octet-stream"), const std::map<headerName, headerValue> mExtraHeaders = {});
+                HttpClient(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType = headerValue("application/octet-stream"), const std::map<headerName, headerValue> mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO);
 
                 /** @brief Constructor - creates an HttpClient object that sends multipart/form data to the server
                 *   @param method the HTTP action - one of POST, PUT, PATCH
@@ -57,8 +62,9 @@ namespace pml
                 *   @param vData vector of partData objects that define the multipart data
                 *   @param contentType the media type of the data being sent to the server
                 *   @param mExtraHeaders map of extra headers to send.
+                *   @param eResponse one of clientResponse::enumResponse::TEXT, FILE or AUTO, decides whether the response data should be saved to a file or stored in the clientResponse data variable. If set to AUTO then the content-type header is looked at.
                 **/
-                HttpClient(const httpMethod& method, const endpoint& target, const std::vector<partData>& vData, const std::map<headerName, headerValue> mExtraHeaders = {}); //multipart
+                HttpClient(const httpMethod& method, const endpoint& target, const std::vector<partData>& vData, const std::map<headerName, headerValue> mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO); //multipart
                 ~HttpClient();
 
                 /** @brief The function that attempts to connect to the server, send any data and retrieve any response. This is a synchronous function
