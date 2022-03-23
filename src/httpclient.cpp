@@ -7,7 +7,9 @@ using namespace pml::restgoose;
 
 
 
-HttpClient::~HttpClient() = default;
+HttpClient::~HttpClient()
+{
+}
 
 HttpClient::HttpClient(const httpMethod& method, const endpoint& target, const std::map<headerName, headerValue> mExtraHeaders) :
     m_pImpl(std::shared_ptr<HttpClientImpl>(new HttpClientImpl(method, target, mExtraHeaders)))

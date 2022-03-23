@@ -74,9 +74,9 @@ namespace pml
 
         struct RG_EXPORT clientResponse
         {
-            clientResponse() : nCode(0), nBytesReceived(0){}
+            clientResponse() : nHttpCode(0), nBytesReceived(0){}
 
-            unsigned short nCode;
+            unsigned short nHttpCode;
             headerValue contentType;
             unsigned long nContentLength;
             unsigned long nBytesReceived;

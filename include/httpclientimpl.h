@@ -69,6 +69,7 @@ namespace pml
 
                 methodpoint m_point;
                 headerValue m_contentType;
+
                 std::vector<partData> m_vPostData;
                 std::map<headerName, headerValue> m_mHeaders;
 

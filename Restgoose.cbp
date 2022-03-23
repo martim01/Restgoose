@@ -35,7 +35,8 @@
 				<Compiler>
 					<Add option="-O2" />
 					<Add option="-Wall" />
-					<Add option="-std=c++17" />
+					<Add option="--std=gnu++14" />
+					<Add option="-fpermissive" />
 					<Add option="-DBUILD_DLL" />
 					<Add option="-D_WIN32" />
 				</Compiler>

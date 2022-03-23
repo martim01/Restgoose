@@ -7,6 +7,7 @@
 #include "utils.h"
 #include "threadpool.h"
 
+
 using namespace pml::restgoose;
 using namespace std::placeholders;
 
@@ -73,9 +74,12 @@ void HttpClientImpl::HandleConnectEvent(mg_connection* pConnection)
     m_eStatus = HttpClientImpl::CONNECTED;
 
     //if https then do so
+    std::string sProto("http://");
     mg_str host = mg_url_host(m_point.second.Get().c_str());
     if(mg_url_is_ssl(m_point.second.Get().c_str()))
     {
+        sProto = "https://";
+
         pmlLog(pml::LOG_TRACE) << "HttpClient\tConnection is https";
         mg_tls_opts opts{};
         opts.srvname = host;
@@ -83,15 +87,18 @@ void HttpClientImpl::HandleConnectEvent(mg_connection* pConnection)
     }
 
     //start with http:// then find next /
-    size_t nStart = m_point.second.Get().substr(7).find('/');
-    std::string sEndpoint = m_point.second.Get().substr(nStart+7);
+    size_t nStart = m_point.second.Get().substr(sProto.length()).find('/');
+    std::string sEndpoint = m_point.second.Get().substr(nStart+sProto.length());
 
     //send the connection headers
     std::stringstream ss;
     ss << m_point.first.Get() << " " << sEndpoint << " HTTP/1.1" << CRLF
-       << "Host: " << std::string(host.ptr, host.len) << CRLF
-       << "Content-Type: " << m_contentType.Get() << CRLF
-       << "Content-Length: " << WorkoutDataSize() << CRLF;
+       << "Host: " << std::string(host.ptr, host.len) << CRLF;
+    if(m_contentType.Get().empty() == false)
+    {
+        ss << "Content-Type: " << m_contentType.Get() << CRLF;
+    }
+    ss << "Content-Length: " << WorkoutDataSize() << CRLF;
        //<< "Expect: 100-continue\r\n"
     for(auto pairHeader : m_mHeaders)
     {
@@ -100,6 +107,7 @@ void HttpClientImpl::HandleConnectEvent(mg_connection* pConnection)
     ss << CRLF;
     auto str = ss.str();
 
+    pmlLog(pml::LOG_TRACE) << "HttpClient:SendHeader: " << str;
     mg_send(pConnection, str.c_str(), str.length());
 
 }
@@ -113,14 +121,22 @@ void HttpClientImpl::GetContentHeaders(mg_http_message* pReply)
     if(type)
     {
         m_response.contentType = headerValue(std::string(type->ptr, type->len));
+
         auto nPos = m_response.contentType.Get().find(';');
         if(nPos != std::string::npos)
         {
             m_response.contentType = headerValue(m_response.contentType.Get().substr(0, nPos));
         }
+
+        pmlLog(pml::LOG_TRACE) << "HttpClient::Content-Type: " << m_response.contentType;
+
+
         //if not text or application/json or sdp then treat as a file for now
-        m_response.bBinary = (m_response.contentType.Get().find("text/") == std::string::npos && m_response.contentType.Get().find("application/json") == std::string::npos &&
-                              m_response.contentType.Get().find("application/sdp") == std::string::npos);
+        //@todo we need to work out how to decide if binary or text...
+        m_response.bBinary = (m_response.contentType.Get().find("text/") == std::string::npos &&
+                              m_response.contentType.Get().find("application/json") == std::string::npos &&
+                              m_response.contentType.Get().find("application/sdp") == std::string::npos &&
+                              m_response.contentType.Get().find("application/xml") == std::string::npos);
 
         if(m_response.bBinary)
         {   //if binary data then we save it to a file and pass back the filename
@@ -134,6 +150,9 @@ void HttpClientImpl::GetContentHeaders(mg_http_message* pReply)
         try
         {
             m_response.nContentLength = std::stoul(std::string(len->ptr, len->len));
+
+            pmlLog(pml::LOG_TRACE) << "HttpClient::Content-Length: " << m_response.nContentLength;
+
         }
         catch(const std::exception& e)
         {
@@ -146,24 +165,28 @@ void HttpClientImpl::GetResponseCode(mg_http_message* pReply)
 {
     try
     {
-        m_response.nCode = std::stoul(std::string(pReply->uri.ptr, pReply->uri.len));
+        m_response.nHttpCode = std::stoul(std::string(pReply->uri.ptr, pReply->uri.len));
+        pmlLog(pml::LOG_TRACE) << "HttpClient::Resonse code: " << m_response.nHttpCode;
     }
     catch(const std::exception& e)
     {
-        m_response.nCode = clientResponse::enumError::ERROR_REPLY;
+        m_response.nHttpCode = clientResponse::enumError::ERROR_REPLY;
         m_eStatus = HttpClientImpl::COMPLETE;
     }
 }
 
 void HttpClientImpl::HandleMessageEvent(mg_http_message* pReply)
 {
+    pmlLog(pml::LOG_TRACE) << "HttpClient:RawReply: " << std::string(pReply->message.ptr, pReply->message.len);
 
     //Check the response code for relocation...
     GetResponseCode(pReply);
     GetContentHeaders(pReply);
 
-    if(m_response.nCode == 300 || m_response.nCode == 301 || m_response.nCode == 302)
+    if(m_response.nHttpCode == 300 || m_response.nHttpCode == 301 || m_response.nHttpCode == 302)
     {   //redirects
+        pmlLog(pml::LOG_TRACE) << "HttpClient:Reply: Redirect";
+
         auto var = mg_http_get_header(pReply, "Location");
         if(var && var->len > 0)
         {
@@ -177,7 +200,9 @@ void HttpClientImpl::HandleMessageEvent(mg_http_message* pReply)
 
         if(m_response.bBinary == false)
         {
-            m_response.data.Get().assign(pReply->body.ptr, pReply->body.len);
+            m_response.data.Get().append(pReply->body.ptr, pReply->body.len);
+
+            pmlLog(pml::LOG_TRACE) << "HttpClient:Reply: " << m_response.data;
         }
         else if(m_ofs.is_open())
         {
@@ -196,6 +221,8 @@ void HttpClientImpl::HandleMessageEvent(mg_http_message* pReply)
 
 void HttpClientImpl::HandleChunkEvent(mg_connection* pConnection, mg_http_message* pReply)
 {
+    pmlLog(pml::LOG_TRACE) << "HttpClient:RawChunk: " << std::string(pReply->chunk.ptr, pReply->chunk.len);
+
     if(m_eStatus == HttpClientImpl::CONNECTED || m_eStatus == HttpClientImpl::SENDING)
     {
         GetResponseCode(pReply);
@@ -249,7 +276,7 @@ void HttpClientImpl::SetupRedirect()
 
 void HttpClientImpl::HandleErrorEvent(const char* error)
 {
-    m_response.nCode = clientResponse::enumError::ERROR_CONNECTION;
+    m_response.nHttpCode = clientResponse::enumError::ERROR_CONNECTION;
     m_response.data.Get() = error;
     m_eStatus = HttpClientImpl::COMPLETE;
 
@@ -276,6 +303,7 @@ static void evt_handler(mg_connection* pConnection, int nEvent, void* pEventData
     }
     else if(nEvent == MG_EV_HTTP_CHUNK)
     {
+        pmlLog(pml::LOG_TRACE) << "HttpClient:MG_EV_HTTP_CHUNK";
         mg_http_message* pReply = reinterpret_cast<mg_http_message*>(pEventData);
         pMessage->HandleChunkEvent(pConnection, pReply);
     }
@@ -308,12 +336,11 @@ const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& conne
     if(pConnection == nullptr)
     {
         pmlLog(pml::LOG_ERROR) << "RestGoose:HttpClient\tCould not create connection";
-        m_response.nCode = clientResponse::enumError::ERROR_SETUP;
+        m_response.nHttpCode = clientResponse::enumError::ERROR_SETUP;
     }
     else
     {
         DoLoop(mgr);
-
         if(m_eStatus == HttpClientImpl::REDIRECTING)
         {
             SetupRedirect();
@@ -327,7 +354,7 @@ const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& conne
         {
             pmlLog(pml::LOG_TRACE) << "RestGoose:HttpClient\tTimed out";
             //timed out
-            m_response.nCode = clientResponse::enumError::ERROR_TIME;
+            m_response.nHttpCode = clientResponse::enumError::ERROR_TIME;
         }
     }
     if(m_pAsyncCallback)
@@ -362,7 +389,7 @@ unsigned long HttpClientImpl::WorkoutFileSize(const fileLocation& filename)
     m_ifs.open(filename.Get(), std::ifstream::ate | std::ifstream::binary);
     if(m_ifs.is_open() == false)
     {
-        m_response.nCode = clientResponse::enumError::ERROR_FILE_READ;
+        m_response.nHttpCode = clientResponse::enumError::ERROR_FILE_READ;
         m_eStatus = COMPLETE;
     }
     else
@@ -475,7 +502,7 @@ bool HttpClientImpl::SendFile(mg_connection* pConnection, const fileLocation& fi
         if(m_ifs.is_open() == false)
         {
             pmlLog(pml::LOG_ERROR) << "HttpClient: Unable to open file " << filepath << " to upload.";
-            m_response.nCode = clientResponse::enumError::ERROR_FILE_READ;
+            m_response.nHttpCode = clientResponse::enumError::ERROR_FILE_READ;
             m_eStatus = COMPLETE;
         }
     }
@@ -495,7 +522,7 @@ bool HttpClientImpl::SendFile(mg_connection* pConnection, const fileLocation& fi
         else if(m_ifs.bad())
         {
             pmlLog(pml::LOG_ERROR) << "HttpClient: Unable to read file " << filepath << " to upload.";
-            m_response.nCode = clientResponse::enumError::ERROR_FILE_READ;
+            m_response.nHttpCode = clientResponse::enumError::ERROR_FILE_READ;
             m_eStatus = COMPLETE;
         }
     }
@@ -561,12 +588,11 @@ void HttpClientImpl::HandleMultipartWroteEvent(mg_connection* pConnection)
 
 HttpClientImpl::~HttpClientImpl()
 {
-
 }
 
 
 void HttpClientImpl::Cancel()
 {
     m_eStatus = COMPLETE;
-    m_response.nCode = clientResponse::enumError::USER_CANCELLED;
+    m_response.nHttpCode = clientResponse::enumError::USER_CANCELLED;
 }
