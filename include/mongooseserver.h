@@ -45,8 +45,12 @@ namespace pml
 
                 void SetInterface(const ipAddress& addr, unsigned short nPort);
 
-                void AddBAUser(const userName& aUser, const password& aPassword);
-                void DeleteBAUser(const userName& aUser);
+                void SetAuthorizationTypeBearer(std::function<bool(const std::string&)> callback);
+                void SetAuthorizationTypeBasic(const userName& aUser, const password& aPassword);
+                void SetAuthorizationTypeNone();
+
+                bool AddBAUser(const userName& aUser, const password& aPassword);
+                bool DeleteBAUser(const userName& aUser);
 
 
                 /** @brief Creates the thread that runs the webserver loop
@@ -178,6 +182,8 @@ namespace pml
                 void ClearMultipartData();
 
                 authorised CheckAuthorization(struct mg_http_message* pMessage);
+                authorised CheckAuthorizationBasic(struct mg_http_message* pMessage);
+                authorised CheckAuthorizationBearer(struct mg_http_message* pMessage);
 
                 struct subscriber
                 {
@@ -195,6 +201,8 @@ namespace pml
                 void RemoveWebsocketSubscriptions(subscriber& sub, const Json::Value& jsData);
 
                 bool AuthenticateWebsocket(subscriber& sub, const Json::Value& jsData);
+                bool AuthenticateWebsocketBasic(subscriber& sub, const Json::Value& jsData);
+                bool AuthenticateWebsocketBearer(subscriber& sub, const Json::Value& jsData);
 
                 void HandleAccept(mg_connection* pConnection);
 
@@ -228,8 +236,7 @@ namespace pml
                 std::map<endpoint, std::function<void(const endpoint&, const ipAddress& peer)>> m_mWebsocketCloseEndpoints;
                 std::multimap<endpoint, httpMethod> m_mmOptions;
 
-
-
+                std::function<bool(const std::string&)> m_tokenCallback;
 
 
                 std::map<mg_connection*, subscriber > m_mSubscribers;

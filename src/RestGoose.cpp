@@ -69,15 +69,28 @@ void Server::SendWebsocketMessage(const std::set<endpoint>& setEndpoints, const 
     m_pImpl->SendWebsocketMessage(setEndpoints, jsMessage);
 }
 
-
-void Server::AddBAUser(const userName& aUser, const password& aPassword)
+void Server::SetAuthorizationTypeBearer(std::function<bool(const std::string& theToken)> callback)
 {
-    m_pImpl->AddBAUser(aUser,aPassword);
+    m_pImpl->SetAuthorizationTypeBearer(callback);
+}
+void Server::SetAuthorizationTypeBasic(const userName& aUser, const password& aPassword)
+{
+    m_pImpl->SetAuthorizationTypeBasic(aUser, aPassword);
 }
 
-void Server::DeleteBAUser(const userName& aUser)
+void Server::SetAuthorizationTypeNone()
 {
-    m_pImpl->DeleteBAUser(aUser);
+    m_pImpl->SetAuthorizationTypeNone();
+}
+
+bool Server::AddBAUser(const userName& aUser, const password& aPassword)
+{
+    return m_pImpl->AddBAUser(aUser,aPassword);
+}
+
+bool Server::DeleteBAUser(const userName& aUser)
+{
+    return m_pImpl->DeleteBAUser(aUser);
 }
 
 std::set<methodpoint> Server::GetEndpoints()

@@ -161,7 +161,23 @@ bool MongooseServer::AuthenticateWebsocket(subscriber& sub, const Json::Value& j
 {
     std::lock_guard<std::mutex> lg(m_mutex);
 
-    if(jsData["user"].isString() && jsData["password"].isString())
+    if(m_tokenCallback)
+    {
+        return AuthenticateWebsocketBearer(sub, jsData);
+    }
+    else if(m_mUsers.empty() == false)
+    {
+        return AuthenticateWebsocketBasic(sub, jsData);
+    }
+    else
+    {
+        return true;
+    }
+}
+
+bool MongooseServer::AuthenticateWebsocketBasic(subscriber& sub, const Json::Value& jsData)
+{
+    if(jsData.isMember("user") && jsData["user"].isString() && jsData.isMember("password") && jsData["password"].isString())
     {
         auto itUser = m_mUsers.find(userName(jsData["user"].asString()));
         if(itUser != m_mUsers.end() && itUser->second.Get() == jsData["password"].asString())
@@ -199,6 +215,38 @@ bool MongooseServer::AuthenticateWebsocket(subscriber& sub, const Json::Value& j
         return false;
     }
 }
+
+bool MongooseServer::AuthenticateWebsocketBearer(subscriber& sub, const Json::Value& jsData)
+{
+    if(jsData["bearer"].isString())
+    {
+        auto itEndpoint = m_mWebsocketAuthenticationEndpoints.find(sub.theEndpoint);
+        if(itEndpoint != m_mWebsocketAuthenticationEndpoints.end())
+        {
+            if(itEndpoint->second(sub.theEndpoint, userName(jsData["bearer"].asString()), sub.peer))
+            {
+                pmlLog(pml::LOG_INFO) << "RestGoose:Server\tWebsocket subscriber: " << sub.peer << " authorized";
+                return true;
+            }
+            else
+            {
+                pmlLog(pml::LOG_WARN) << "RestGoose:Server\tWebsocket subscriber: " << sub.peer << " not authorized";
+                return false;
+            }
+        }
+        else
+        {
+            pmlLog(pml::LOG_WARN) << "RestGoose:Server\tWebsocket subscriber: " << sub.peer << " endpoint: " << sub.theEndpoint << " has not authorization function";
+            return false;
+        }
+    }
+    else
+    {
+        pmlLog(pml::LOG_WARN) << "RestGoose:Server\tWebsocket subscriber: " << sub.peer << " No bearer token sent";
+        return false;
+    }
+}
+
 
 
 void MongooseServer::EventWebsocketMessage(mg_connection *pConnection, int nEvent, void* pData)
@@ -362,13 +410,23 @@ void MongooseServer::EventWebsocketCtl(mg_connection *pConnection, int nEvent, v
 
 authorised MongooseServer::CheckAuthorization(mg_http_message* pMessage)
 {
-    std::lock_guard<std::mutex> lg(m_mutex);
-
-    if(m_mUsers.empty())
+    if(m_tokenCallback)
+    {
+        return CheckAuthorizationBearer(pMessage);
+    }
+    else if(m_mUsers.empty() == false)
+    {
+        return CheckAuthorizationBasic(pMessage);
+    }
+    else
     {
         return std::make_pair(true, userName(""));
     }
+}
 
+authorised MongooseServer::CheckAuthorizationBasic(mg_http_message* pMessage)
+{
+    std::lock_guard<std::mutex> lg(m_mutex);
 
     char sUser[255];
     char sPass[255];
@@ -382,6 +440,24 @@ authorised MongooseServer::CheckAuthorization(mg_http_message* pMessage)
     else
     {
         pmlLog(pml::LOG_INFO) << "RestGoose:Server\tCheckAuthorization: user '" << sUser <<" with given password not found";
+        return std::make_pair(false, userName(""));
+    }
+}
+
+authorised MongooseServer::CheckAuthorizationBearer(mg_http_message* pMessage)
+{
+    std::lock_guard<std::mutex> lg(m_mutex);
+
+    char sBearer[65535];
+    char sPass[255];
+    mg_http_creds(pMessage, sBearer, 65535, sPass, 255);
+
+    if(m_tokenCallback(sBearer))
+    {
+        return std::make_pair(true, userName(sBearer));
+    }
+    else
+    {
         return std::make_pair(false, userName(""));
     }
 
@@ -797,7 +873,7 @@ void MongooseServer::EventHttpWebsocket(mg_connection *pConnection, mg_http_mess
     std::stringstream ssPeer;
     ssPeer << buffer << ":" << pConnection->rem.port;
     auto itSub = m_mSubscribers.insert(std::make_pair(pConnection, subscriber(uri, ipAddress(ssPeer.str())))).first;
-    if(m_mUsers.empty())
+    if(m_mUsers.empty() && m_tokenCallback == nullptr)
     {   //if we have not set up any users then we are not using authentication so we don't need to authenticate the websocket
         itSub->second.bAuthenticated = true;
     }
@@ -956,6 +1032,7 @@ MongooseServer::MongooseServer() :
     m_nPort(0),
     m_PollTimeout{100},
     m_loopCallback(nullptr),
+    m_tokenCallback(nullptr),
     m_bLoop(true),
     m_pThread(nullptr),
     m_callbackNotFound(nullptr)
@@ -990,8 +1067,10 @@ bool MongooseServer::Init(const fileLocation& cert, const fileLocation& key, con
     stringstream ssRewrite;
     ssRewrite << "%80=https://" << hostname;
 
+
     m_bWebsocket = bEnableWebsocket;
 
+    pmlLog(pml::LOG_TRACE) << "Restgoose:Server\tWebsockets=" << m_bWebsocket;
 
     s_ServerOpts.root_dir = ".";
 // @todo    s_ServerOpts.extra_headers="X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown";
@@ -1353,21 +1432,28 @@ void MongooseServer::SetLoopCallback(std::function<void(std::chrono::millisecond
 }
 
 
-void MongooseServer::AddBAUser(const userName& aUser, const password& aPassword)
+bool MongooseServer::AddBAUser(const userName& aUser, const password& aPassword)
 {
+    if(m_tokenCallback) return false;
+
     std::lock_guard<std::mutex> lg(m_mutex);
 
     auto ins = m_mUsers.insert(std::make_pair(aUser, aPassword));
     if(ins.second == false)
     {
         ins.first->second = aPassword;
+        return true;
     }
+    return false;
 }
 
-void MongooseServer::DeleteBAUser(const userName& aUser)
+bool MongooseServer::DeleteBAUser(const userName& aUser)
 {
+    if(m_tokenCallback) return false;
+
     std::lock_guard<std::mutex> lg(m_mutex);
     m_mUsers.erase(aUser);
+    return true;
 }
 
 std::set<methodpoint> MongooseServer::GetEndpoints()
@@ -1420,5 +1506,23 @@ void MongooseServer::AddNotFoundCallback(std::function<response(const httpMethod
     m_callbackNotFound = func;
 }
 
+void MongooseServer::SetAuthorizationTypeBearer(std::function<bool(const std::string&)> callback)
+{
+    if(callback)
+    {
+        m_mUsers.clear();
+        m_tokenCallback = callback;
+    }
+}
 
+void MongooseServer::SetAuthorizationTypeBasic(const userName& aUser, const password& aPassword)
+{
+    m_tokenCallback = nullptr;
+    AddBAUser(aUser, aPassword);
+}
 
+void MongooseServer::SetAuthorizationTypeNone()
+{
+    m_tokenCallback = nullptr;
+    m_mUsers.clear();
+}

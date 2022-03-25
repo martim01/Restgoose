@@ -50,16 +50,33 @@ namespace pml
                 **/
                 void SetInterface(const ipAddress& addr, unsigned short nPort);
 
+                /** @brief Sets the authorization type to expect a bearer token in the Authorization header
+                *   @param callback a callback function that should inspect the token and return true if authorization is allowed
+                **/
+                void SetAuthorizationTypeBearer(std::function<bool(const std::string& theToken)> callback);
+
+                /** @brief Sets the authorization type to basic authentication
+                *   @param aUser a user name
+                *   @param aPassword the password that authenticates the user
+                **/
+                void SetAuthorizationTypeBasic(const userName& aUser, const password& aPassword);
+
+                /** @brief Removes all authorization
+                **/
+                void SetAuthorizationTypeNone();
+
                 /** @brief Adds a basic authentication user/password pair to the server
                 *   @param aUser the username
                 *   @param aPassword the password
+                *   @return <i>bool</i> will return false if the authorization type is not set to basic or the user already exists
                 **/
-                void AddBAUser(const userName& aUser, const password& aPassword);
+                bool AddBAUser(const userName& aUser, const password& aPassword);
 
                 /** @brief Deletes a user from basic authentication
                 *   @param aUser the username
+                *   @return <i>bool</i> will return false if the authorization type is not set to basic
                 **/
-                void DeleteBAUser(const userName& aUser);
+                bool DeleteBAUser(const userName& aUser);
 
                 /** @brief Adds an enpoint that a websocket client can connect to along with callback functions
                 *   @param theEndpoint the address the client is allowed to connect to
