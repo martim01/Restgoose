@@ -44,8 +44,8 @@
 					<Add option="-s" />
 					<Add library="user32" />
 					<Add library="pml_log" />
-					<Add library="libssl-1_1" />
-					<Add library="libcrypto-1_1" />
+					<Add library="libssl-1_1.dll" />
+					<Add library="libcrypto-1_1.dll" />
 					<Add library="ws2_32" />
 				</Linker>
 			</Target>
@@ -111,12 +111,12 @@
 			<Add directory="../../log/include" />
 			<Add directory="../../external/jsoncpp/dist" />
 			<Add directory="../../external/mongoose" />
-			<Add directory="$(#openssl_32.INCLUDE)" />
+			<Add directory="$(#openssl.INCLUDE)" />
 			<Add directory="include" />
 		</Compiler>
 		<Linker>
 			<Add directory="../../log/lib" />
-			<Add directory="$(#openssl_32.LIB)" />
+			<Add directory="$(#openssl)" />
 		</Linker>
 		<Unit filename="../../external/jsoncpp/dist/jsoncpp.cpp" />
 		<Unit filename="../../external/mongoose/mongoose.c">
