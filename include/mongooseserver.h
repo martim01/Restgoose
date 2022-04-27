@@ -213,7 +213,7 @@ namespace pml
                 bool InApiTree(const endpoint& theEndpoint);
 
                 mg_connection* m_pConnection;
-                mg_connection* m_pPipe;
+                int m_nPipe;
                 std::string m_sIniPath;
                 std::string m_sServerName;
 

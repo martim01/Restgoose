@@ -10,11 +10,11 @@ static void callback(struct mg_connection* pConnection, int nEvent, void* pEvent
     reinterpret_cast<WebSocketClientImpl*>(pFnData)->Callback(pConnection, nEvent, pEventData);
 }
 
-static void pipe_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_dat)
+static void pipe_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_data)
 {
     if(nEvent == MG_EV_READ)
     {
-        WebSocketClientImpl* pThread = reinterpret_cast<WebSocketClientImpl*>(pConnection->fn_data);
+        WebSocketClientImpl* pThread = reinterpret_cast<WebSocketClientImpl*>(fn_data);
         pThread->SendMessages();
     }
 }
@@ -28,11 +28,7 @@ WebSocketClientImpl::WebSocketClientImpl(std::function<bool(const endpoint& theE
 {
     mg_mgr_init(&m_mgr);        // Initialise event manager
 
-    m_pPipe = mg_mkpipe(&m_mgr, pipe_handler, nullptr);
-    if(m_pPipe)
-    {
-        m_pPipe->fn_data = reinterpret_cast<void*>(this);
-    }
+    m_nPipe = mg_mkpipe(&m_mgr, pipe_handler, reinterpret_cast<void*>(this));
 }
 
 WebSocketClientImpl::~WebSocketClientImpl()
@@ -140,9 +136,10 @@ bool WebSocketClientImpl::SendMessage(const endpoint& theEndpoint, const std::st
     {
         itConnection->second.q.push(sMessage);
         m_mutex.unlock();
-        if(m_pPipe)
+        if(m_nPipe != 0)
         {
-            mg_mgr_wakeup(m_pPipe, nullptr, 0);
+            send(m_nPipe, "hi", 2, 2);
+            //mg_mgr_wakeup(m_pPipe, nullptr, 0);
         }
         return true;
     }

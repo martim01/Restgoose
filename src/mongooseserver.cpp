@@ -137,11 +137,11 @@ void ev_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_da
     pThread->HandleEvent(pConnection, nEvent, pData);
 }
 
-void pipe_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_dat)
+void pipe_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_data)
 {
     if(nEvent == MG_EV_READ)
     {
-        MongooseServer* pThread = reinterpret_cast<MongooseServer*>(pConnection->fn_data);
+        MongooseServer* pThread = reinterpret_cast<MongooseServer*>(fn_data);
         pThread->SendWSQueue();
     }
 }
@@ -1027,7 +1027,7 @@ void MongooseServer::HandleAccept(mg_connection* pConnection)
 
 MongooseServer::MongooseServer() :
     m_pConnection(nullptr),
-    m_pPipe(nullptr),
+    m_nPipe(0),
     m_bWebsocket(false),
     m_nPort(0),
     m_PollTimeout{100},
@@ -1121,12 +1121,7 @@ void MongooseServer::Loop()
     {
         m_pConnection->fn_data = reinterpret_cast<void*>(this);
 
-        m_pPipe = mg_mkpipe(&m_mgr, pipe_handler, nullptr);
-        if(m_pPipe)
-        {
-            m_pPipe->fn_data = reinterpret_cast<void*>(this);
-        }
-
+        m_nPipe = mg_mkpipe(&m_mgr, pipe_handler, reinterpret_cast<void*>(this));
         pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tStarted: " << m_sServerName;
 
         auto now = std::chrono::high_resolution_clock::now();
@@ -1419,9 +1414,10 @@ void MongooseServer::SendWebsocketMessage(const std::set<endpoint>& setEndpoints
     m_mutex.lock();
     m_qWsMessages.push(wsMessage(setEndpoints, jsMessage));
     m_mutex.unlock();
-    if(m_pPipe)
+    if(m_nPipe != 0)
     {
-        mg_mgr_wakeup(m_pPipe, nullptr, 0);
+        send(m_nPipe, "hi", 2, 2);
+        //mg_mgr_wakeup(m_pPipe, nullptr, 0);
     }
 }
 

@@ -65,7 +65,7 @@ namespace pml
 
                 std::map<endpoint, connection> m_mConnection;
 
-                mg_connection* m_pPipe;
+                int* m_nPipe;
         };
     }
 }
