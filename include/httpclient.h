@@ -98,6 +98,9 @@ namespace pml
                 **/
                 void Cancel();
 
+                void SetBasicAuthentication(const userName& user, const password& pass);
+                void SetBearerAuthentication(const std::string& sToken);
+
             private:
                 std::shared_ptr<HttpClientImpl> m_pImpl;
         };

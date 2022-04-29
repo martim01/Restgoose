@@ -611,3 +611,17 @@ void HttpClientImpl::Cancel()
     m_eStatus = COMPLETE;
     m_response.nHttpCode = clientResponse::enumError::USER_CANCELLED;
 }
+
+
+void HttpClientImpl::SetBasicAuthentication(const userName& user, const password& pass)
+{
+    std::string str = user.Get()+":"+pass.Get();
+    char buff[128];
+    mg_base64_encode((const unsigned char*)str.c_str(), str.length(), buff);
+    m_mHeaders[headerName("Authorization")] =  headerValue("Basic "+std::string(buff));
+}
+
+void HttpClientImpl::SetBearerAuthentication(const std::string& sToken)
+{
+    m_mHeaders[headerName("Authorization")] =  headerValue("Bearer "+sToken);
+}

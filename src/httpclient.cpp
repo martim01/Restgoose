@@ -69,3 +69,8 @@ void HttpClient::Cancel()
 {
     m_pImpl->Cancel();
 }
+
+void HttpClient::SetBasicAuthentication(const userName& user, const password& pass)
+{
+    m_pImpl->SetBasicAuthentication(user, pass);
+}

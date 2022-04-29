@@ -40,7 +40,8 @@ namespace pml
                 void HandleChunkEvent(mg_connection* pConnection, mg_http_message* pReply);
                 void HandleErrorEvent(const char* error);
 
-
+                void SetBasicAuthentication(const userName& user, const password& pass);
+                void SetBearerAuthentication(const std::string& sToken);
 
             private:
 
