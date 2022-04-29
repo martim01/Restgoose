@@ -54,7 +54,26 @@ void WebSocketClientImpl::Loop()
     while (m_bRun)
     {
         mg_mgr_poll(&m_mgr, m_nTimeout);
-        //SendMessages();
+
+        //check for any connections that have timed out
+        auto now = std::chrono::system_clock::now();
+        for(auto itConnection = m_mConnection.begin(); itConnection != m_mConnection.end(); )
+        {
+            if(itConnection->second.bConnected == false && std::chrono::duration_cast<std::chrono::seconds>(now-itConnection->second.tp).count() > 3)
+            {
+                if(m_pConnectCallback)
+                {
+                    m_pConnectCallback(itConnection->first, false);
+                }
+                auto itErase = itConnection;
+                ++itConnection;
+                m_mConnection.erase(itErase);
+            }
+            else
+            {
+                ++itConnection;
+            }
+        }
     }
 }
 
@@ -62,7 +81,7 @@ void WebSocketClientImpl::Loop()
 void WebSocketClientImpl::SendMessages()
 {
     std::lock_guard<std::mutex> lg(m_mutex);
-    for(auto pairConnection : m_mConnection)
+    for(auto& pairConnection : m_mConnection)
     {
         while(pairConnection.second.q.empty() == false)
         {
@@ -84,10 +103,9 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
             break;
         case MG_EV_WS_OPEN:
             pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\tWebsocket connected";
-            if(m_pConnectCallback && m_pConnectCallback(FindUrl(pConnection), true) == false)
-            {
-                CloseConnection(pConnection, true);
-            }
+
+            MarkConnectionConnected(pConnection, true);
+
             break;
         case MG_EV_WS_MSG:
             if(m_pMessageCallback)
@@ -105,6 +123,7 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
             }
             break;
         case MG_EV_WS_CTL:
+            pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\tWebsocket ctl";
             if(m_pConnectCallback)
             {
                 mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
@@ -138,7 +157,7 @@ bool WebSocketClientImpl::SendMessage(const endpoint& theEndpoint, const std::st
         m_mutex.unlock();
         if(m_nPipe != 0)
         {
-            send(m_nPipe, "hi", 2, 2);
+            send(m_nPipe, "hi", 2, 0);
             //mg_mgr_wakeup(m_pPipe, nullptr, 0);
         }
         return true;
@@ -153,12 +172,17 @@ bool WebSocketClientImpl::Connect(const endpoint& theEndpoint)
     std::lock_guard<std::mutex> lg(m_mutex);
     if(m_mConnection.find(theEndpoint) == m_mConnection.end())
     {
+        pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\t" << "Try to connect to " << theEndpoint;
         auto pConnection = mg_ws_connect(&m_mgr, theEndpoint.Get().c_str(), callback, reinterpret_cast<void*>(this), nullptr);
         if(pConnection)
         {
             m_mConnection.insert(std::make_pair(theEndpoint, connection(pConnection)));
             return true;
         }
+    }
+    else
+    {
+        pmlLog(pml::LOG_WARN) << "RestGoose:WebsocketClient\t" << "Already connected to " << theEndpoint;
     }
     return false;
 }
@@ -204,4 +228,29 @@ endpoint WebSocketClientImpl::FindUrl(mg_connection* pConnection)
         }
     }
     return endpoint("");
+}
+
+void WebSocketClientImpl::MarkConnectionConnected(mg_connection* pConnection, bool bConnected)
+{
+    for(auto& pairConnection : m_mConnection)
+    {
+        if(pairConnection.second.pConnection == pConnection)
+        {
+            pairConnection.second.bConnected = bConnected;
+
+            if(m_pConnectCallback)
+            {
+                bool bKeep = m_pConnectCallback(pairConnection.first, bConnected);
+                if(bConnected && bKeep == false)
+                {
+                    CloseConnection(pConnection, true);
+                }
+                else if(!bConnected)
+                {
+                    CloseConnection(pConnection, false);
+                }
+            }
+            break;
+        }
+    }
 }

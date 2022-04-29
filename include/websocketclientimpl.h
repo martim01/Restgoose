@@ -8,6 +8,7 @@
 #include <mutex>
 #include "namedtype.h"
 #include <map>
+#include <chrono>
 
 namespace pml
 {
@@ -34,12 +35,13 @@ namespace pml
 
                 void SendMessages();
 
+
             private:
                 WebSocketClientImpl(std::function<bool(const endpoint& theEndpoint, bool)> pConnectCallback, std::function<bool(const endpoint& theEndpoint, const std::string&)> pMessageCallback, unsigned int nTimeout=250);
 
                 void Loop();
 
-
+                void MarkConnectionConnected(mg_connection* pConnection, bool bConnected = true);
 
                 void CloseConnection(mg_connection* pConnection, bool bTellServer);
 
@@ -58,8 +60,10 @@ namespace pml
 
                 struct connection
                 {
-                    connection(mg_connection* pc) : pConnection(pc){}
+                    connection(mg_connection* pc) : pConnection(pc), bConnected(false), tp(std::chrono::system_clock::now()){}
                     mg_connection* pConnection;
+                    bool bConnected;
+                    std::chrono::time_point<std::chrono::system_clock> tp;
                     std::queue<std::string> q;
                 };
 
