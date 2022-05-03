@@ -99,6 +99,12 @@ namespace pml
                 ///< @brief Stops the server
                 void Stop();
 
+
+                /** @brief Set the maximum number of connections the server will accept
+                *   @param nMax the maximum number of connections
+                **/
+                void SetMaxConnections(size_t nMax);
+
                 /** Adds a callback handler for an methodpoint
                 *   @param theEndpoint a pair definining the HTTP method and methodpoint address
                 *   @param func std::function that defines the callback function.The function is passed the query data, std::vector<partData> (for a PUT,PATCH or POST) the methodpoint and the userName if any.

@@ -21,7 +21,7 @@ extern "C" {
 #include <condition_variable>
 
 extern RG_EXPORT bool operator<(const methodpoint& e1, const methodpoint& e2);
-
+extern size_t GetNumberOfConnections(mg_mgr& mgr);
 
 using wsMessage = std::pair<std::set<endpoint>, Json::Value>;
 using authorised = std::pair<bool, userName>;
@@ -52,6 +52,8 @@ namespace pml
                 bool AddBAUser(const userName& aUser, const password& aPassword);
                 bool DeleteBAUser(const userName& aUser);
 
+
+                void SetMaxConnections(size_t nMax);
 
                 /** @brief Creates the thread that runs the webserver loop
                 *   @param bThread if true will run in a separate thread, if false will run in main thread
@@ -226,6 +228,7 @@ namespace pml
                 bool m_bWebsocket;
                 mg_mgr m_mgr;
                 unsigned long m_nPort;
+                size_t m_nMaxConnections;
 
                 std::chrono::milliseconds m_PollTimeout;
 

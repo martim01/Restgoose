@@ -133,3 +133,8 @@ const response& Server::GetSignalResponse() const
 {
     return m_pImpl->GetSignalResponse();
 }
+
+void Server::SetMaxConnections(size_t nMax)
+{
+    m_pImpl->SetMaxConnections(nMax);
+}

@@ -1,6 +1,7 @@
 #include "websocketclientimpl.h"
 #include "mongoose.h"
 #include "log.h"
+#include "mongooseserver.h"
 
 using namespace pml::restgoose;
 
@@ -65,6 +66,9 @@ void WebSocketClientImpl::Loop()
                 {
                     m_pConnectCallback(itConnection->first, false);
                 }
+                pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\tWebsocket connection timeout ";
+                itConnection->second.pConnection->is_closing = 1;
+
                 auto itErase = itConnection;
                 ++itConnection;
                 m_mConnection.erase(itErase);
@@ -99,13 +103,11 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
     {
         case MG_EV_ERROR:
             pmlLog(pml::LOG_ERROR) << "RestGoose:WebsocketClient\tWebsocket error: " << (char*)pEventData;
-            CloseConnection(pConnection, false);
+            MarkConnectionConnected(pConnection, false);
             break;
         case MG_EV_WS_OPEN:
-            pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\tWebsocket connected";
-
+            pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\tWebsocket connected " << GetNumberOfConnections(m_mgr);
             MarkConnectionConnected(pConnection, true);
-
             break;
         case MG_EV_WS_MSG:
             if(m_pMessageCallback)
@@ -182,7 +184,7 @@ bool WebSocketClientImpl::Connect(const endpoint& theEndpoint)
     }
     else
     {
-        pmlLog(pml::LOG_WARN) << "RestGoose:WebsocketClient\t" << "Already connected to " << theEndpoint;
+        pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\t" << "Already connected to " << theEndpoint;
     }
     return false;
 }
@@ -194,6 +196,7 @@ void WebSocketClientImpl::CloseConnection(mg_connection* pConnection, bool bTell
     {
         mg_ws_send(pConnection, nullptr, 0, WEBSOCKET_OP_CLOSE);
     }
+    pConnection->is_closing = 1;    //let mongoose know to get rid of the connection
 
     for(auto pairConnection : m_mConnection)
     {
@@ -203,8 +206,6 @@ void WebSocketClientImpl::CloseConnection(mg_connection* pConnection, bool bTell
             break;
         }
     }
-
-    //@todo do we need to close this another way as well??
 }
 
 void WebSocketClientImpl::CloseConnection(const endpoint& theEndpoint)
@@ -213,6 +214,7 @@ void WebSocketClientImpl::CloseConnection(const endpoint& theEndpoint)
     if(itConnection != m_mConnection.end())
     {
         mg_ws_send(itConnection->second.pConnection, nullptr, 0, WEBSOCKET_OP_CLOSE);
+        itConnection->second.pConnection->is_draining = 1; //send everything then close
         m_mConnection.erase(itConnection);
     }
 }
@@ -254,3 +256,5 @@ void WebSocketClientImpl::MarkConnectionConnected(mg_connection* pConnection, bo
         }
     }
 }
+
+

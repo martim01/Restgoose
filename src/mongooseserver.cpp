@@ -12,6 +12,7 @@
 #include <chrono>
 #include "utils.h"
 #include <algorithm>
+#include <limits>
 
 using namespace std;
 using namespace std::placeholders;
@@ -43,6 +44,22 @@ void http_delete_chunk(struct mg_connection *c, struct mg_http_message *hm) {
   if (ce < end) memmove((void *) ch.ptr, ce, (size_t) (end - ce));
   c->recv.len -= ch.len;
   if (c->pfn_data != NULL) c->pfn_data = (char *) c->pfn_data - ch.len;
+}
+
+
+size_t GetNumberOfConnections(mg_mgr& mgr)
+{
+    size_t nCount = 0;
+    mg_connection* pTmp = mgr.conns;
+    if(pTmp)
+    {
+        nCount++;
+        while((pTmp = pTmp->next) != nullptr)
+        {
+            ++nCount;
+        }
+    }
+    return nCount;
 }
 
 
@@ -1004,6 +1021,12 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
 
 void MongooseServer::HandleAccept(mg_connection* pConnection)
 {
+    if(GetNumberOfConnections(m_mgr) > m_nMaxConnections)
+    {
+        pmlLog(pml::LOG_DEBUG) << "Restgoose:Server\tAccept connection: REACHED MAXIMUM";
+        pConnection->is_closing = 1;
+        return;
+    }
 
     if(mg_url_is_ssl(m_sServerName.c_str()))
     {
@@ -1030,6 +1053,7 @@ MongooseServer::MongooseServer() :
     m_nPipe(0),
     m_bWebsocket(false),
     m_nPort(0),
+    m_nMaxConnections(std::numeric_limits<size_t>::max()),
     m_PollTimeout{100},
     m_loopCallback(nullptr),
     m_tokenCallback(nullptr),
@@ -1521,4 +1545,10 @@ void MongooseServer::SetAuthorizationTypeNone()
 {
     m_tokenCallback = nullptr;
     m_mUsers.clear();
+}
+
+
+void MongooseServer::SetMaxConnections(size_t nMax)
+{
+    m_nMaxConnections = nMax;
 }
