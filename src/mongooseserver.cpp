@@ -1087,7 +1087,7 @@ MongooseServer::~MongooseServer()
 
 }
 
-bool MongooseServer::Init(const fileLocation& cert, const fileLocation& key, const ipAddress& addr, int nPort, const endpoint& apiRoot, bool bEnableWebsocket)
+bool MongooseServer::Init(const fileLocation& cert, const fileLocation& key, const ipAddress& addr, int nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
 {
     m_nPort = nPort;
     //check for ssl
@@ -1103,6 +1103,7 @@ bool MongooseServer::Init(const fileLocation& cert, const fileLocation& key, con
 
 
     m_bWebsocket = bEnableWebsocket;
+    m_bSendPings = bSendPings;
 
     pmlLog(pml::LOG_TRACE) << "Restgoose:Server\tWebsockets=" << m_bWebsocket;
 
@@ -1169,7 +1170,7 @@ void MongooseServer::Loop()
                 m_loopCallback(diff);
             }
 
-            if(m_bWebsocket)
+            if(m_bWebsocket && m_bSendPings)
             {
                 SendAndCheckPings(diff);
             }
@@ -1589,6 +1590,12 @@ void MongooseServer::SendAndCheckPings(const std::chrono::milliseconds& elapsed)
                         {
                             pmlLog(pml::LOG_WARN) << "Websocket from " << itSub->second.peer << " has not responded to PING. Close";
                             pConnection->is_closing = true;
+                            //call the close callback
+                            auto itCallback = m_mWebsocketCloseEndpoints.find(itSub->second.theEndpoint);
+                            if(itCallback != m_mWebsocketCloseEndpoints.end())
+                            {
+                                itCallback->second(itSub->second.theEndpoint, itSub->second.peer);
+                            }
                         }
                         else
                         {

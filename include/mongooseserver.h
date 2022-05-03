@@ -41,7 +41,7 @@ namespace pml
 
                 friend class Server;
 
-                bool Init(const fileLocation& cert, const fileLocation& key, const ipAddress& addr,  int nPort, const endpoint& apiRoot, bool bEnableWebsocket);
+                bool Init(const fileLocation& cert, const fileLocation& key, const ipAddress& addr,  int nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings);
 
                 void SetInterface(const ipAddress& addr, unsigned short nPort);
 
@@ -229,6 +229,7 @@ namespace pml
                 endpoint m_ApiRoot;
 
                 bool m_bWebsocket;
+                bool m_bSendPings;
                 mg_mgr m_mgr;
                 unsigned long m_nPort;
                 size_t m_nMaxConnections;

@@ -13,14 +13,14 @@ Server::~Server()
     m_pImpl->Stop();
 }
 
-bool Server::Init(const fileLocation& cert, const fileLocation& key,const ipAddress& addr, int nPort, const endpoint& apiRoot, bool bEnableWebsocket)
+bool Server::Init(const fileLocation& cert, const fileLocation& key,const ipAddress& addr, int nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
 {
-    return m_pImpl->Init(cert, key, addr, nPort, apiRoot, bEnableWebsocket);
+    return m_pImpl->Init(cert, key, addr, nPort, apiRoot, bEnableWebsocket, bSendPings);
 }
 
-bool Server::Init(const ipAddress& addr, int nPort, const endpoint& apiRoot, bool bEnableWebsocket)
+bool Server::Init(const ipAddress& addr, int nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
 {
-    return m_pImpl->Init(fileLocation(""), fileLocation(""), addr, nPort, apiRoot, bEnableWebsocket);
+    return m_pImpl->Init(fileLocation(""), fileLocation(""), addr, nPort, apiRoot, bEnableWebsocket, bSendPings);
 }
 
 void Server::SetInterface(const ipAddress& addr, unsigned short nPort)
