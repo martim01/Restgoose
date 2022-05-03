@@ -189,10 +189,11 @@ namespace pml
 
                 struct subscriber
                 {
-                    subscriber(const endpoint& anEndpoint, const ipAddress& Ip) : theEndpoint(anEndpoint), peer(Ip), bAuthenticated(false){}
+                    subscriber(const endpoint& anEndpoint, const ipAddress& Ip) : theEndpoint(anEndpoint), peer(Ip), bAuthenticated(false), bPonged(true){}
                     endpoint theEndpoint;
                     ipAddress peer;
                     bool bAuthenticated;
+                    bool bPonged;
                     std::set<endpoint> setEndpoints;
                 };
 
@@ -213,6 +214,8 @@ namespace pml
                 methodpoint GetMethodPoint(mg_http_message* pMessage);
 
                 bool InApiTree(const endpoint& theEndpoint);
+
+                void SendAndCheckPings(const std::chrono::milliseconds& elapsed);
 
                 mg_connection* m_pConnection;
                 int m_nPipe;
@@ -257,6 +260,8 @@ namespace pml
                 std::function<response(const httpMethod&, const query&, const std::vector<partData>&, const endpoint&, const userName&)> m_callbackNotFound;
 
                 std::map<userName, password> m_mUsers;
+
+                std::chrono::milliseconds m_timeSinceLastPingSent;
 
                 struct httpchunks
                 {

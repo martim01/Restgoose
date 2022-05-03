@@ -58,20 +58,48 @@ void WebSocketClientImpl::Loop()
 
         //check for any connections that have timed out
         auto now = std::chrono::system_clock::now();
+
         for(auto itConnection = m_mConnection.begin(); itConnection != m_mConnection.end(); )
         {
-            if(itConnection->second.bConnected == false && std::chrono::duration_cast<std::chrono::seconds>(now-itConnection->second.tp).count() > 3)
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now-itConnection->second.tp).count();
+
+            if(itConnection->second.bConnected == false && elapsed > 3000)
             {
+                pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\tWebsocket connection timeout ";
                 if(m_pConnectCallback)
                 {
                     m_pConnectCallback(itConnection->first, false);
                 }
-                pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\tWebsocket connection timeout ";
+
                 itConnection->second.pConnection->is_closing = 1;
 
                 auto itErase = itConnection;
                 ++itConnection;
                 m_mConnection.erase(itErase);
+            }
+            else if(itConnection->second.bConnected && elapsed > 2000)
+            {
+                itConnection->second.tp = std::chrono::system_clock::now();
+                if(itConnection->second.bPonged == false)    //not replied within the last second
+                {
+                    pmlLog(pml::LOG_WARN) << "Websocket has not responded to PING. Close " << itConnection->second.bPonged;
+                    itConnection->second.pConnection->is_closing = 1;
+
+                    if(m_pConnectCallback)
+                    {
+                        m_pConnectCallback(itConnection->first, false);
+                    }
+
+                    auto itErase = itConnection;
+                    ++itConnection;
+                    m_mConnection.erase(itErase);
+                }
+                else
+                {
+                    mg_ws_send(itConnection->second.pConnection, "hi", 2, WEBSOCKET_OP_PING);
+                    itConnection->second.bPonged = false;
+                    ++itConnection;
+                }
             }
             else
             {
@@ -102,7 +130,7 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
     switch(nEvent)
     {
         case MG_EV_ERROR:
-            pmlLog(pml::LOG_ERROR) << "RestGoose:WebsocketClient\tWebsocket error: " << (char*)pEventData;
+            pmlLog(pml::LOG_INFO) << "RestGoose:WebsocketClient\tWebsocket error: " << (char*)pEventData;
             MarkConnectionConnected(pConnection, false);
             break;
         case MG_EV_WS_OPEN:
@@ -110,32 +138,48 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
             MarkConnectionConnected(pConnection, true);
             break;
         case MG_EV_WS_MSG:
-            if(m_pMessageCallback)
             {
                 mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
-                std::string sMessage(pMessage->data.ptr, pMessage->data.len);
-                if(m_pMessageCallback(FindUrl(pConnection), sMessage) == false)
+                //CheckPong(pConnection, pMessage);
+
+                if(m_pMessageCallback)
                 {
-                    CloseConnection(pConnection, true);
+                    std::string sMessage(pMessage->data.ptr, pMessage->data.len);
+                    if(m_pMessageCallback(FindUrl(pConnection), sMessage) == false)
+                    {
+                        CloseConnection(pConnection, true);
+                    }
                 }
-            }
-            else
-            {
-                pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\tWebsocket message no callback";
             }
             break;
         case MG_EV_WS_CTL:
-            pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\tWebsocket ctl";
             if(m_pConnectCallback)
             {
                 mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
                 std::string sMessage(pMessage->data.ptr, pMessage->data.len);
                 if((pMessage->flags & 15) == 8)   //this is the close flag apparently
                 {
+                    pmlLog() << "Websocket closed by server";
                     m_pConnectCallback(FindUrl(pConnection), false);
                 }
+                CheckPong(pConnection, pMessage);
             }
             break;
+    }
+}
+
+void WebSocketClientImpl::CheckPong(mg_connection* pConnection, mg_ws_message* pMessage)
+{
+    if((pMessage->flags & WEBSOCKET_OP_PONG) != 0)
+    {
+        for(auto& pairConnection : m_mConnection)
+        {
+            if(pairConnection.second.pConnection == pConnection)
+            {
+                pairConnection.second.bPonged  = true;
+                break;
+            }
+        }
     }
 }
 
@@ -196,6 +240,7 @@ void WebSocketClientImpl::CloseConnection(mg_connection* pConnection, bool bTell
     {
         mg_ws_send(pConnection, nullptr, 0, WEBSOCKET_OP_CLOSE);
     }
+    pmlLog() << "WebSocketClientImpl::CloseConnection called by client";
     pConnection->is_closing = 1;    //let mongoose know to get rid of the connection
 
     for(auto pairConnection : m_mConnection)
@@ -239,9 +284,14 @@ void WebSocketClientImpl::MarkConnectionConnected(mg_connection* pConnection, bo
         if(pairConnection.second.pConnection == pConnection)
         {
             pairConnection.second.bConnected = bConnected;
+            if(bConnected)
+            {
+                pairConnection.second.tp = std::chrono::system_clock::now();    //mark first time connected for future ping/ponging
+            }
 
             if(m_pConnectCallback)
             {
+                pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\tMarkConnectionConnected  " << bConnected;
                 bool bKeep = m_pConnectCallback(pairConnection.first, bConnected);
                 if(bConnected && bKeep == false)
                 {

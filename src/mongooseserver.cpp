@@ -398,6 +398,15 @@ void MongooseServer::EventWebsocketCtl(mg_connection *pConnection, int nEvent, v
 {
     mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pData);
 
+    if((pMessage->flags & WEBSOCKET_OP_PONG) != 0)
+    {
+        auto itSub = m_mSubscribers.find(pConnection);
+        if(itSub != m_mSubscribers.end())
+        {
+            itSub->second.bPonged = true;
+        }
+    }
+
     std::string sData;
 
     if((pMessage->flags & WEBSOCKET_OP_TEXT) != 0)
@@ -1059,7 +1068,8 @@ MongooseServer::MongooseServer() :
     m_tokenCallback(nullptr),
     m_bLoop(true),
     m_pThread(nullptr),
-    m_callbackNotFound(nullptr)
+    m_callbackNotFound(nullptr),
+    m_timeSinceLastPingSent{0}
 {
     #ifdef __WXDEBUG__
     mg_log_set("2");
@@ -1153,11 +1163,17 @@ void MongooseServer::Loop()
         {
             mg_mgr_poll(&m_mgr, m_PollTimeout.count());
 
+            auto diff = (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()-now.time_since_epoch()));
             if(m_loopCallback)
             {   //call the loopback functoin saying how long it is since we last called the loopback function
-                m_loopCallback((std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()-now.time_since_epoch())));
-                now = std::chrono::high_resolution_clock::now();
+                m_loopCallback(diff);
             }
+
+            if(m_bWebsocket)
+            {
+                SendAndCheckPings(diff);
+            }
+            now = std::chrono::high_resolution_clock::now();
 
 //            if(m_bWebsocket && !m_pPipe)
 //            {   //if we are doing websockets and for some reason our interupt pipe didn't get created then send the websocket messages
@@ -1551,4 +1567,37 @@ void MongooseServer::SetAuthorizationTypeNone()
 void MongooseServer::SetMaxConnections(size_t nMax)
 {
     m_nMaxConnections = nMax;
+}
+
+void MongooseServer::SendAndCheckPings(const std::chrono::milliseconds& elapsed)
+{
+    m_timeSinceLastPingSent += elapsed;
+    if(m_timeSinceLastPingSent > std::chrono::milliseconds(1000))
+    {
+        m_timeSinceLastPingSent = std::chrono::milliseconds(0);
+        if(m_pConnection)
+        {
+            for (mg_connection* pConnection = m_pConnection->mgr->conns; pConnection != NULL; pConnection = pConnection->next)
+            {
+                if(is_websocket(pConnection))
+                {
+                    auto itSub = m_mSubscribers.find(pConnection);
+                    if(itSub != m_mSubscribers.end())
+                    {
+                            //check PONG timeout
+                        if(!itSub->second.bPonged)    //not replied within the last second
+                        {
+                            pmlLog(pml::LOG_WARN) << "Websocket from " << itSub->second.peer << " has not responded to PING. Close";
+                            pConnection->is_closing = true;
+                        }
+                        else
+                        {
+                            mg_ws_send(pConnection, "hi", 2, WEBSOCKET_OP_PING);
+                            itSub->second.bPonged = false;
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
