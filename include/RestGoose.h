@@ -174,7 +174,13 @@ namespace pml
                 const response& GetSignalResponse() const;
 
 
+                /** @brief Gets the ip address of the peer that sent the request currently being handled
+                *   @note this is address is only valid whilst handling an api endpoint callback
+                **/
+                const ipAddress& GetCurrentPeer() const;
 
+
+                size_t GetNumberOfWebsocketConnections() const;
 
             private:
                 std::unique_ptr<MongooseServer> m_pImpl;

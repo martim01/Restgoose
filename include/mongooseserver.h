@@ -22,6 +22,7 @@ extern "C" {
 
 extern RG_EXPORT bool operator<(const methodpoint& e1, const methodpoint& e2);
 extern size_t GetNumberOfConnections(mg_mgr& mgr);
+extern size_t DoGetNumberOfWebsocketConnections(const mg_mgr& mgr);
 
 using wsMessage = std::pair<std::set<endpoint>, Json::Value>;
 using authorised = std::pair<bool, userName>;
@@ -104,6 +105,7 @@ namespace pml
 
                 unsigned long GetPort() const { return m_nPort; }
 
+                size_t GetNumberOfWebsocketConnections() const;
 
                 void Wait();
                 void PrimeWait();
@@ -120,6 +122,8 @@ namespace pml
                 void HandleEvent(mg_connection *pConnection, int nEvent, void* pData);
 
                 void SendWSQueue();
+
+                const ipAddress& GetCurrentPeer() { return m_lastPeer; }
 
                 ~MongooseServer();
 
@@ -263,6 +267,8 @@ namespace pml
                 std::map<userName, password> m_mUsers;
 
                 std::chrono::milliseconds m_timeSinceLastPingSent;
+
+                ipAddress m_lastPeer;
 
                 struct httpchunks
                 {

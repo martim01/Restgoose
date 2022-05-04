@@ -62,6 +62,23 @@ size_t GetNumberOfConnections(mg_mgr& mgr)
     return nCount;
 }
 
+size_t DoGetNumberOfWebsocketConnections(const mg_mgr& mgr)
+{
+    size_t nCount = 0;
+    mg_connection* pTmp = mgr.conns;
+    if(pTmp)
+    {
+        do
+        {
+            if(pTmp->is_websocket)
+            {
+                nCount++;
+            }
+        }while((pTmp = pTmp->next) != nullptr);
+    }
+    return nCount;
+}
+
 
 partData CreatePartData(const mg_str& str)
 {
@@ -926,8 +943,14 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
             sQuery = std::string(decode);
         }
 
+        char buffer[256];
+        mg_ntoa(&pConnection->rem, buffer, 256);
+        std::stringstream ssPeer;
+        ssPeer << buffer << ":" << pConnection->rem.port;
+        m_lastPeer = ipAddress(ssPeer.str());
+
         //find the callback function assigned to the method and endpoint
-            auto itCallback = m_mEndpoints.find(thePoint);
+        auto itCallback = m_mEndpoints.find(thePoint);
         if(itCallback != m_mEndpoints.end())
         {
             DoReply(pConnection, itCallback->second(query(sQuery), {CreatePartData(pMessage->body)}, thePoint.second, auth.second));
@@ -1609,4 +1632,9 @@ void MongooseServer::SendAndCheckPings(const std::chrono::milliseconds& elapsed)
             }
         }
     }
+}
+
+size_t MongooseServer::GetNumberOfWebsocketConnections() const
+{
+    return DoGetNumberOfWebsocketConnections(m_mgr);
 }

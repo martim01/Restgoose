@@ -138,3 +138,13 @@ void Server::SetMaxConnections(size_t nMax)
 {
     m_pImpl->SetMaxConnections(nMax);
 }
+
+const ipAddress& Server::GetCurrentPeer() const
+{
+    return m_pImpl->GetCurrentPeer();
+}
+
+size_t Server::GetNumberOfWebsocketConnections() const
+{
+    return m_pImpl->GetNumberOfWebsocketConnections();
+}
