@@ -398,38 +398,40 @@ void MongooseServer::EventWebsocketCtl(mg_connection *pConnection, int nEvent, v
 {
     mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pData);
 
-    if((pMessage->flags & WEBSOCKET_OP_PONG) != 0)
+    switch((pMessage->flags&15))
     {
-        auto itSub = m_mSubscribers.find(pConnection);
-        if(itSub != m_mSubscribers.end())
-        {
-            itSub->second.bPonged = true;
-        }
-    }
-
-    std::string sData;
-
-    if((pMessage->flags & WEBSOCKET_OP_TEXT) != 0)
-    {
-        sData.assign(pMessage->data.ptr, pMessage->data.len);
-    }
-    pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tWebsocket ctl: [" << (int)pMessage->flags << "] " << sData;
-
-
-
-    if((pMessage->flags & WEBSOCKET_OP_CLOSE) != 0)
-    {
-        pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tWebsocketCtl - close";
-        auto itSub = m_mSubscribers.find(pConnection);
-        if(itSub != m_mSubscribers.end())
-        {
-            auto itEndpoint = m_mWebsocketCloseEndpoints.find(itSub->second.theEndpoint);
-            if(itEndpoint != m_mWebsocketCloseEndpoints.end())
+        case WEBSOCKET_OP_PING:
             {
-                itEndpoint->second(itSub->second.theEndpoint, itSub->second.peer);
+                auto itSub = m_mSubscribers.find(pConnection);
+                if(itSub != m_mSubscribers.end())
+                {
+                    itSub->second.bPonged = true;
+                }
             }
-        }
-        m_mSubscribers.erase(pConnection);
+            break;
+        case WEBSOCKET_OP_TEXT:
+            {
+                std::string sData;
+                sData.assign(pMessage->data.ptr, pMessage->data.len);
+
+                pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tWebsocket ctl: [" << (int)pMessage->flags << "] " << sData;
+            }
+            break;
+        case WEBSOCKET_OP_CLOSE:
+            {
+                pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tWebsocketCtl - close";
+                auto itSub = m_mSubscribers.find(pConnection);
+                if(itSub != m_mSubscribers.end())
+                {
+                    auto itEndpoint = m_mWebsocketCloseEndpoints.find(itSub->second.theEndpoint);
+                    if(itEndpoint != m_mWebsocketCloseEndpoints.end())
+                    {
+                        itEndpoint->second(itSub->second.theEndpoint, itSub->second.peer);
+                    }
+                }
+                m_mSubscribers.erase(pConnection);
+            }
+            break;
     }
 }
 

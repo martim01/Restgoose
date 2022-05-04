@@ -170,7 +170,7 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
 
 void WebSocketClientImpl::CheckPong(mg_connection* pConnection, mg_ws_message* pMessage)
 {
-    if((pMessage->flags & WEBSOCKET_OP_PONG) != 0)
+    if((pMessage->flags & 15) == WEBSOCKET_OP_PONG)
     {
         for(auto& pairConnection : m_mConnection)
         {
