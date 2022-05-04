@@ -414,10 +414,9 @@ void MongooseServer::RemoveWebsocketSubscriptions(subscriber& sub, const Json::V
 void MongooseServer::EventWebsocketCtl(mg_connection *pConnection, int nEvent, void* pData)
 {
     mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pData);
-
     switch((pMessage->flags&15))
     {
-        case WEBSOCKET_OP_PING:
+        case WEBSOCKET_OP_PONG:
             {
                 auto itSub = m_mSubscribers.find(pConnection);
                 if(itSub != m_mSubscribers.end())

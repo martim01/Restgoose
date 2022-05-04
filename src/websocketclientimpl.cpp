@@ -157,7 +157,8 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
             {
                 mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
                 std::string sMessage(pMessage->data.ptr, pMessage->data.len);
-                if((pMessage->flags & 15) == 8)   //this is the close flag apparently
+
+                if((pMessage->flags & 15) == WEBSOCKET_OP_CLOSE)
                 {
                     pmlLog() << "Websocket closed by server";
                     m_pConnectCallback(FindUrl(pConnection), false);
@@ -170,7 +171,7 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
 
 void WebSocketClientImpl::CheckPong(mg_connection* pConnection, mg_ws_message* pMessage)
 {
-    if((pMessage->flags & 15) == WEBSOCKET_OP_PONG)
+    if((pMessage->flags & WEBSOCKET_OP_PONG) != 0)
     {
         for(auto& pairConnection : m_mConnection)
         {
