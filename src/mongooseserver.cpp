@@ -418,7 +418,6 @@ void MongooseServer::EventWebsocketCtl(mg_connection *pConnection, int nEvent, v
     {
         case WEBSOCKET_OP_PONG:
             {
-                pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tWebsocket ctl: PONG";
                 auto itSub = m_mSubscribers.find(pConnection);
                 if(itSub != m_mSubscribers.end())
                 {
