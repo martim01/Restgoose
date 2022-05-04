@@ -134,6 +134,7 @@ namespace pml
 
             private:
 
+                void CloseWebsocket(mg_connection* pConnection);
 
                 ///< @brief the main mongoose loop. Called in a separate thread by Run()
                 void Loop();

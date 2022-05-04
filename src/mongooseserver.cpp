@@ -418,6 +418,7 @@ void MongooseServer::EventWebsocketCtl(mg_connection *pConnection, int nEvent, v
     {
         case WEBSOCKET_OP_PONG:
             {
+                pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tWebsocket ctl: PONG";
                 auto itSub = m_mSubscribers.find(pConnection);
                 if(itSub != m_mSubscribers.end())
                 {
@@ -436,19 +437,24 @@ void MongooseServer::EventWebsocketCtl(mg_connection *pConnection, int nEvent, v
         case WEBSOCKET_OP_CLOSE:
             {
                 pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tWebsocketCtl - close";
-                auto itSub = m_mSubscribers.find(pConnection);
-                if(itSub != m_mSubscribers.end())
-                {
-                    auto itEndpoint = m_mWebsocketCloseEndpoints.find(itSub->second.theEndpoint);
-                    if(itEndpoint != m_mWebsocketCloseEndpoints.end())
-                    {
-                        itEndpoint->second(itSub->second.theEndpoint, itSub->second.peer);
-                    }
-                }
-                m_mSubscribers.erase(pConnection);
+                CloseWebsocket(pConnection);
             }
             break;
     }
+}
+
+void MongooseServer::CloseWebsocket(mg_connection* pConnection)
+{
+    auto itSub = m_mSubscribers.find(pConnection);
+    if(itSub != m_mSubscribers.end())
+    {
+        auto itEndpoint = m_mWebsocketCloseEndpoints.find(itSub->second.theEndpoint);
+        if(itEndpoint != m_mWebsocketCloseEndpoints.end())
+        {
+            itEndpoint->second(itSub->second.theEndpoint, itSub->second.peer);
+        }
+    }
+    m_mSubscribers.erase(pConnection);
 }
 
 
@@ -1038,7 +1044,7 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
             if (is_websocket(pConnection))
             {
                 pConnection->fn_data = nullptr;
-                m_mSubscribers.erase(pConnection);
+                CloseWebsocket(pConnection);
             }
             else
             {
