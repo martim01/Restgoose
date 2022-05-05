@@ -1017,7 +1017,7 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
 
     switch (nEvent)
     {
-        case MG_ERROR:
+        case MG_EV_ERROR:
             {
                 pmlLog(pml::LOG_ERROR) << reinterpret_cast<char*>(pData);
             }
