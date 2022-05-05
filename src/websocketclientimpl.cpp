@@ -129,6 +129,9 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
 
     switch(nEvent)
     {
+        case MG_EV_CONNECT:
+            HandleInitialConnection(pConnection);
+            break;
         case MG_EV_ERROR:
             pmlLog(pml::LOG_INFO) << "RestGoose:WebsocketClient\tWebsocket error: " << (char*)pEventData;
             MarkConnectionConnected(pConnection, false);
@@ -166,6 +169,25 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
                 CheckPong(pConnection, pMessage);
             }
             break;
+    }
+}
+
+void WebSocketClientImpl::HandleInitialConnection(mg_connection* pConnection)
+{
+    for(auto& pairConnection : m_mConnection)
+    {
+        if(pairConnection.second.pConnection == pConnection)
+        {
+            mg_str host = mg_url_host(pairConnection.first.Get().c_str());
+            if(mg_url_is_ssl(pairConnection.first.Get().c_str()))
+            {
+                pmlLog(pml::LOG_TRACE) << "WebsocketClient\tConnection is wss";
+                mg_tls_opts opts{};
+                opts.srvname = host;
+                mg_tls_init(pConnection, &opts);
+            }
+            break;
+        }
     }
 }
 

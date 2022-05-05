@@ -41,6 +41,7 @@ namespace pml
 
                 void Loop();
 
+                void HandleInitialConnection(mg_connection* pConnection);
                 void MarkConnectionConnected(mg_connection* pConnection, bool bConnected = true);
 
                 void CloseConnection(mg_connection* pConnection, bool bTellServer);

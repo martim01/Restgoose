@@ -117,7 +117,7 @@ bool RG_EXPORT operator<(const methodpoint& e1, const methodpoint& e2)
     return (e1.first.Get() < e2.first.Get() || (e1.first.Get() == e2.first.Get() && caseInsLess(e1.second.Get(), e2.second.Get())));
 }
 
-void mgpmlLog(const void* buff, int nLength, void* param)
+void mgpmlLog(const void* buff, size_t nLength, void* param)
 {
     std::string str((char*)buff, nLength);
     if(str.length() > 7 && str[4] == '-' && str[7] == '-')
