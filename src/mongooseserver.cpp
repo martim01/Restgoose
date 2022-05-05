@@ -1103,14 +1103,8 @@ MongooseServer::MongooseServer() :
     m_callbackNotFound(nullptr),
     m_timeSinceLastPingSent{0}
 {
-    #ifdef __WXDEBUG__
     mg_log_set("2");
     mg_log_set_callback(mgpmlLog, NULL);
-    #else
-    mg_log_set("0");
-    #endif // __WXDEBUG__
-
-
 }
 
 MongooseServer::~MongooseServer()

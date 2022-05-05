@@ -109,10 +109,10 @@ list(APPEND flags "-fPIC" "-Wall" "-fpermissive"  "-std=c++14")
 
 if(CMAKE_BUILD_TYPE MATCHES Release)
    list(APPEND flags "-O3")
-   target_compile_definitions(restgoose PUBLIC NDEBUG DLL_EXPORTS _MSL_STDINT_H)
+   target_compile_definitions(restgoose PUBLIC NDEBUG DLL_EXPORTS _MSL_STDINT_H MG_ENABLE_OPENSSL)
 else()
    list(APPEND flags "-g")
-   target_compile_definitions(restgoose PUBLIC DEBUG DLL_EXPORTS _MSL_STDINT_H)
+   target_compile_definitions(restgoose PUBLIC DEBUG DLL_EXPORTS _MSL_STDINT_H MG_ENABLE_OPENSSL)
 endif()
 
 target_compile_options(restgoose PRIVATE ${flags})
