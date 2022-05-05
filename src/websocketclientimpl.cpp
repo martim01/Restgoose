@@ -181,7 +181,7 @@ void WebSocketClientImpl::HandleInitialConnection(mg_connection* pConnection)
             mg_str host = mg_url_host(pairConnection.first.Get().c_str());
             if(mg_url_is_ssl(pairConnection.first.Get().c_str()))
             {
-                pmlLog(pml::LOG_TRACE) << "WebsocketClient\tConnection is wss";
+                pmlLog(pml::LOG_TRACE) << "WebsocketClient\tConnection with tls";
                 mg_tls_opts opts{};
                 opts.srvname = host;
                 mg_tls_init(pConnection, &opts);
