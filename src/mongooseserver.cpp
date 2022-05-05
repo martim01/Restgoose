@@ -1054,7 +1054,6 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
                 m_mFileDownloads.erase(pConnection);
             }
             break;
-        case 0:
         case MG_EV_POLL:
         case MG_EV_READ:
             break;
