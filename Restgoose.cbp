@@ -44,9 +44,9 @@
 					<Add option="-s" />
 					<Add library="user32" />
 					<Add library="pml_log" />
-					<Add library="libssl-1_1.dll" />
-					<Add library="libcrypto-1_1.dll" />
 					<Add library="ws2_32" />
+					<Add library="libssl-1_1" />
+					<Add library="libcrypto-1_1" />
 				</Linker>
 			</Target>
 			<Target title="Linux Release">
