@@ -1021,6 +1021,10 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
             {
                 pmlLog(pml::LOG_ERROR) << reinterpret_cast<char*>(pData);
             }
+            break;
+        case MG_EV_OPEN:
+            HandleOpen(pConnection);
+            break;
         case MG_EV_ACCEPT:
             HandleAccept(pConnection);
             break;
@@ -1060,15 +1064,22 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
     }
 }
 
+void MongooseServer::HandleOpen(mg_connection* pConnection)
+{
+    if(m_sAcl.empty() == false && mg_check_ip_acl(mg_str(m_sAcl.c_str()), pConnection->rem.ip) != 1)
+    {
+        pmlLog(pml::LOG_DEBUG) << "Restgoose:Server\tHandleOpen: Not allowed due to ACL";
+        pConnection->is_closing = 1;
+    }
+    else if(GetNumberOfConnections(m_mgr) > m_nMaxConnections)
+    {
+        pmlLog(pml::LOG_DEBUG) << "Restgoose:Server\tHandleOpen: REACHED MAXIMUM";
+        pConnection->is_closing = 1;
+    }
+}
+
 void MongooseServer::HandleAccept(mg_connection* pConnection)
 {
-    if(GetNumberOfConnections(m_mgr) > m_nMaxConnections)
-    {
-        pmlLog(pml::LOG_DEBUG) << "Restgoose:Server\tAccept connection: REACHED MAXIMUM";
-        pConnection->is_closing = 1;
-        return;
-    }
-
     if(mg_url_is_ssl(m_sServerName.c_str()))
     {
         pmlLog(pml::LOG_DEBUG) << "Restgoose:Server\tAccept connection: Turn on TLS";

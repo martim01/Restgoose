@@ -56,6 +56,9 @@ namespace pml
 
                 void SetMaxConnections(size_t nMax);
 
+                void SetAccessControlList(const std::string& sAcl) { m_sAcl = sAcl; }
+                const std::string& GetAccessControlList() const { return m_sAcl;}
+
                 /** @brief Creates the thread that runs the webserver loop
                 *   @param bThread if true will run in a separate thread, if false will run in main thread
                 *   @param nTimeoutms the time in milliseconds to wait for a mongoose event to happen
@@ -213,6 +216,7 @@ namespace pml
                 bool AuthenticateWebsocketBearer(subscriber& sub, const Json::Value& jsData);
 
                 void HandleAccept(mg_connection* pConnection);
+                void HandleOpen(mg_connection* pConnection);
 
                 void EventHttpChunk(mg_connection *pConnection, void* pData);
 
@@ -270,6 +274,8 @@ namespace pml
                 std::chrono::milliseconds m_timeSinceLastPingSent;
 
                 ipAddress m_lastPeer;
+
+                std::string m_sAcl;
 
                 struct httpchunks
                 {

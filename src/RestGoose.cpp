@@ -148,3 +148,13 @@ size_t Server::GetNumberOfWebsocketConnections() const
 {
     return m_pImpl->GetNumberOfWebsocketConnections();
 }
+
+void Server::SetAccessControlList(const std::string& sAcl)
+{
+    m_pImpl->SetAccessControlList(sAcl);
+}
+
+const std::string& Server::GetAccessControlList() const
+{
+    return m_pImpl->GetAccessControlList();
+}

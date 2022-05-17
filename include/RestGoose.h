@@ -106,6 +106,16 @@ namespace pml
                 **/
                 void SetMaxConnections(size_t nMax);
 
+                /** @brief Sets the access control list for the server
+                *   @param sAcl the access control list
+                *   @note the form is -[not allowed],+[allowed]
+                **/
+                void SetAccessControlList(const std::string& sAcl);
+
+                /** @brief Get the access control list
+                **/
+                const std::string& GetAccessControlList() const;
+
                 /** Adds a callback handler for an methodpoint
                 *   @param theEndpoint a pair definining the HTTP method and methodpoint address
                 *   @param func std::function that defines the callback function.The function is passed the query data, std::vector<partData> (for a PUT,PATCH or POST) the methodpoint and the userName if any.
