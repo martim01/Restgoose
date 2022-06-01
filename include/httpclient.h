@@ -98,8 +98,71 @@ namespace pml
                 **/
                 void Cancel();
 
-                void SetBasicAuthentication(const userName& user, const password& pass);
-                void SetBearerAuthentication(const std::string& sToken);
+                bool SetBasicAuthentication(const userName& user, const password& pass);
+                bool SetBearerAuthentication(const std::string& sToken);
+
+                /** @brief Set the file location of the certificate authority file to use (if any)
+                *   @param ca the file location
+                *   @return <i>bool</i> false if already called Run with a callback function
+                **/
+                bool SetCertificateAuthority(const fileLocation& ca);
+
+                /** @brief Sets the client certificate to use if server requires authentication
+                *   @param cert the path to the certificate file
+                *   @param key the path to the private key file
+                *   @return <i>bool</i> false if already called Run with a callback function
+                **/
+                bool SetClientCertificate(const fileLocation& cert, const fileLocation& key);
+
+
+                /** @brief Set the HTTP method to use
+                *   @param method the HTTP method (e.g. restgoose::GET)
+                *   @return <i>bool</i> false if already called Run with a callback function
+                **/
+                bool SetMethod(const httpMethod& method);
+
+                /** @brief Set the URL to connect to
+                *   @param target the URL endpoint to connect to
+                *   @return <i>bool</i> false if already called Run with a callback function
+                **/
+                bool SetEndpoint(const endpoint& target);
+
+                /** @brief Set the data to send (if a POST/PULL/PUT request) in JSON format
+                *   @param jsData the data to send
+                *   @return <i>bool</i> false if already called Run with a callback function
+                **/
+                bool SetData(const Json::Value& jsData);
+
+                /** @brief Set the data to send (if a POST/PULL/PUT request) in plain/text format
+                *   @param data the data to send
+                *   @return <i>bool</i> false if already called Run with a callback function
+                **/
+                bool SetData(const textData& data);
+
+                /** @brief Set the file to upload (if a POST/PULL/PUT request)
+                *   @param filename the name of the file
+                *   @param filepath the location of the file
+                *   @return <i>bool</i> false if already called Run with a callback function
+                **/
+                bool SetFile(const textData& filename, const fileLocation& filepath);
+
+                /** @brief Set the multipart data to send (if a POST/PULL/PUT request)
+                *   @param vData the data to send
+                *   @return <i>bool</i> false if already called Run with a callback funtion
+                **/
+                bool SetPartData(const std::vector<partData>& vData);
+
+                /** @brief Add HTTP headers to send
+                *   @param mHeaders a map of header name, header value
+                *   @return <i>bool</i> false if already called Run with a callback funtion
+                **/
+                bool AddHeaders(const std::map<headerName, headerValue>& mHeaders);
+
+                /** @brief Set the expected format of the response from the server
+                *   @param eResponse the expected format
+                *   @return <i>bool</i> false if already called Run with a callback funtion
+                **/
+                bool SetExpectedResponse(const clientResponse::enumResponse eResponse);
 
             private:
                 std::shared_ptr<HttpClientImpl> m_pImpl;

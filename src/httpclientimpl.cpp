@@ -88,6 +88,16 @@ void HttpClientImpl::HandleConnectEvent(mg_connection* pConnection)
         pmlLog(pml::LOG_TRACE) << "HttpClient\tConnection is https";
         mg_tls_opts opts{};
         opts.srvname = host;
+
+        if(m_ca.Get().empty() == false)
+        {
+            opts.ca = m_ca.Get().c_str();
+        }
+        if(m_Cert.Get().empty() == false && m_Key.Get().empty() == false)
+        {
+            opts.cert = m_Cert.Get().c_str();
+            opts.certkey = m_Key.Get().c_str();
+        }
         mg_tls_init(pConnection, &opts);
     }
 
@@ -613,15 +623,129 @@ void HttpClientImpl::Cancel()
 }
 
 
-void HttpClientImpl::SetBasicAuthentication(const userName& user, const password& pass)
+bool HttpClientImpl::SetBasicAuthentication(const userName& user, const password& pass)
 {
-    std::string str = user.Get()+":"+pass.Get();
-    char buff[128];
-    mg_base64_encode((const unsigned char*)str.c_str(), str.length(), buff);
-    m_mHeaders[headerName("Authorization")] =  headerValue("Basic "+std::string(buff));
+    if(m_pAsyncCallback == nullptr)
+    {
+        std::string str = user.Get()+":"+pass.Get();
+        char buff[128];
+        mg_base64_encode((const unsigned char*)str.c_str(), str.length(), buff);
+        m_mHeaders[headerName("Authorization")] =  headerValue("Basic "+std::string(buff));
+        return true;
+    }
+    return false;
 }
 
-void HttpClientImpl::SetBearerAuthentication(const std::string& sToken)
+bool HttpClientImpl::SetBearerAuthentication(const std::string& sToken)
 {
-    m_mHeaders[headerName("Authorization")] =  headerValue("Bearer "+sToken);
+    if(m_pAsyncCallback == nullptr)
+    {
+        m_mHeaders[headerName("Authorization")] =  headerValue("Bearer "+sToken);
+        return true;
+    }
+    return false;
+}
+
+bool HttpClientImpl::SetMethod(const httpMethod& method)
+{
+    if(m_pAsyncCallback == nullptr)
+    {
+        m_point = methodpoint(method, m_point.second);
+        return true;
+    }
+    return false;
+}
+
+bool HttpClientImpl::SetEndpoint(const endpoint& target)
+{
+    if(m_pAsyncCallback == nullptr)
+    {
+        m_point = methodpoint(m_point.first, target);
+        return true;
+    }
+    return false;
+}
+
+bool HttpClientImpl::SetData(const Json::Value& jsData)
+{
+    if(m_pAsyncCallback == nullptr)
+    {
+        m_vPostData.clear();
+        m_vPostData.push_back(partData(partName(""), textData(ConvertFromJson(jsData))));
+        return true;
+    }
+    return false;
+}
+
+bool HttpClientImpl::SetData(const textData& data)
+{
+    if(m_pAsyncCallback == nullptr)
+    {
+        m_vPostData.clear();
+        m_vPostData.push_back(partData(partName(""), data));
+        return true;
+    }
+    return false;
+}
+
+bool HttpClientImpl::SetFile(const textData& filename, const fileLocation& filepath)
+{
+    if(m_pAsyncCallback == nullptr)
+    {
+        m_vPostData.clear();
+        m_vPostData.push_back(partData(partName(""), filename, filepath));
+        return true;
+    }
+    return false;
+}
+
+bool HttpClientImpl::SetPartData(const std::vector<partData>& vData)
+{
+    if(m_pAsyncCallback == nullptr)
+    {
+        m_vPostData = vData;
+        return true;
+    }
+    return false;
+}
+
+bool HttpClientImpl::AddHeaders(const std::map<headerName, headerValue>& mHeaders)
+{
+    if(m_pAsyncCallback == nullptr)
+    {
+        m_mHeaders.insert(mHeaders.begin(), mHeaders.end());
+        return true;
+    }
+    return false;
+}
+
+bool HttpClientImpl::SetExpectedResponse(const clientResponse::enumResponse eResponse)
+{
+    if(m_pAsyncCallback == nullptr)
+    {
+        m_eResponse = eResponse;
+        return true;
+    }
+    return false;
+}
+
+bool HttpClientImpl::SetCertificateAuthority(const fileLocation& ca)
+{
+    if(m_pAsyncCallback == nullptr)
+    {
+        m_ca = ca;
+        return true;
+    }
+    return false;
+}
+
+bool HttpClientImpl::SetClientCertificate(const fileLocation& cert, const fileLocation& key)
+{
+    if(m_pAsyncCallback == nullptr)
+    {
+        m_Cert = cert;
+        m_Key = key;
+        return true;
+    }
+    return false;
 }

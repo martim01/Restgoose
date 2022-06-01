@@ -40,8 +40,8 @@ namespace pml
                 void HandleChunkEvent(mg_connection* pConnection, mg_http_message* pReply);
                 void HandleErrorEvent(const char* error);
 
-                void SetBasicAuthentication(const userName& user, const password& pass);
-                void SetBearerAuthentication(const std::string& sToken);
+                bool SetBasicAuthentication(const userName& user, const password& pass);
+                bool SetBearerAuthentication(const std::string& sToken);
 
             private:
 
@@ -51,6 +51,18 @@ namespace pml
                 HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& data, const headerValue& contentType = headerValue("text/plain"), const std::map<headerName, headerValue> mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO);
                 HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType = headerValue("application/octet-stream"), const std::map<headerName, headerValue> mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO);
                 HttpClientImpl(const httpMethod& method, const endpoint& target, const std::vector<partData>& vData, const std::map<headerName, headerValue> mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO); //multipart
+
+                bool SetCertificateAuthority(const fileLocation& ca);
+                bool SetClientCertificate(const fileLocation& cert, const fileLocation& key);
+
+                bool SetMethod(const httpMethod& method);
+                bool SetEndpoint(const endpoint& target);
+                bool SetData(const Json::Value& jsData);
+                bool SetData(const textData& data);
+                bool SetFile(const textData& filename, const fileLocation& filepath);
+                bool SetPartData(const std::vector<partData>& vData);
+                bool AddHeaders(const std::map<headerName, headerValue>& mHeaders);
+                bool SetExpectedResponse(const clientResponse::enumResponse eResponse);
 
 
 
@@ -68,12 +80,12 @@ namespace pml
                 unsigned long WorkoutFileSize(const fileLocation& filename);
                 void SetupRedirect();
 
-                methodpoint m_point;
-                headerValue m_contentType;
+                methodpoint m_point = methodpoint(GET, endpoint("127.0.0.1"));
+                headerValue m_contentType = headerValue("text/plain");
 
                 std::vector<partData> m_vPostData;
                 std::map<headerName, headerValue> m_mHeaders;
-                clientResponse::enumResponse m_eResponse;
+                clientResponse::enumResponse m_eResponse = clientResponse::enumResponse::AUTO;
 
                 unsigned long m_nContentLength = 0;
                 unsigned long m_nBytesSent = 0;
@@ -90,6 +102,11 @@ namespace pml
                 std::ofstream m_ofs;
                 std::ifstream m_ifs;
                 unsigned int m_nRunId = 0;
+
+                fileLocation m_ca;
+                fileLocation m_Cert;
+                fileLocation m_Key;
+
                 std::function<void(unsigned long, unsigned long)> m_pUploadProgressCallback = nullptr;
                 std::function<void(unsigned long, unsigned long)> m_pDownloadProgressCallback = nullptr;
                 std::function<void(const clientResponse&, unsigned int )> m_pAsyncCallback = nullptr;
