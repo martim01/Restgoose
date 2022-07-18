@@ -29,6 +29,13 @@ using authorised = std::pair<bool, userName>;
 
 
 
+struct end_less
+{
+    bool operator() (endpoint e1, endpoint e2) const;
+};
+
+
+
 namespace pml
 {
     namespace restgoose
@@ -247,10 +254,10 @@ namespace pml
 
                 std::function<void(std::chrono::milliseconds)> m_loopCallback;
                 std::map<methodpoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)>> m_mEndpoints;
-                std::map<endpoint, std::function<bool(const endpoint&, const userName&, const ipAddress& peer)>> m_mWebsocketAuthenticationEndpoints;
-                std::map<endpoint, std::function<bool(const endpoint&, const Json::Value&)>> m_mWebsocketMessageEndpoints;
-                std::map<endpoint, std::function<void(const endpoint&, const ipAddress& peer)>> m_mWebsocketCloseEndpoints;
-                std::multimap<endpoint, httpMethod> m_mmOptions;
+                std::map<endpoint, std::function<bool(const endpoint&, const userName&, const ipAddress& peer)>, end_less> m_mWebsocketAuthenticationEndpoints;
+                std::map<endpoint, std::function<bool(const endpoint&, const Json::Value&)>, end_less> m_mWebsocketMessageEndpoints;
+                std::map<endpoint, std::function<void(const endpoint&, const ipAddress& peer)>, end_less> m_mWebsocketCloseEndpoints;
+                std::multimap<endpoint, httpMethod, end_less> m_mmOptions;
 
                 std::function<bool(const std::string&)> m_tokenCallback;
 

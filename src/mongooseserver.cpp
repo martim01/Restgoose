@@ -25,6 +25,13 @@ const std::string FILENAME = " filename=";
 static struct mg_http_serve_opts s_ServerOpts;
 
 
+bool end_less::operator() (endpoint e1, endpoint e2) const
+{
+    return std::lexicographical_compare(e1.Get().begin(), e1.Get().end(), e2.Get().begin(), e2.Get().end(), [](unsigned char a, unsigned char b){
+                                        return toupper(a) < toupper(b);
+                                        });
+}
+
 
 bool is_chunked(struct mg_http_message *hm) {
   struct mg_str needle = mg_str_n("chunked", 7);
@@ -162,19 +169,26 @@ static int is_websocket(const struct mg_connection *nc)
 
 void ev_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_data)
 {
-    if(nEvent == 0)
+    if(nEvent == 0 || fn_data == nullptr)
     {
         return;
     }
 
     MongooseServer* pThread = reinterpret_cast<MongooseServer*>(pConnection->fn_data);
+
     pThread->HandleEvent(pConnection, nEvent, pData);
 }
 
 void pipe_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_data)
 {
+    if(nEvent != MG_EV_POLL)
+    {
+        pmlLog(pml::LOG_TRACE) << "pipe_handler: " << nEvent;
+    }
+
     if(nEvent == MG_EV_READ)
     {
+
         MongooseServer* pThread = reinterpret_cast<MongooseServer*>(fn_data);
         pThread->SendWSQueue();
     }
@@ -285,6 +299,7 @@ bool MongooseServer::AuthenticateWebsocketBearer(subscriber& sub, const Json::Va
 
 void MongooseServer::EventWebsocketMessage(mg_connection *pConnection, int nEvent, void* pData)
 {
+    pmlLog(pml::LOG_TRACE) << "RestGoose::Server\EventWebsocketMessage";
 
     auto itSubscriber = m_mSubscribers.find(pConnection);
     if(itSubscriber != m_mSubscribers.end())
@@ -331,6 +346,7 @@ void MongooseServer::HandleInternalWebsocketMessage(mg_connection* pConnection, 
         sub.bAuthenticated = AuthenticateWebsocket(sub, jsData);
         if(sub.bAuthenticated)
         {
+            pmlLog(pml::LOG_TRACE) << "RestGoose::Server\tHandleInternalWebsocketMessage: Authenticated";
             AddWebsocketSubscriptions(sub, jsData);
         }
         else
@@ -365,6 +381,7 @@ void MongooseServer::HandleInternalWebsocketMessage(mg_connection* pConnection, 
 
 void MongooseServer::HandleExternalWebsocketMessage(mg_connection* pConnection, subscriber& sub, const Json::Value& jsData)
 {
+    pmlLog(pml::LOG_TRACE) << "RestGoose::Server\tHandleExternalWebsocketMessage";
     if(sub.bAuthenticated)
     {
         auto itEndpoint = m_mWebsocketMessageEndpoints.find(sub.theEndpoint);
@@ -915,6 +932,7 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pDa
 
 void MongooseServer::EventHttpWebsocket(mg_connection *pConnection, mg_http_message* pMessage, const endpoint& uri)
 {
+    pmlLog(pml::LOG_TRACE) << "RestGoose::Server\tEventHttpWebsocket";
 
     mg_ws_upgrade(pConnection, pMessage, nullptr);
     char buffer[256];
@@ -925,6 +943,7 @@ void MongooseServer::EventHttpWebsocket(mg_connection *pConnection, mg_http_mess
     if(m_mUsers.empty() && m_tokenCallback == nullptr)
     {   //if we have not set up any users then we are not using authentication so we don't need to authenticate the websocket
         itSub->second.bAuthenticated = true;
+        pmlLog(pml::LOG_TRACE) << "RestGoose::Server\tEventHttpWebsocket: Authenticated";
     }
     itSub->second.setEndpoints.insert(uri);
 }
@@ -1213,10 +1232,10 @@ void MongooseServer::Loop()
             }
             now = std::chrono::high_resolution_clock::now();
 
-//            if(m_bWebsocket && !m_pPipe)
-//            {   //if we are doing websockets and for some reason our interupt pipe didn't get created then send the websocket messages
-//                SendWSQueue();
-//            }
+            if(m_bWebsocket && m_nPipe == 0)
+            {   //if we are doing websockets and for some reason our interupt pipe didn't get created then send the websocket messages
+                SendWSQueue();
+            }
         }
         mg_mgr_free(&m_mgr);
     }
@@ -1249,6 +1268,7 @@ bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, std::func
         lg << "failed as websockets not enabled";
         return false;
     }
+
 
     return m_mWebsocketAuthenticationEndpoints.insert(std::make_pair(theEndpoint, funcAuthentication)).second &&
            m_mWebsocketMessageEndpoints.insert(std::make_pair(theEndpoint, funcMessage)).second &&
@@ -1432,6 +1452,8 @@ void MongooseServer::SendAuthenticationRequest(mg_connection* pConnection)
 
 void MongooseServer::SendWSQueue()
 {
+    pmlLog(pml::LOG_TRACE) << "SendWSQueue";
+
     std::lock_guard<std::mutex> lg(m_mutex);
 
     if(m_pConnection)
@@ -1440,6 +1462,8 @@ void MongooseServer::SendWSQueue()
         {
             std::stringstream ssMessage;
             ssMessage << m_qWsMessages.front().second;
+
+            pmlLog(pml::LOG_TRACE) << "SendWSQueue: " << ssMessage.str();
 
             //turn message into array
             char *cstr = new char[ssMessage.str().length() + 1];
@@ -1462,6 +1486,7 @@ void MongooseServer::SendWSQueue()
                                 {
                                     if(sub.Get().length() <= anEndpoint.Get().length() && anEndpoint.Get().substr(0, sub.Get().length()) == sub.Get())
                                     {   //has subscribed to something upstream of this methodpoint
+
                                         mg_ws_send(pConnection, cstr, strlen(cstr), WEBSOCKET_OP_TEXT);
                                         bSent = true;
                                         break;
@@ -1489,12 +1514,15 @@ void MongooseServer::SendWSQueue()
 
 void MongooseServer::SendWebsocketMessage(const std::set<endpoint>& setEndpoints, const Json::Value& jsMessage)
 {
+    pmlLog(pml::LOG_TRACE) << "RestGoose:Server\tSendWebsocketMessage";
     m_mutex.lock();
     m_qWsMessages.push(wsMessage(setEndpoints, jsMessage));
     m_mutex.unlock();
     if(m_nPipe != 0)
     {
-        send(m_nPipe, "hi", 2, 2);
+        const char* hi="hi";
+        auto res = send(m_nPipe, hi, 2, 0);
+        pmlLog(pml::LOG_TRACE) << "RestGoose:Server\tSendWebsocketMessage::Wakeup: " << res << "\t" << errno << "\t" << strerror(errno);
         //mg_mgr_wakeup(m_pPipe, nullptr, 0);
     }
 }
