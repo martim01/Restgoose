@@ -4,9 +4,9 @@
 #include <string.h>
 #include "utils.h"
 #include <algorithm>
+#include <string>
 
 using namespace pml::restgoose;
-using namespace std;
 
 fileLocation CreateTmpFileName(const std::string& sPath)
 {
@@ -18,17 +18,17 @@ fileLocation CreateTmpFileName(const std::string& sPath)
     return fileLocation(sstr.str());
 }
 
-vector<string> SplitString(string str, char cSplit, size_t nMax)
+std::vector<std::string> SplitString(std::string str, char cSplit, size_t nMax)
 {
-    vector<string> vSplit;
+    std::vector<std::string> vSplit;
     if(str.find(cSplit) == std::string::npos)
     {
         vSplit.push_back(str);
     }
     else
     {
-        istringstream f(str);
-        string s;
+        std::istringstream f(str);
+        std::string s;
 
         while (getline(f, s, cSplit))
         {
@@ -48,15 +48,15 @@ vector<string> SplitString(string str, char cSplit, size_t nMax)
     return vSplit;
 }
 
-void SplitString(queue<string>& qSplit, string str, char cSplit)
+void SplitString(std::queue<std::string>& qSplit, std::string str, char cSplit)
 {
     while(qSplit.empty() == false)
     {
         qSplit.pop();
     }
 
-    istringstream f(str);
-    string s;
+    std::istringstream f(str);
+    std::string s;
 
     while (getline(f, s, cSplit))
     {
@@ -68,15 +68,15 @@ void SplitString(queue<string>& qSplit, string str, char cSplit)
 }
 
 
-bool CmpNoCase(const string& str1, const string& str2)
+bool CmpNoCase(const std::string& str1, const std::string& str2)
 {
-    return ((str1.size() == str2.size()) && equal(str1.begin(), str1.end(), str2.begin(), [](char c1, char c2)
+    return ((str1.size() == str2.size()) && std::equal(str1.begin(), str1.end(), str2.begin(), [](char c1, char c2)
     {
         return (c1==c2 || toupper(c1)==toupper(c2));
     }));
 }
 
-string CreatePath(string sPath)
+std::string CreatePath(std::string sPath)
 {
     if(sPath[sPath.length()-1] != '/' && sPath[sPath.length()-1] != '\\')
     {
