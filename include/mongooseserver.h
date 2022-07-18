@@ -53,7 +53,7 @@ namespace pml
 
                 void SetInterface(const ipAddress& addr, unsigned short nPort);
 
-                void SetAuthorizationTypeBearer(std::function<bool(const std::string&)> callback);
+                void SetAuthorizationTypeBearer(std::function<bool(const std::string&)> callback, bool bAuthenticateWebsocketsViaQuery);
                 void SetAuthorizationTypeBasic(const userName& aUser, const password& aPassword);
                 void SetAuthorizationTypeNone();
 
@@ -77,7 +77,7 @@ namespace pml
                 void Stop();
 
 
-                bool AddWebsocketEndpoint(const endpoint& theEndpoint, std::function<bool(const endpoint&, const userName&, const ipAddress&)> funcAuthentication,
+                bool AddWebsocketEndpoint(const endpoint& theEndpoint, std::function<bool(const endpoint&, const query&, const userName&, const ipAddress&)> funcAuthentication,
                                           std::function<bool(const endpoint&, const Json::Value&)> funcMessage,
                                           std::function<void(const endpoint&, const ipAddress&)> funcClose);
 
@@ -202,11 +202,14 @@ namespace pml
                 authorised CheckAuthorizationBasic(struct mg_http_message* pMessage);
                 authorised CheckAuthorizationBearer(struct mg_http_message* pMessage);
 
+
+
                 struct subscriber
                 {
-                    subscriber(const endpoint& anEndpoint, const ipAddress& Ip) : theEndpoint(anEndpoint), peer(Ip), bAuthenticated(false), bPonged(true){}
+                    subscriber(const endpoint& anEndpoint, const ipAddress& Ip, const query& q) : theEndpoint(anEndpoint), peer(Ip), queryParams(q), bAuthenticated(false), bPonged(true){}
                     endpoint theEndpoint;
                     ipAddress peer;
+                    query queryParams;
                     bool bAuthenticated;
                     bool bPonged;
                     std::set<endpoint> setEndpoints;
@@ -218,6 +221,8 @@ namespace pml
                 void AddWebsocketSubscriptions(subscriber& sub, const Json::Value& jsData);
                 void RemoveWebsocketSubscriptions(subscriber& sub, const Json::Value& jsData);
 
+
+                void DoWebsocketAuthentication(mg_connection* pConnection, subscriber& sub, const Json::Value& jsData);
                 bool AuthenticateWebsocket(subscriber& sub, const Json::Value& jsData);
                 bool AuthenticateWebsocketBasic(subscriber& sub, const Json::Value& jsData);
                 bool AuthenticateWebsocketBearer(subscriber& sub, const Json::Value& jsData);
@@ -246,6 +251,7 @@ namespace pml
 
                 bool m_bWebsocket;
                 bool m_bSendPings;
+                bool m_bAuthenticateWSViaQuery;
                 mg_mgr m_mgr;
                 unsigned long m_nPort;
                 size_t m_nMaxConnections;
@@ -254,7 +260,7 @@ namespace pml
 
                 std::function<void(std::chrono::milliseconds)> m_loopCallback;
                 std::map<methodpoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)>> m_mEndpoints;
-                std::map<endpoint, std::function<bool(const endpoint&, const userName&, const ipAddress& peer)>, end_less> m_mWebsocketAuthenticationEndpoints;
+                std::map<endpoint, std::function<bool(const endpoint&, const query&, const userName&, const ipAddress& peer)>, end_less> m_mWebsocketAuthenticationEndpoints;
                 std::map<endpoint, std::function<bool(const endpoint&, const Json::Value&)>, end_less> m_mWebsocketMessageEndpoints;
                 std::map<endpoint, std::function<void(const endpoint&, const ipAddress& peer)>, end_less> m_mWebsocketCloseEndpoints;
                 std::multimap<endpoint, httpMethod, end_less> m_mmOptions;

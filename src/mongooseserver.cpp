@@ -139,21 +139,34 @@ void mgpmlLog(const void* buff, size_t nLength, void* param)
 }
 
 
-map<string, string> DecodeQueryString(mg_http_message* pMessage)
+std::string DecodeQueryString(mg_http_message* pMessage)
 {
-    map<string, string> mDecode;
-
-    vector<string> vQuery(SplitString(pMessage->query.ptr, '&'));
-    for(size_t i = 0; i < vQuery.size(); i++)
+    if(pMessage->query.len > 0)
     {
-        vector<string> vValue(SplitString(vQuery[i], '='));
+        char decode[6000];
+        mg_url_decode(pMessage->query.ptr, pMessage->query.len, decode, 6000, 0);
+        return std::string(decode);
+    }
+    return std::string("");
+}
+
+query ExtractQuery(mg_http_message* pMessage)
+{
+    query mDecode;
+
+    auto sQuery = DecodeQueryString(pMessage);
+
+    auto vQuery = SplitString(sQuery, '&');
+    for(const auto sParam : vQuery)
+    {
+        auto vValue = SplitString(sParam, '=');
         if(vValue.size() == 2)
         {
-            mDecode.insert(make_pair(vValue[0], vValue[1]));
+            mDecode.insert(make_pair(queryKey(vValue[0]), queryValue(vValue[1])));
         }
         else if(vValue.size() == 1)
         {
-            mDecode.insert(make_pair(vValue[0], ""));
+            mDecode.insert(make_pair(queryKey(vValue[0]), queryValue("")));
         }
     }
     return mDecode;
@@ -215,7 +228,7 @@ bool MongooseServer::AuthenticateWebsocket(subscriber& sub, const Json::Value& j
     }
     else if(m_mUsers.empty() == false)
     {
-        return AuthenticateWebsocketBasic(sub, jsData);
+        return AuthenticateWebsocketBasic(sub,jsData);
     }
     else
     {
@@ -233,7 +246,7 @@ bool MongooseServer::AuthenticateWebsocketBasic(subscriber& sub, const Json::Val
             auto itEndpoint = m_mWebsocketAuthenticationEndpoints.find(sub.theEndpoint);
             if(itEndpoint != m_mWebsocketAuthenticationEndpoints.end())
             {
-                if(itEndpoint->second(sub.theEndpoint, itUser->first, sub.peer))
+                if(itEndpoint->second(sub.theEndpoint, sub.queryParams, itUser->first, sub.peer))
                 {
                     pmlLog(pml::LOG_INFO) << "RestGoose:Server\tWebsocket subscriber: " << sub.peer << " authorized";
 
@@ -271,7 +284,7 @@ bool MongooseServer::AuthenticateWebsocketBearer(subscriber& sub, const Json::Va
         auto itEndpoint = m_mWebsocketAuthenticationEndpoints.find(sub.theEndpoint);
         if(itEndpoint != m_mWebsocketAuthenticationEndpoints.end())
         {
-            if(itEndpoint->second(sub.theEndpoint, userName(jsData["bearer"].asString()), sub.peer))
+            if(itEndpoint->second(sub.theEndpoint, sub.queryParams, userName(jsData["bearer"].asString()), sub.peer))
             {
                 pmlLog(pml::LOG_INFO) << "RestGoose:Server\tWebsocket subscriber: " << sub.peer << " authorized";
                 return true;
@@ -314,21 +327,15 @@ void MongooseServer::EventWebsocketMessage(mg_connection *pConnection, int nEven
             ss.str(sMessage);
             ss >> jsData;
 
-            if(jsData["action"].isString())
+            if(jsData["action"].isString() && jsData["action"].asString().substr(0,1) == "_")
             {
-                if(jsData["action"].asString().substr(0,1) == "_")
-                {
-                    HandleInternalWebsocketMessage(pConnection, itSubscriber->second, jsData);
-                }
-                else
-                {
-                    HandleExternalWebsocketMessage(pConnection, itSubscriber->second, jsData);
-                }
+                HandleInternalWebsocketMessage(pConnection, itSubscriber->second, jsData);
             }
             else
             {
-                pmlLog(pml::LOG_WARN) << "RestGoose:Server\tWebsocket messsage: '" << sMessage << "' has incorrect format";
+                HandleExternalWebsocketMessage(pConnection, itSubscriber->second, jsData);
             }
+
         }
         catch(const Json::RuntimeError& e)
         {
@@ -338,23 +345,27 @@ void MongooseServer::EventWebsocketMessage(mg_connection *pConnection, int nEven
 
 }
 
+void MongooseServer::DoWebsocketAuthentication(mg_connection* pConnection, subscriber& sub, const Json::Value& jsData)
+{
+    sub.bAuthenticated = AuthenticateWebsocket(sub, jsData);
+    if(sub.bAuthenticated)
+    {
+        pmlLog(pml::LOG_TRACE) << "RestGoose::Server\tHandleInternalWebsocketMessage: Authenticated";
+        AddWebsocketSubscriptions(sub, jsData);
+    }
+    else
+    {
+        pmlLog() << "RestGoose:Server\ttWebsocket subscriber not authenticated: close";
+        m_mSubscribers.erase(pConnection);
+        pConnection->is_closing = 1;
+    }
+}
 
 void MongooseServer::HandleInternalWebsocketMessage(mg_connection* pConnection, subscriber& sub, const Json::Value& jsData)
 {
     if(jsData["action"].asString() == "_authentication")
     {
-        sub.bAuthenticated = AuthenticateWebsocket(sub, jsData);
-        if(sub.bAuthenticated)
-        {
-            pmlLog(pml::LOG_TRACE) << "RestGoose::Server\tHandleInternalWebsocketMessage: Authenticated";
-            AddWebsocketSubscriptions(sub, jsData);
-        }
-        else
-        {
-            pmlLog() << "RestGoose:Server\ttWebsocket subscriber not authenticated: close";
-            m_mSubscribers.erase(pConnection);
-            pConnection->is_closing = 1;
-        }
+        DoWebsocketAuthentication(pConnection, sub, jsData);
     }
     else
     {
@@ -573,12 +584,7 @@ void MongooseServer::HandleFirstChunk(httpchunks& chunk, mg_connection* pConnect
     }
     else
     {
-        if(pMessage->query.len > 0)
-        {
-            char decode[6000];
-            mg_url_decode(pMessage->query.ptr, pMessage->query.len, decode, 6000, 0);
-            chunk.theQuery = query(std::string(decode));
-        }
+        chunk.theQuery = ExtractQuery(pMessage);
         chunk.theUser = auth.second;
         chunk.thePoint = GetMethodPoint(pMessage);
         //find the callback function assigned to the method and endpoint
@@ -897,6 +903,7 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pDa
     }
     else if(InApiTree(thePoint.second))
     {
+
         pmlLog(pml::LOG_TRACE) << "RestGoose:Server\t" << thePoint.second << " in Api tree";
         auto itWsEndpoint = m_mWebsocketAuthenticationEndpoints.find(thePoint.second);
         if(itWsEndpoint != m_mWebsocketAuthenticationEndpoints.end())
@@ -935,17 +942,26 @@ void MongooseServer::EventHttpWebsocket(mg_connection *pConnection, mg_http_mess
     pmlLog(pml::LOG_TRACE) << "RestGoose::Server\tEventHttpWebsocket";
 
     mg_ws_upgrade(pConnection, pMessage, nullptr);
+
+    //create the peer address
     char buffer[256];
     mg_ntoa(&pConnection->rem, buffer, 256);
     std::stringstream ssPeer;
     ssPeer << buffer << ":" << pConnection->rem.port;
-    auto itSub = m_mSubscribers.insert(std::make_pair(pConnection, subscriber(uri, ipAddress(ssPeer.str())))).first;
+
+    auto itSub = m_mSubscribers.insert(std::make_pair(pConnection, subscriber(uri, ipAddress(ssPeer.str()), ExtractQuery(pMessage)))).first;
+    itSub->second.setEndpoints.insert(uri);
+
     if(m_mUsers.empty() && m_tokenCallback == nullptr)
     {   //if we have not set up any users then we are not using authentication so we don't need to authenticate the websocket
         itSub->second.bAuthenticated = true;
         pmlLog(pml::LOG_TRACE) << "RestGoose::Server\tEventHttpWebsocket: Authenticated";
     }
-    itSub->second.setEndpoints.insert(uri);
+    else if(m_tokenCallback && m_bAuthenticateWSViaQuery)
+    {   //we are using bearer token and passing it to the websocket via the query string
+        DoWebsocketAuthentication(pConnection, itSub->second, Json::Value(Json::nullValue));
+    }
+
 }
 
 void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* pMessage, const methodpoint& thePoint)
@@ -957,14 +973,6 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
     }
     else
     {
-        std::string sQuery;
-
-        if(pMessage->query.len > 0)
-        {
-            char decode[6000];
-            mg_url_decode(pMessage->query.ptr, pMessage->query.len, decode, 6000, 0);
-            sQuery = std::string(decode);
-        }
 
         char buffer[256];
         mg_ntoa(&pConnection->rem, buffer, 256);
@@ -976,11 +984,11 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
         auto itCallback = m_mEndpoints.find(thePoint);
         if(itCallback != m_mEndpoints.end())
         {
-            DoReply(pConnection, itCallback->second(query(sQuery), {CreatePartData(pMessage->body)}, thePoint.second, auth.second));
+            DoReply(pConnection, itCallback->second(ExtractQuery(pMessage), {CreatePartData(pMessage->body)}, thePoint.second, auth.second));
         }
         else if(m_callbackNotFound)
         {
-            DoReply(pConnection, m_callbackNotFound(thePoint.first, query(sQuery), {}, thePoint.second, auth.second));
+            DoReply(pConnection, m_callbackNotFound(thePoint.first, ExtractQuery(pMessage), {}, thePoint.second, auth.second));
         }
         else
         {
@@ -998,14 +1006,6 @@ void MongooseServer::EventHttpApiMultipart(mg_connection *pConnection, mg_http_m
     }
     else
     {
-        std::string sQuery;
-        if(pMessage->query.len > 0)
-        {
-            char decode[6000];
-            mg_url_decode(pMessage->query.ptr, pMessage->query.len, decode, 6000, 0);
-            sQuery = std::string(decode);
-        }
-
         //find the callback function assigned to the method and endpoint
         auto itCallback = m_mEndpoints.find(thePoint);
         if(itCallback != m_mEndpoints.end())
@@ -1017,11 +1017,11 @@ void MongooseServer::EventHttpApiMultipart(mg_connection *pConnection, mg_http_m
             {
                 vData.push_back(CreatePartData(part));
             }
-            DoReply(pConnection, itCallback->second(query(sQuery), vData, thePoint.second, auth.second));
+            DoReply(pConnection, itCallback->second(ExtractQuery(pMessage), vData, thePoint.second, auth.second));
         }
         else if(m_callbackNotFound)
         {
-            DoReply(pConnection, m_callbackNotFound(thePoint.first, query(sQuery), {}, thePoint.second, auth.second));
+            DoReply(pConnection, m_callbackNotFound(thePoint.first, ExtractQuery(pMessage), {}, thePoint.second, auth.second));
         }
         else
         {
@@ -1257,7 +1257,7 @@ void MongooseServer::Stop()
     mg_mgr_free(&m_mgr);
 }
 
-bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, std::function<bool(const endpoint&, const userName&, const ipAddress& )> funcAuthentication, std::function<bool(const endpoint&, const Json::Value&)> funcMessage, std::function<void(const endpoint&, const ipAddress&)> funcClose)
+bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, std::function<bool(const endpoint&, const query&, const userName&, const ipAddress& )> funcAuthentication, std::function<bool(const endpoint&, const Json::Value&)> funcMessage, std::function<void(const endpoint&, const ipAddress&)> funcClose)
 {
     pml::LogStream lg;
     lg << "MongooseServer\t" << "AddWebsocketEndpoint <" << theEndpoint.Get() << "> ";
@@ -1306,7 +1306,6 @@ void MongooseServer::SendError(mg_connection* pConnection, const string& sError,
 
 void MongooseServer::DoReply(mg_connection* pConnection,const response& theResponse)
 {
-
     if(theResponse.bFile == false)
     {
         DoReplyText(pConnection, theResponse);
@@ -1608,12 +1607,13 @@ void MongooseServer::AddNotFoundCallback(std::function<response(const httpMethod
     m_callbackNotFound = func;
 }
 
-void MongooseServer::SetAuthorizationTypeBearer(std::function<bool(const std::string&)> callback)
+void MongooseServer::SetAuthorizationTypeBearer(std::function<bool(const std::string&)> callback, bool bAuthenticateWebsocketsViaQuery)
 {
     if(callback)
     {
         m_mUsers.clear();
         m_tokenCallback = callback;
+        m_bAuthenticateWSViaQuery = bAuthenticateWebsocketsViaQuery;
     }
 }
 

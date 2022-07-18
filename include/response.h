@@ -16,7 +16,6 @@
 using httpMethod = NamedType<std::string, struct MethodParameter>;
 using endpoint = NamedType<std::string, struct endpointParameter>;
 using methodpoint = std::pair<httpMethod, endpoint>;
-using query = NamedType<std::string, struct QueryParameter>;
 using userName = NamedType<std::string, struct userParamater>;
 using password = NamedType<std::string, struct passwordParamater>;
 using ipAddress = NamedType<std::string, struct ipAddressParamater>;
@@ -26,6 +25,10 @@ using headerValue = NamedType<std::string, struct headerValueParameter>;
 using textData = NamedType<std::string, struct textDataParameter>;
 using fileLocation = NamedType<std::string, struct fileLocationParameter>;
 using partName = NamedType<std::string, struct partNameParameter>;
+using queryKey = NamedType<std::string, struct queryKeyParameter>;
+using queryValue = NamedType<std::string, struct queryValueParameter>;
+
+using query = std::map<queryKey, queryValue>;
 
 namespace pml
 {

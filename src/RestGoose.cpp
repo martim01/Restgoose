@@ -49,7 +49,7 @@ void Server::AddNotFoundCallback(std::function<response(const httpMethod&, const
     return m_pImpl->AddNotFoundCallback(func);
 }
 
-bool Server::AddWebsocketEndpoint(const endpoint& theMethodPoint, std::function<bool(const endpoint&, const userName&, const ipAddress&)> funcAuthentication, std::function<bool(const endpoint&, const Json::Value&)> funcMessage, std::function<void(const endpoint&, const ipAddress&)> funcClose)
+bool Server::AddWebsocketEndpoint(const endpoint& theMethodPoint, std::function<bool(const endpoint&, const query&, const userName&, const ipAddress&)> funcAuthentication, std::function<bool(const endpoint&, const Json::Value&)> funcMessage, std::function<void(const endpoint&, const ipAddress&)> funcClose)
 {
     return m_pImpl->AddWebsocketEndpoint(theMethodPoint, funcAuthentication, funcMessage, funcClose);
 }
@@ -69,9 +69,9 @@ void Server::SendWebsocketMessage(const std::set<endpoint>& setEndpoints, const 
     m_pImpl->SendWebsocketMessage(setEndpoints, jsMessage);
 }
 
-void Server::SetAuthorizationTypeBearer(std::function<bool(const std::string& theToken)> callback)
+void Server::SetAuthorizationTypeBearer(std::function<bool(const std::string& theToken)> callback, bool bAuthenticateWebsocketsViaQuery)
 {
-    m_pImpl->SetAuthorizationTypeBearer(callback);
+    m_pImpl->SetAuthorizationTypeBearer(callback, bAuthenticateWebsocketsViaQuery);
 }
 void Server::SetAuthorizationTypeBasic(const userName& aUser, const password& aPassword)
 {

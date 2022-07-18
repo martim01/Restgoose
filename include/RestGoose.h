@@ -53,8 +53,9 @@ namespace pml
 
                 /** @brief Sets the authorization type to expect a bearer token in the Authorization header
                 *   @param callback a callback function that should inspect the token and return true if authorization is allowed
+                *   @param bAuthenticateWebsocketsViaQuery if true then, for websocket connections, the bearer token is expected to be passed as a query param in the connecting websocket url (e.g. wss://127.0.0.1:/ws/api?jwt=923834aa9q3....). If false then the token must be passed as the first message from the client to the server
                 **/
-                void SetAuthorizationTypeBearer(std::function<bool(const std::string& theToken)> callback);
+                void SetAuthorizationTypeBearer(std::function<bool(const std::string& theToken)> callback, bool bAuthenticateWebsocketsViaQuery);
 
                 /** @brief Sets the authorization type to basic authentication
                 *   @param aUser a user name
@@ -81,14 +82,14 @@ namespace pml
 
                 /** @brief Adds an enpoint that a websocket client can connect to along with callback functions
                 *   @param theEndpoint the address the client is allowed to connect to
-                *   @param funcAuthentication a function that will be called when a client first attempts to connect to the methodpoint. The function is passed the methodpoint address,
-                the username that has been passed by the websocket and the ip address if the connecting client. The function should return true to allow the connection to continue and false to close it
+                *   @param funcAuthentication a function that will be called when a client first attempts to connect to the methodpoint. The function is passed the methodpoint address, a map of any query paramaters in the url,
+                the username that has been passed by the websocket and the ip address of the connecting client. The function should return true to allow the connection to continue and false to close it
                 *   @param funcMessage a function that is called everytime the client sends a websocket message to the server. The function is passed the methodpoint address and the message passed (as Json).
                  The function should return true to allow the connection to continue and false to close it
                  *  @param funcClose a function that is called when the client closes the websocket connection. The function is passed the methodpoint address and the client ip address
                  *  @return <i>bool</i> true if the websocket methodpoint was added
                  **/
-                bool AddWebsocketEndpoint(const endpoint& theEndpoint, std::function<bool(const endpoint&, const userName&, const ipAddress&)> funcAuthentication,
+                bool AddWebsocketEndpoint(const endpoint& theEndpoint, std::function<bool(const endpoint&, const query&, const userName&, const ipAddress&)> funcAuthentication,
                 std::function<bool(const endpoint&, const Json::Value&)> funcMessage, std::function<void(const endpoint&, const ipAddress&)> funcClose);
 
                 /** @brief Adds a function to be called everytime a client attempts to connect to a methodpoint that is not defined
