@@ -9,6 +9,9 @@ SET(DIR_BASE $ENV{HOME} CACHE STRING "base location for libraries")
 SET(DIR_JSON ${DIR_BASE}/jsoncpp CACHE STRING "location of jsoncpp")
 SET(DIR_MONGOOSE ${DIR_BASE}/mongoose CACHE STRING "location of mongoose")
 SET(DIR_LOG ${DIR_BASE}/log CACHE STRING "location of pml log")
+SET(MONGOOSE_CHECKOUT 7c17c806ada12fb2625d4bf90dd7211f47703c6a CACHE STRING "Mongoose release 7.7")
+
+
 
 if(NOT DEFINED BUILD_LOG)
         SET(BUILD_LOG ON)
@@ -57,11 +60,16 @@ if((NOT RG_TEMP_DIR5) OR (NOT EXISTS ${RG_TEMP_DIR5}))
 		message(FATAL_ERROR "Failed to clone Mongoose")
 	endif()
 else()
-	message(STATUS "mongoose found - update to version 7.7")
-	execute_process(COMMAND git -C ${DIR_MONGOOSE} checkout 7c17c806ada12fb2625d4bf90dd7211f47703c6a)
+	execute_process(COMMAND git -C ${DIR_MONGOOSE} rev-parse HEAD OUTPUT_VARIABLE MONGOOSE_HEAD OUTPUT_STRIP_TRAILING_WHITESPACE)
+	if(${MONGOOSE_HEAD} STREQUAL ${MONGOOSE_CHECKOUT})
+		message(STATUS "mongoose found - already version 7.7")
+	else()
+		message(STATUS "mongoose found - ${MONGOOSE_HEAD} pull and checkout version 7.7: ${MONGOOSE_CHECKOUT}")
+		execute_process(COMMAND git -C ${DIR_MONGOOSE} pull origin master)
+		execute_process(COMMAND git -C ${DIR_MONGOOSE} checkout ${MONGOOSE_CHECKOUT})
+	endif()
 endif()
 unset(RG_TEMP_DIR5)
-
 
 unset(RG_TEMP_DIR6)
 

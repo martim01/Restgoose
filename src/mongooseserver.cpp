@@ -157,7 +157,7 @@ query ExtractQuery(mg_http_message* pMessage)
     auto sQuery = DecodeQueryString(pMessage);
 
     auto vQuery = SplitString(sQuery, '&');
-    for(const auto sParam : vQuery)
+    for(const auto& sParam : vQuery)
     {
         auto vValue = SplitString(sParam, '=');
         if(vValue.size() == 2)
