@@ -3,6 +3,14 @@
 
 using namespace pml::restgoose;
 
+
+bool query_less::operator() (queryKey e1, queryKey e2) const
+{
+    return std::lexicographical_compare(e1.Get().begin(), e1.Get().end(), e2.Get().begin(), e2.Get().end(), [](unsigned char a, unsigned char b){
+                                        return toupper(a) < toupper(b);
+                                        });
+}
+
 const httpMethod pml::restgoose::GET    = httpMethod("GET");
 const httpMethod pml::restgoose::POST   = httpMethod("POST");
 const httpMethod pml::restgoose::PUT    = httpMethod("PUT");

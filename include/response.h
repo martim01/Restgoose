@@ -28,7 +28,17 @@ using partName = NamedType<std::string, struct partNameParameter>;
 using queryKey = NamedType<std::string, struct queryKeyParameter>;
 using queryValue = NamedType<std::string, struct queryValueParameter>;
 
-using query = std::map<queryKey, queryValue>;
+
+
+struct query_less
+{
+    bool operator() (queryKey e1, queryKey e2) const;
+};
+
+using query = std::map<queryKey, queryValue, query_less>;
+
+
+
 
 namespace pml
 {
