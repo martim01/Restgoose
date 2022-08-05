@@ -17,6 +17,9 @@ if(NOT DEFINED BUILD_LOG)
         SET(BUILD_LOG ON)
 endif()
 
+#check openssl installed
+find_package(OpenSSL REQUIRED)
+
 #Get JsonCpp
 find_path(RG_TEMP_DIR NAMES "amalgamate.py" PATHS ${DIR_JSON} NO_CACHE)
 if((NOT RG_TEMP_DIR) OR (NOT EXISTS ${RG_TEMP_DIR}))
@@ -124,6 +127,7 @@ else()
 endif()
 
 target_compile_options(restgoose PRIVATE ${flags})
+target_link_libraries(restgoose ssl)
 target_link_libraries(restgoose optimized pml_log debug pml_logd)
 set_target_properties(restgoose PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib/)
 
