@@ -47,6 +47,9 @@ namespace pml
                 **/
                 bool Send(const endpoint& theEndpoint, const std::string& sMessage);
 
+
+                bool Send(const endpoint& theEndpoint, const Json::Value& jsMessage);
+
                 /** @brief Closes a websocket connection to the given endpoint
                 *   @param theEndpoint the absolute url
                 **/

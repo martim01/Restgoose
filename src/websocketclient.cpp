@@ -1,5 +1,6 @@
 #include "websocketclient.h"
 #include "websocketclientimpl.h"
+#include "utils.h"
 
 using namespace pml::restgoose;
 
@@ -29,6 +30,10 @@ bool WebSocketClient::Send(const endpoint& theEndpoint, const std::string& sMess
     return m_pImpl->SendMessage(theEndpoint, sMessage);
 }
 
+bool WebSocketClient::Send(const endpoint& theEndpoint, const Json::Value& jsMessage)
+{
+    return m_pImpl->SendMessage(theEndpoint, ConvertFromJson(jsMessage));
+}
 
 bool WebSocketClient::Connect(const endpoint& theEndpoint)
 {
