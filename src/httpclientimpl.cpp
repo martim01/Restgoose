@@ -184,6 +184,7 @@ void HttpClientImpl::GetContentHeaders(mg_http_message* pReply)
             pmlLog(pml::LOG_WARN) << "RestGoose:HttpClient\tFailed to get content length: " << e.what();
         }
     }
+
 }
 
 void HttpClientImpl::GetResponseCode(mg_http_message* pReply)
@@ -248,26 +249,36 @@ void HttpClientImpl::HandleChunkEvent(mg_connection* pConnection, mg_http_messag
 {
     pmlLog(pml::LOG_TRACE) << "HttpClient:RawChunk: " << std::string(pReply->chunk.ptr, pReply->chunk.len);
 
-    if(m_eStatus == HttpClientImpl::CONNECTED || m_eStatus == HttpClientImpl::SENDING)
-    {
-        GetResponseCode(pReply);
-        GetContentHeaders(pReply);
+    auto bTerminate = false;
 
-        m_eStatus = HttpClientImpl::RECEIVING;
-    }
-    m_response.nBytesReceived += pReply->chunk.len;
-
-    if(m_response.bBinary)
+    if(pReply->chunk.len != 0)
     {
-        if(m_ofs.is_open())
+        if(m_eStatus == HttpClientImpl::CONNECTED || m_eStatus == HttpClientImpl::SENDING)
         {
-            m_ofs.write(pReply->chunk.ptr, pReply->chunk.len);
+            GetResponseCode(pReply);
+            GetContentHeaders(pReply);
+
+            m_eStatus = HttpClientImpl::RECEIVING;
+        }
+        m_response.nBytesReceived += pReply->chunk.len;
+
+        if(m_response.bBinary)
+        {
+            if(m_ofs.is_open())
+            {
+                m_ofs.write(pReply->chunk.ptr, pReply->chunk.len);
+            }
+        }
+        else
+        {
+            m_response.data.Get().append(pReply->chunk.ptr, pReply->chunk.len);
         }
     }
     else
     {
-        m_response.data.Get().append(pReply->chunk.ptr, pReply->chunk.len);
+        bTerminate = true;
     }
+
     mg_http_delete_chunk(pConnection, pReply);
 
     if(m_pDownloadProgressCallback)
@@ -275,7 +286,7 @@ void HttpClientImpl::HandleChunkEvent(mg_connection* pConnection, mg_http_messag
         m_pDownloadProgressCallback(m_response.nBytesReceived, m_response.nContentLength);
     }
 
-    if(m_response.nBytesReceived >= m_response.nContentLength)
+    if((m_response.nContentLength != 0 && m_response.nBytesReceived >= m_response.nContentLength) || bTerminate)
     {
         if(m_ofs.is_open())
         {
@@ -349,7 +360,7 @@ void HttpClientImpl::RunAsync(std::function<void(const clientResponse&, unsigned
 
 const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout)
 {
-    mg_log_set("0");
+    mg_log_set(0);
 
     m_connectionTimeout = connectionTimeout;
     m_processTimeout = processTimeout;

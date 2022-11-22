@@ -124,18 +124,18 @@ bool RG_EXPORT operator<(const methodpoint& e1, const methodpoint& e2)
     return (e1.first.Get() < e2.first.Get() || (e1.first.Get() == e2.first.Get() && caseInsLess(e1.second.Get(), e2.second.Get())));
 }
 
-void mgpmlLog(const void* buff, size_t nLength, void* param)
+static void mgpmlLog(char ch, void* param)
 {
-    std::string str((char*)buff, nLength);
-    if(str.length() > 7 && str[4] == '-' && str[7] == '-')
-    {   //prefix message
-
+    static pml::LogStream ls;
+    ls.SetLevel(pml::LOG_TRACE);
+    if(ch != '\n')
+    {
+        ls << ch;
     }
     else
     {
-        pmlLog(pml::LOG_TRACE) << "RestGoose:Mongoose\t" << str;
+        ls << std::endl;
     }
-
 }
 
 
@@ -194,11 +194,6 @@ void ev_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_da
 
 void pipe_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_data)
 {
-    if(nEvent != MG_EV_POLL)
-    {
-        pmlLog(pml::LOG_TRACE) << "pipe_handler: " << nEvent;
-    }
-
     if(nEvent == MG_EV_READ)
     {
 
@@ -596,7 +591,7 @@ void MongooseServer::HandleFirstChunk(httpchunks& chunk, mg_connection* pConnect
         //@todo should we terminate the connection if the callback is not found?? How do we do this smoothly??
 
         auto contents = mg_http_get_header(pMessage, "Content-Type");
-        if(contents->len > 0)
+        if(contents && contents->len > 0)
         {
             chunk.contentType.Get().assign(contents->ptr, contents->len);
         }
@@ -619,7 +614,7 @@ void MongooseServer::HandleFirstChunk(httpchunks& chunk, mg_connection* pConnect
         }
 
         auto totalSize = mg_http_get_header(pMessage, "Content-Length");
-        if(totalSize->len > 0)
+        if(totalSize && totalSize->len > 0)
         {
             try
             {
@@ -654,6 +649,13 @@ void MongooseServer::WorkoutBoundary(httpchunks& chunk)
 void MongooseServer::EventHttpChunk(mg_connection *pConnection, void* pData)
 {
     mg_http_message* pMessage = reinterpret_cast<mg_http_message*>(pData);
+
+    //Mongoose now fires a Chunk event whether the message is chunked encoded or not. So double check here
+    auto chunked = mg_http_get_header(pMessage, "Transfer-Encoding");
+    if(!chunked || chunked->len == 0 || std::string(chunked->ptr) != "chunked")
+    {
+        return;
+    }
 
     auto ins  = m_mChunks.insert({pConnection, httpchunks()});
     if(ins.second)
@@ -1061,6 +1063,7 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
             EventHttp(pConnection, nEvent, pData);
             break;
         case MG_EV_HTTP_CHUNK:  //partial message
+            pmlLog(pml::LOG_TRACE) << "HTTP_CHUNK: " << pConnection;
             EventHttpChunk(pConnection, pData);
             break;
         case MG_EV_WRITE:
@@ -1133,8 +1136,8 @@ MongooseServer::MongooseServer() :
     m_callbackNotFound(nullptr),
     m_timeSinceLastPingSent{0}
 {
-    mg_log_set("2");
-    mg_log_set_callback(mgpmlLog, NULL);
+    mg_log_set(2);
+    mg_log_set_fn(mgpmlLog, NULL);
 }
 
 MongooseServer::~MongooseServer()
@@ -1212,7 +1215,11 @@ void MongooseServer::Loop()
     {
         m_pConnection->fn_data = reinterpret_cast<void*>(this);
 
-        m_nPipe = mg_mkpipe(&m_mgr, pipe_handler, reinterpret_cast<void*>(this));
+        m_nPipe = mg_mkpipe(&m_mgr, pipe_handler, reinterpret_cast<void*>(this), true);
+        if(m_nPipe == 0)
+        {
+            pmlLog(pml::LOG_TRACE) << "No pipe!";
+        }
         pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tStarted: " << m_sServerName;
 
         auto now = std::chrono::high_resolution_clock::now();
@@ -1344,6 +1351,7 @@ void MongooseServer::DoReplyText(mg_connection* pConnection, const response& the
 
         mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
         mg_send(pConnection, sReply.c_str(), sReply.length());
+        pConnection->is_resp = 0;
 }
 
 void MongooseServer::DoReplyFile(mg_connection* pConnection, const response& theResponse)
@@ -1371,6 +1379,7 @@ void MongooseServer::DoReplyFile(mg_connection* pConnection, const response& the
 
         mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
         EventWrite(pConnection);
+        pConnection->is_resp = 0;
     }
     else
     {
@@ -1412,6 +1421,7 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
                   << "Access-Control-Max-AgeL3600\r\n\r\n";
 
         mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
+        pConnection->is_resp = 0;
 
     }
     else
@@ -1432,6 +1442,7 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
                   << "Access-Control-Max-AgeL3600\r\n\r\n";
 
         mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
+        pConnection->is_resp = 0;
         pConnection->is_draining = 1;
     }
 }
@@ -1444,6 +1455,7 @@ void MongooseServer::SendAuthenticationRequest(mg_connection* pConnection)
                << "WWW-Authenticate: Basic realm=\"User Visible Realm\"\r\n\r\n";
 
     mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
+    pConnection->is_resp = 0;
     pConnection->is_draining = 1;
 }
 
@@ -1451,8 +1463,6 @@ void MongooseServer::SendAuthenticationRequest(mg_connection* pConnection)
 
 void MongooseServer::SendWSQueue()
 {
-    pmlLog(pml::LOG_TRACE) << "SendWSQueue";
-
     std::lock_guard<std::mutex> lg(m_mutex);
 
     if(m_pConnection)
@@ -1521,8 +1531,6 @@ void MongooseServer::SendWebsocketMessage(const std::set<endpoint>& setEndpoints
     {
         const char* hi="hi";
         auto res = send(m_nPipe, hi, 2, 0);
-        pmlLog(pml::LOG_TRACE) << "RestGoose:Server\tSendWebsocketMessage::Wakeup: " << res << "\t" << errno << "\t" << strerror(errno);
-        //mg_mgr_wakeup(m_pPipe, nullptr, 0);
     }
 }
 

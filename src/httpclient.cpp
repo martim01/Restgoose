@@ -49,9 +49,11 @@ const clientResponse& HttpClient::Run(const std::chrono::milliseconds& connectio
 void HttpClient::Run(std::function<void(const clientResponse&, unsigned int )> pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout, const std::chrono::milliseconds& delay)
 {
 
-    ThreadPool::Get().Submit([=, pImpl=m_pImpl]{
-                             std::this_thread::sleep_for(delay);
-                              pImpl->RunAsync(pCallback, nRunId, connectionTimeout, processTimeout);
+    ThreadPool::Get().Submit([=, pImpl=m_pImpl]
+                             {
+                                pmlLog(pml::LOG_TRACE) << "HttpClient::Run " << nRunId;
+                                std::this_thread::sleep_for(delay);
+                                pImpl->RunAsync(pCallback, nRunId, connectionTimeout, processTimeout);
                             });
 }
 

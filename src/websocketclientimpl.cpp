@@ -29,7 +29,7 @@ WebSocketClientImpl::WebSocketClientImpl(std::function<bool(const endpoint& theE
 {
     mg_mgr_init(&m_mgr);        // Initialise event manager
 
-    m_nPipe = mg_mkpipe(&m_mgr, pipe_handler, reinterpret_cast<void*>(this));
+    m_nPipe = mg_mkpipe(&m_mgr, pipe_handler, reinterpret_cast<void*>(this), true);
 }
 
 WebSocketClientImpl::~WebSocketClientImpl()

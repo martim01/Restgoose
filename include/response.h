@@ -2,16 +2,8 @@
 #include "namedtype.h"
 #include <vector>
 #include "json/json.h"
+#include "dllexport.h"
 
-#ifdef _WIN32
-    #ifdef RESTGOOSE_DLL
-        #define RG_EXPORT __declspec(dllexport)
-    #else
-        #define RG_EXPORT __declspec(dllimport)
-    #endif //
-#else
-    #define RG_EXPORT
-#endif
 
 using httpMethod = NamedType<std::string, struct MethodParameter>;
 using endpoint = NamedType<std::string, struct endpointParameter>;
@@ -87,13 +79,13 @@ namespace pml
 
         struct RG_EXPORT clientResponse
         {
-            clientResponse() : nHttpCode(0), nBytesReceived(0){}
+            //clientResponse() : nHttpCode(0), nBytesReceived(0){}
 
-            unsigned short nHttpCode;
+            unsigned short nHttpCode=500;
             headerValue contentType;
-            unsigned long nContentLength;
-            unsigned long nBytesReceived;
-            bool bBinary;
+            unsigned long nContentLength=0;
+            unsigned long nBytesReceived=0;
+            bool bBinary=false;
             textData data;
 
             enum enumResponse {TEXT, FILE, AUTO};
