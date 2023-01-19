@@ -1469,6 +1469,7 @@ void MongooseServer::SendWSQueue()
             strcpy(cstr, ssMessage.str().c_str());
 
 
+
             for (mg_connection* pConnection = m_pConnection->mgr->conns; pConnection != NULL; pConnection = pConnection->next)
             {
                 if(is_websocket(pConnection))
@@ -1478,21 +1479,11 @@ void MongooseServer::SendWSQueue()
                     {
                         if(itSubscriber->second.bAuthenticated) //authenticated
                         {
-                            bool bSent(false);
                             for(auto anEndpoint : m_qWsMessages.front().first)
                             {
-                                for(auto sub : itSubscriber->second.setEndpoints)
+                                if(WebsocketSubscribedToEndpoint(itSubscriber->second, anEndpoint))
                                 {
-                                    if(sub.Get().length() <= anEndpoint.Get().length() && anEndpoint.Get().substr(0, sub.Get().length()) == sub.Get())
-                                    {   //has subscribed to something upstream of this methodpoint
-
-                                        mg_ws_send(pConnection, cstr, strlen(cstr), WEBSOCKET_OP_TEXT);
-                                        bSent = true;
-                                        break;
-                                    }
-                                }
-                                if(bSent)
-                                {
+                                    mg_ws_send(pConnection, cstr, strlen(cstr), WEBSOCKET_OP_TEXT);
                                     break;
                                 }
                             }
@@ -1508,6 +1499,23 @@ void MongooseServer::SendWSQueue()
             m_qWsMessages.pop();
         }
     }
+}
+
+bool MongooseServer::WebsocketSubscribedToEndpoint(const subscriber& sub, const endpoint& anEndpoint)
+{
+    auto vEndpoint = SplitString(anEndpoint.Get() , '/');
+    for(auto sub : sub.setEndpoints)
+    {
+        auto vSub = SplitString(sub.Get(), '/');
+        if(vSub.size() <= vEndpoint.size())
+        {
+            if(vSub == std::vector<std::string>(vEndpoint.begin(), vEndpoint.begin()+vSub.size()))
+            {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 

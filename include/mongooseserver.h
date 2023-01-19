@@ -215,6 +215,8 @@ namespace pml
                     std::set<endpoint> setEndpoints;
                 };
 
+                bool WebsocketSubscribedToEndpoint(const subscriber& sub, const endpoint& anEndpoint);
+
                 void HandleInternalWebsocketMessage(mg_connection* pConnection, subscriber& sub, const Json::Value& jsData);
                 void HandleExternalWebsocketMessage(mg_connection* pConnection, subscriber& sub, const Json::Value& jsData);
 
