@@ -11,7 +11,7 @@ SET(DIR_MONGOOSE ${DIR_BASE}/mongoose CACHE STRING "location of mongoose")
 SET(DIR_LOG ${DIR_BASE}/log CACHE STRING "location of pml log")
 SET(MONGOOSE_CHECKOUT 7c17c806ada12fb2625d4bf90dd7211f47703c6a CACHE STRING "Mongoose release 7.7")
 
-
+message(STATUS, ${CMAKE_SOURCE_DIR})
 
 if(NOT DEFINED BUILD_LOG)
         SET(BUILD_LOG ON)

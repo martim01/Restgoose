@@ -931,6 +931,7 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pDa
         //none found so sne a "not found" error
         if(m_sStaticRootDir.empty() == false)
         {
+            pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\t" << "serve page " << m_sStaticRootDir;
             mg_http_serve_opts opts = {.root_dir = m_sStaticRootDir.c_str()};
             mg_http_serve_dir(pConnection, pMessage, &opts);
         }
@@ -1248,13 +1249,13 @@ void MongooseServer::Loop()
 
 void MongooseServer::Stop()
 {
+    m_bLoop = false;
     if(m_pThread)
     {
-        m_bLoop = false;
         m_pThread->join();
         m_pThread = nullptr;
     }
-    mg_mgr_free(&m_mgr);
+    //mg_mgr_free(&m_mgr);
 }
 
 bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, std::function<bool(const endpoint&, const query&, const userName&, const ipAddress& )> funcAuthentication, std::function<bool(const endpoint&, const Json::Value&)> funcMessage, std::function<void(const endpoint&, const ipAddress&)> funcClose)
