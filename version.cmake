@@ -4,8 +4,12 @@ if(NOT NAMESPACE)
     message(FATAL_ERROR "Namespace not set")
 endif()
 
+message(STATUS "Namespace ${NAMESPACE}")
+
 execute_process(COMMAND git -C ${CMAKE_CURRENT_LIST_DIR} log --pretty=format:'%h' -n 1 OUTPUT_VARIABLE GIT_REV ERROR_QUIET)
 execute_process(COMMAND git -C ${CMAKE_CURRENT_LIST_DIR} log --pretty=format:'%ai' -n 1 OUTPUT_VARIABLE GIT_TIME ERROR_QUIET)
+
+execute_process(COMMAND "date" "+%Y-%m-%d" OUTPUT_VARIABLE BUILD_DATE ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 # Check whether we got any revision (which isn't
 # always the case, e.g. when someone downloaded a zip
@@ -39,6 +43,7 @@ unsigned long pml::${NAMESPACE}::VERSION_MAJOR=${MAJOR};
 unsigned long pml::${NAMESPACE}::VERSION_MINOR=${MINOR};
 unsigned long pml::${NAMESPACE}::VERSION_PATCH=${PATCH};
 const char* pml::${NAMESPACE}::VERSION_STRING=\"${MAJOR}.${MINOR}.${PATCH}-${GIT_REV}${GIT_DIFF}\";
+const char* pml::${NAMESPACE}::BUILD_DATE = \"${BUILD_DATE}\";
 ")
 
 set(SRC_FILE ${CMAKE_BINARY_DIR}/src/${NAMESPACE}_version.cpp)
@@ -70,6 +75,7 @@ namespace pml
         extern unsigned long VERSION_MINOR;
         extern unsigned long VERSION_PATCH;
         extern const char* VERSION_STRING;
+        extern const char* BUILD_DATE;
     }   
 }
 #endif")
