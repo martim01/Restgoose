@@ -56,6 +56,7 @@ namespace pml
                 void SetAuthorizationTypeBearer(std::function<bool(const std::string&)> callback, bool bAuthenticateWebsocketsViaQuery);
                 void SetAuthorizationTypeBasic(const userName& aUser, const password& aPassword);
                 void SetAuthorizationTypeNone();
+                void SetUnprotectedEndpoints(const std::set<methodpoint>& setUnprotected);
 
                 bool AddBAUser(const userName& aUser, const password& aPassword);
                 bool DeleteBAUser(const userName& aUser);
@@ -228,6 +229,7 @@ namespace pml
                 bool AuthenticateWebsocket(subscriber& sub, const Json::Value& jsData);
                 bool AuthenticateWebsocketBasic(subscriber& sub, const Json::Value& jsData);
                 bool AuthenticateWebsocketBearer(subscriber& sub, const Json::Value& jsData);
+                bool MethodPointUnprotected(const methodpoint& thePoint);
 
                 void HandleAccept(mg_connection* pConnection);
                 void HandleOpen(mg_connection* pConnection);
@@ -285,6 +287,8 @@ namespace pml
                 std::function<response(const httpMethod&, const query&, const std::vector<partData>&, const endpoint&, const userName&)> m_callbackNotFound;
 
                 std::map<userName, password> m_mUsers;
+
+                std::set<methodpoint> m_setUnprotected;
 
                 std::chrono::milliseconds m_timeSinceLastPingSent;
 

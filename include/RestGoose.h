@@ -67,6 +67,11 @@ namespace pml
                 **/
                 void SetAuthorizationTypeNone();
 
+                /** @brief Define a set of methodpoints that do not need to be authenticated (e.g. to show an initial login page)
+                *   @param setUnprotected a set of method,endpoint pairs
+                **/
+                void SetUnprotectedEndpoints(const std::set<methodpoint>& setUnprotected);
+
                 /** @brief Adds a basic authentication user/password pair to the server
                 *   @param aUser the username
                 *   @param aPassword the password

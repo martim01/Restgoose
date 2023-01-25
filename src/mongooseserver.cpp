@@ -487,6 +487,16 @@ void MongooseServer::CloseWebsocket(mg_connection* pConnection)
 
 authorised MongooseServer::CheckAuthorization(mg_http_message* pMessage)
 {
+
+    //check if the endpoint is one we've unprotected
+    auto thePoint = GetMethodPoint(pMessage);
+    pmlLog(pml::LOG_DEBUG) << "MongooseServer\tCheckAuthorization for " << thePoint.first << "@" << thePoint.second;
+
+    if(MethodPointUnprotected(thePoint))
+    {
+        return std::make_pair(true, userName(""));
+    }
+
     if(m_tokenCallback)
     {
         return CheckAuthorizationBearer(pMessage);
@@ -531,7 +541,7 @@ authorised MongooseServer::CheckAuthorizationBearer(mg_http_message* pMessage)
 
     if(m_tokenCallback(sBearer))
     {
-        return std::make_pair(true, userName(sBearer));
+        return std::make_pair(true, userName(sPass));
     }
     else
     {
@@ -575,6 +585,7 @@ methodpoint MongooseServer::GetMethodPoint(mg_http_message* pMessage)
 void MongooseServer::HandleFirstChunk(httpchunks& chunk, mg_connection* pConnection, mg_http_message* pMessage)
 {
     pmlLog() << "Restgoose:Server\tHandleFirstChunk";
+
 
     auto auth = CheckAuthorization(pMessage);
     if(auth.first == false)
@@ -1440,12 +1451,19 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
 
 void MongooseServer::SendAuthenticationRequest(mg_connection* pConnection)
 {
-    stringstream ssHeaders;
-    ssHeaders << "HTTP/1.1 401\r\n"
-               << "WWW-Authenticate: Basic realm=\"User Visible Realm\"\r\n\r\n";
+    if(m_tokenCallback == nullptr)
+    {
+        stringstream ssHeaders;
+        ssHeaders << "HTTP/1.1 401\r\n"
+                << "WWW-Authenticate: Basic realm=\"User Visible Realm\"\r\n\r\n";
 
-    mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
-    pConnection->is_draining = 1;
+        mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
+        pConnection->is_draining = 1;
+    }
+    else
+    {
+        DoReply(pConnection, response(401, "Not authenticated"));
+    }
 }
 
 
@@ -1686,4 +1704,45 @@ void MongooseServer::SendAndCheckPings(const std::chrono::milliseconds& elapsed)
 size_t MongooseServer::GetNumberOfWebsocketConnections() const
 {
     return DoGetNumberOfWebsocketConnections(m_mgr);
+}
+
+void MongooseServer::SetUnprotectedEndpoints(const std::set<methodpoint>& setUnprotected)
+{
+    m_setUnprotected = setUnprotected;
+}
+
+bool MongooseServer::MethodPointUnprotected(const methodpoint& thePoint)
+{
+    if(m_setUnprotected.find(thePoint) != m_setUnprotected.end())
+    {
+        return true;
+    }
+
+    auto vEndpoint = SplitString(thePoint.second.Get() , '/');
+
+    for(auto sub : m_setUnprotected)
+    {
+        if(sub.first == thePoint.first)
+        {
+            auto vSub = SplitString(sub.second.Get(), '/');
+
+            if(vSub.empty() == false && vSub.back() == "*" && vSub.size() <= vEndpoint.size())
+            {
+                bool bOk = true;
+                for(size_t i = 0; i < vSub.size()-1; i++)
+                {
+                    if(vSub[i] != vEndpoint[i])
+                    {
+                        bOk = false;
+                        break;
+                    }
+                }
+                if(bOk)
+                {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
 }

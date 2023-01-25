@@ -158,3 +158,8 @@ const std::string& Server::GetAccessControlList() const
 {
     return m_pImpl->GetAccessControlList();
 }
+
+void Server::SetUnprotectedEndpoints(const std::set<methodpoint>& setUnprotected)
+{
+    m_pImpl->SetUnprotectedEndpoints(setUnprotected);
+}
