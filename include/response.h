@@ -78,11 +78,14 @@ namespace pml
             response(const response& aResponse);
             response& operator=(const response& aResponse);
             ~response();
-            unsigned short nHttpCode;
-            Json::Value jsonData;
-            headerValue contentType;
-            textData data;
-            bool bFile;
+
+            unsigned short nHttpCode;                           /** The HTTP status code to send back **/
+            Json::Value jsonData;                               /** Any Json encode data to send back **/
+            headerValue contentType;                            /** The content type that is being sent back **/
+            textData data;                                      /** Any plain text data to send back **/
+            bool bFile;                                         /** If true then a file is being sent back and data is the location of the file **/
+            std::map<headerName, headerValue> mHeaders;         /** overides the default headers sent by the server **/
+            std::map<headerName, headerValue> mExtraHeaders;    /** extra headers to send as well as the default headers **/
         };
 
         struct RG_EXPORT clientResponse

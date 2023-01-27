@@ -69,9 +69,9 @@ void Server::SendWebsocketMessage(const std::set<endpoint>& setEndpoints, const 
     m_pImpl->SendWebsocketMessage(setEndpoints, jsMessage);
 }
 
-void Server::SetAuthorizationTypeBearer(std::function<bool(const std::string& theToken)> callback, bool bAuthenticateWebsocketsViaQuery)
+void Server::SetAuthorizationTypeBearer(std::function<bool(const std::string& theToken)> callback, std::function<response()> callbackHandleNotAuthorized, bool bAuthenticateWebsocketsViaQuery)
 {
-    m_pImpl->SetAuthorizationTypeBearer(callback, bAuthenticateWebsocketsViaQuery);
+    m_pImpl->SetAuthorizationTypeBearer(callback, callbackHandleNotAuthorized, bAuthenticateWebsocketsViaQuery);
 }
 void Server::SetAuthorizationTypeBasic(const userName& aUser, const password& aPassword)
 {
@@ -139,9 +139,9 @@ void Server::SetMaxConnections(size_t nMax)
     m_pImpl->SetMaxConnections(nMax);
 }
 
-const ipAddress& Server::GetCurrentPeer() const
+const ipAddress& Server::GetCurrentPeer(bool bIncludePort) const
 {
-    return m_pImpl->GetCurrentPeer();
+    return m_pImpl->GetCurrentPeer(bIncludePort);
 }
 
 size_t Server::GetNumberOfWebsocketConnections() const
@@ -162,4 +162,19 @@ const std::string& Server::GetAccessControlList() const
 void Server::SetUnprotectedEndpoints(const std::set<methodpoint>& setUnprotected)
 {
     m_pImpl->SetUnprotectedEndpoints(setUnprotected);
+}
+
+void Server::AddHeaders(const std::map<headerName, headerValue>& mHeaders)
+{
+    m_pImpl->AddHeaders(mHeaders);
+}
+
+void Server::RemoveHeaders(const std::set<headerName>& setHeaders)
+{
+    m_pImpl->RemoveHeaders(setHeaders);
+}
+
+void Server::SetHeaders(const std::map<headerName, headerValue>& mHeaders)
+{
+    m_pImpl->SetHeaders(mHeaders);
 }

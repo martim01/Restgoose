@@ -33,7 +33,9 @@ response::response(const response& aResponse) : nHttpCode(aResponse.nHttpCode),
 jsonData(aResponse.jsonData),
 contentType(aResponse.contentType),
 data(aResponse.data),
-bFile(aResponse.bFile)
+bFile(aResponse.bFile),
+mHeaders(aResponse.mHeaders),
+mExtraHeaders(aResponse.mExtraHeaders)
 {
 }
 
@@ -47,6 +49,8 @@ response& response::operator=(const response& aResponse)
         contentType = aResponse.contentType;
         data = aResponse.data;
         bFile = aResponse.bFile;
+        mHeaders = aResponse.mHeaders;
+        mExtraHeaders = aResponse.mExtraHeaders;
     }
     return *this;
 

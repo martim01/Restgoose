@@ -53,7 +53,7 @@ namespace pml
 
                 void SetInterface(const ipAddress& addr, unsigned short nPort);
 
-                void SetAuthorizationTypeBearer(std::function<bool(const std::string&)> callback, bool bAuthenticateWebsocketsViaQuery);
+                void SetAuthorizationTypeBearer(std::function<bool(const std::string&)> callback, std::function<response()> callbackHandleNotAuthorized,bool bAuthenticateWebsocketsViaQuery);
                 void SetAuthorizationTypeBasic(const userName& aUser, const password& aPassword);
                 void SetAuthorizationTypeNone();
                 void SetUnprotectedEndpoints(const std::set<methodpoint>& setUnprotected);
@@ -107,6 +107,9 @@ namespace pml
                 void SendWebsocketMessage(const std::set<endpoint>& setEndpoints, const Json::Value& jsMessage);
 
 
+                void AddHeaders(const std::map<headerName, headerValue>& mHeaders);
+                void RemoveHeaders(const std::set<headerName>& setHeaders);
+                void SetHeaders(const std::map<headerName, headerValue>& mHeaders);
 
                 std::set<methodpoint> GetEndpoints();
 
@@ -134,7 +137,7 @@ namespace pml
 
                 void SendWSQueue();
 
-                const ipAddress& GetCurrentPeer() { return m_lastPeer; }
+                const ipAddress& GetCurrentPeer(bool bIncludePort = true);
 
                 ~MongooseServer();
 
@@ -187,7 +190,7 @@ namespace pml
         //        bool MultipartEnd(mg_connection* pConnection, mg_http_multipart_part* pPart);
 
 
-
+                std::string CreateHeaders(const response& theResponse, size_t nLength);
 
                 void DoReply(mg_connection* pConnection, const response& theResponse);
                 void DoReplyText(mg_connection* pConnection, const response& theResponse);
@@ -226,9 +229,9 @@ namespace pml
 
 
                 void DoWebsocketAuthentication(mg_connection* pConnection, subscriber& sub, const Json::Value& jsData);
-                bool AuthenticateWebsocket(subscriber& sub, const Json::Value& jsData);
-                bool AuthenticateWebsocketBasic(subscriber& sub, const Json::Value& jsData);
-                bool AuthenticateWebsocketBearer(subscriber& sub, const Json::Value& jsData);
+                bool AuthenticateWebsocket(const subscriber& sub, const Json::Value& jsData);
+                bool AuthenticateWebsocketBasic(const subscriber& sub, const Json::Value& jsData);
+                bool AuthenticateWebsocketBearer(const subscriber& sub, const Json::Value& jsData);
                 bool MethodPointUnprotected(const methodpoint& thePoint);
 
                 void HandleAccept(mg_connection* pConnection);
@@ -270,7 +273,7 @@ namespace pml
                 std::multimap<endpoint, httpMethod, end_less> m_mmOptions;
 
                 std::function<bool(const std::string&)> m_tokenCallback;
-
+                std::function<response()> m_tokenCallbackHandleNotAuthorized;
 
                 std::map<mg_connection*, subscriber > m_mSubscribers;
 
@@ -293,6 +296,7 @@ namespace pml
                 std::chrono::milliseconds m_timeSinceLastPingSent;
 
                 ipAddress m_lastPeer;
+                ipAddress m_lastPeerAndPort;
 
                 std::string m_sAcl;
 
@@ -334,6 +338,8 @@ namespace pml
                 std::map<mg_connection*, httpchunks> m_mChunks;
 
                 std::map<mg_connection*, std::unique_ptr<std::ifstream> > m_mFileDownloads;
+
+                std::map<headerName, headerValue> m_mHeaders;
         };
     };
 };

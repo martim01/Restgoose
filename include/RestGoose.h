@@ -55,7 +55,7 @@ namespace pml
                 *   @param callback a callback function that should inspect the token and return true if authorization is allowed
                 *   @param bAuthenticateWebsocketsViaQuery if true then, for websocket connections, the bearer token is expected to be passed as a query param in the connecting websocket url (e.g. wss://127.0.0.1:/ws/api?jwt=923834aa9q3....). If false then the token must be passed as the first message from the client to the server
                 **/
-                void SetAuthorizationTypeBearer(std::function<bool(const std::string& theToken)> callback, bool bAuthenticateWebsocketsViaQuery);
+                void SetAuthorizationTypeBearer(std::function<bool(const std::string& theToken)> callback, std::function<response()> callbackHandleNotAuthorized, bool bAuthenticateWebsocketsViaQuery);
 
                 /** @brief Sets the authorization type to basic authentication
                 *   @param aUser a user name
@@ -191,12 +191,32 @@ namespace pml
 
 
                 /** @brief Gets the ip address of the peer that sent the request currently being handled
+                *   @param bIncludePort if true then the port number is included else just the ip address
                 *   @note this is address is only valid whilst handling an api endpoint callback
                 **/
-                const ipAddress& GetCurrentPeer() const;
+                const ipAddress& GetCurrentPeer(bool bIncludePort = true) const;
 
 
                 size_t GetNumberOfWebsocketConnections() const;
+
+                /** @brief Adds extra headers for the server to send on all replies
+                *   @param mHeaders a map of headerName, headerValue pairs
+                *   @note if a headerName already exists in list of those to be sent then the value sent is overwritten by this function
+                *   @note Content-Type and Content-Length are always sent and cannot be overwritten
+                **/
+                void AddHeaders(const std::map<headerName, headerValue>& mHeaders);
+
+                /** @brief Removes headers from the list of those to be sent by the server
+                *   @param setHeaders a set of headerNames to be removed
+                *   @note Content-Type and Content-Length are always sent and cannot be removed
+                **/
+                void RemoveHeaders(const std::set<headerName>& setHeaders);
+
+                /** @brief Sets the headers to be sent by the server
+                *   @param mHeaders a map of headerName, headerValue pairs
+                *   @note Content-Type and Content-Length are always sent
+                **/
+                void SetHeaders(const std::map<headerName, headerValue>& mHeaders);
 
             private:
                 std::unique_ptr<MongooseServer> m_pImpl;
