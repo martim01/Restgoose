@@ -256,6 +256,7 @@ bool MongooseServer::AuthenticateWebsocket(const subscriber& sub, const Json::Va
 {
     std::lock_guard<std::mutex> lg(m_mutex);
 
+    pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tAuthenticateWebsocket";
     if(m_tokenCallback)
     {
         return AuthenticateWebsocketBearer(sub, jsData);
@@ -331,6 +332,7 @@ bool MongooseServer::AuthenticateWebsocketBearer(const subscriber& sub, const Js
         pmlLog(pml::LOG_WARN) << "RestGoose:Server\tWebsocket subscriber: " << sub.peer << " No bearer token sent";
         return false;
     }
+    pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tAuthenticateWebsocketBearer token=" << sToken;
 
     auto itEndpoint = m_mWebsocketAuthenticationEndpoints.find(sub.theEndpoint);
     if(itEndpoint != m_mWebsocketAuthenticationEndpoints.end())
@@ -1111,31 +1113,39 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
             }
             break;
         case MG_EV_OPEN:
+            pmlLog(pml::LOG_DEBUG) << "MongooseServer\tHandleOpen";
             HandleOpen(pConnection);
             break;
         case MG_EV_ACCEPT:
+            pmlLog(pml::LOG_DEBUG) << "MongooseServer\tHandleAccept";
             HandleAccept(pConnection);
             break;
         case MG_EV_WS_OPEN:
+            pmlLog(pml::LOG_DEBUG) << "MongooseServer\tHandleWebsocketOpen";
             EventWebsocketOpen(pConnection, nEvent, pData);
             break;
         case MG_EV_WS_CTL:
+            pmlLog(pml::LOG_DEBUG) << "MongooseServer\tHandleWebsocketCtl";
             EventWebsocketCtl(pConnection, nEvent, pData);
             break;
         case MG_EV_WS_MSG:
+            pmlLog(pml::LOG_DEBUG) << "MongooseServer\tHandleWebsocketMsg";
             EventWebsocketMessage(pConnection, nEvent, pData);
             break;
         case MG_EV_HTTP_MSG:
+            pmlLog(pml::LOG_DEBUG) << "MongooseServer\tHandleHTTPMsg";
             pmlLog(pml::LOG_TRACE) << "HTTP_MSG: " << pConnection;
             EventHttp(pConnection, nEvent, pData);
             break;
         case MG_EV_HTTP_CHUNK:  //partial message
+            pmlLog(pml::LOG_DEBUG) << "MongooseServer\tHandleHTTPChunk";
             EventHttpChunk(pConnection, pData);
             break;
         case MG_EV_WRITE:
             EventWrite(pConnection);
             break;
         case MG_EV_CLOSE:
+            pmlLog(pml::LOG_DEBUG) << "MongooseServer\tHandleClose";
             if (is_websocket(pConnection))
             {
                 pConnection->fn_data = nullptr;
