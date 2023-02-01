@@ -129,7 +129,14 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
 
     switch(nEvent)
     {
+        case MG_EV_OPEN:
+            pmlLog(pml::LOG_TRACE) << "RestGoose:WebsocketClient\tOpen";
+            break;
+        case MG_EV_RESOLVE:
+            pmlLog(pml::LOG_TRACE) << "RestGoose:WebsocketClient\tResolve";
+            break;
         case MG_EV_CONNECT:
+            pmlLog(pml::LOG_TRACE) << "RestGoose:WebsocketClient\tInitialConnection";
             HandleInitialConnection(pConnection);
             break;
         case MG_EV_ERROR:
@@ -142,6 +149,7 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
             break;
         case MG_EV_WS_MSG:
             {
+                pmlLog(pml::LOG_TRACE) << "RestGoose:WebsocketClient\tMessage";
                 mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
                 //CheckPong(pConnection, pMessage);
 
@@ -156,6 +164,7 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
             }
             break;
         case MG_EV_WS_CTL:
+            pmlLog(pml::LOG_TRACE) << "RestGoose:WebsocketClient\tCTL";
             if(m_pConnectCallback)
             {
                 mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
@@ -169,6 +178,14 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
                 CheckPong(pConnection, pMessage);
             }
             break;
+        case MG_EV_CLOSE:
+            if(m_pConnectCallback)
+            {
+                m_pConnectCallback(FindUrl(pConnection), false);
+            }
+            break;
+        default:
+            pmlLog(pml::LOG_TRACE) << "WebSocketClientImpl::Callback: " << nEvent;
     }
 }
 

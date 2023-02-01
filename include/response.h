@@ -87,6 +87,7 @@ namespace pml
             unsigned long nBytesReceived=0;
             bool bBinary=false;
             textData data;
+            std::map<headerName, headerValue> mHeaders;
 
             enum enumResponse {TEXT, FILE, AUTO};
             enum enumError {ERROR_SETUP, ERROR_TIME, ERROR_CONNECTION, ERROR_REPLY, ERROR_FILE_READ, ERROR_FILE_WRITE, USER_CANCELLED};

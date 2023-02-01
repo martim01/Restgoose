@@ -50,7 +50,9 @@ HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target,
     m_mHeaders(mExtraHeaders),
     m_eResponse(eResponse)
 {
-    m_vPostData.push_back(partData(partName(""), textData(ConvertFromJson(jsData))));
+    auto sData = ConvertFromJson(jsData);
+    pmlLog(pml::LOG_TRACE) << "HttpClient: convert from json to '" << sData << "'";
+    m_vPostData.push_back(partData(partName(""), textData(sData)));
 }
 
 HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType, const std::map<headerName, headerValue> mExtraHeaders, clientResponse::enumResponse eResponse) :
@@ -130,12 +132,19 @@ void HttpClientImpl::HandleConnectEvent(mg_connection* pConnection)
 
 void HttpClientImpl::GetContentHeaders(mg_http_message* pReply)
 {
-    auto type = mg_http_get_header(pReply, "Content-Type");
-    auto len = mg_http_get_header(pReply, "Content-Length");
-
-    if(type)
+    auto nMax = sizeof(pReply->headers) / sizeof(pReply->headers[0]);
+    for (size_t i = 0; i < nMax && pReply->headers[i].name.len > 0; i++)
     {
-        m_response.contentType = headerValue(std::string(type->ptr, type->len));
+        m_response.mHeaders.insert({headerName(std::string(pReply->headers[i].name.ptr, pReply->headers[i].name.len)),
+                                    headerValue(std::string(pReply->headers[i].value.ptr, pReply->headers[i].value.len))});
+    }
+
+    auto itType = m_response.mHeaders.find(headerName("Content-Type"));
+    auto itLen = m_response.mHeaders.find(headerName("Content-Length"));
+
+    if(itType != m_response.mHeaders.end())
+    {
+        m_response.contentType = itType->second;
 
         auto nPos = m_response.contentType.Get().find(';');
         if(nPos != std::string::npos)
@@ -170,18 +179,18 @@ void HttpClientImpl::GetContentHeaders(mg_http_message* pReply)
         }
 
     }
-    if(len)
+    if(itLen != m_response.mHeaders.end())
     {
         try
         {
-            m_response.nContentLength = std::stoul(std::string(len->ptr, len->len));
+            m_response.nContentLength = std::stoul(itLen->second.Get());
 
             pmlLog(pml::LOG_TRACE) << "HttpClient::Content-Length: " << m_response.nContentLength;
 
         }
         catch(const std::exception& e)
         {
-            pmlLog(pml::LOG_WARN) << "RestGoose:HttpClient\tFailed to get content length: " << e.what();
+            pmlLog(pml::LOG_WARN) << "RestGoose:HttpClient\tFailed to get content length: " << e.what() << " " << itLen->second.Get();
         }
     }
 
@@ -353,7 +362,7 @@ void HttpClientImpl::RunAsync(std::function<void(const clientResponse&, unsigned
 {
     m_pAsyncCallback = pCallback;
     m_nRunId = nRunId;
-    pmlLog(pml::LOG_TRACE) << "RunAsync: nRunId = " << nRunId << " Endpoint: " << m_point.second;// << " data: " << m_vPostData.back().filepath;
+    pmlLog(pml::LOG_TRACE) << "RestGoose:HttpClient::RunAsync: nRunId = " << nRunId << " Endpoint: " << m_point.second;// << " data: " << m_vPostData.back().filepath;
     Run(connectionTimeout, processTimeout);
 }
 
@@ -365,7 +374,7 @@ const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& conne
     m_connectionTimeout = connectionTimeout;
     m_processTimeout = processTimeout;
 
-
+    pmlLog(pml::LOG_TRACE) << "RestGoose:HttpClient::Run - connect to " << m_point.second;
     mg_mgr mgr;
     mg_mgr_init(&mgr);
     auto pConnection = mg_http_connect(&mgr, m_point.second.Get().c_str(), evt_handler, (void*)this);
@@ -376,6 +385,7 @@ const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& conne
     }
     else
     {
+        pmlLog(pml::LOG_TRACE) << "RestGoose:HttpClient::Run - connected to " << m_point.second;
         DoLoop(mgr);
         if(m_eStatus == HttpClientImpl::REDIRECTING)
         {
