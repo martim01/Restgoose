@@ -612,7 +612,9 @@ methodpoint MongooseServer::GetMethodPoint(mg_http_message* pMessage)
         sUri = sUri.substr(0, sUri.length()-1);
     }
 
-    transform(sUri.begin(), sUri.end(), sUri.begin(), ::tolower);
+    //@todo possibly allow user to decide if should be case insensitive or not
+    //transform(sUri.begin(), sUri.end(), sUri.begin(), ::tolower);
+
     //remove any double /
     std::string sPath;
     char c(0);
