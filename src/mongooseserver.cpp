@@ -1261,7 +1261,7 @@ bool MongooseServer::Init(const fileLocation& cert, const fileLocation& key, con
 
     mg_mgr_init(&m_mgr);
 
-    SetInterface(ipAddress("0.0.0.0"), nPort);
+    SetInterface(addr, nPort);
 
     return true;
 }
