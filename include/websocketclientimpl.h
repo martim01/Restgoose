@@ -48,6 +48,8 @@ namespace pml
 
                 void CheckPong(mg_connection* pConnection, mg_ws_message* pMessage);
 
+                void CheckConnections();
+
                 endpoint FindUrl(mg_connection* pConnection);
 
                 mg_mgr m_mgr;

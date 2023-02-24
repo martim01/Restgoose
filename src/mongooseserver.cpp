@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <limits>
 
+
 using namespace std;
 using namespace std::placeholders;
 using namespace pml::restgoose;
@@ -1223,7 +1224,7 @@ MongooseServer::MongooseServer() :
                 {headerName("Access-Control-Max-Age"), headerValue("3600")}})
 {
     mg_log_set("2");
-    mg_log_set_callback(mgpmlLog, NULL);
+//    mg_log_set_callback(mgpmlLog, NULL);
 }
 
 MongooseServer::~MongooseServer()
@@ -1619,9 +1620,9 @@ void MongooseServer::SendWSQueue()
 bool MongooseServer::WebsocketSubscribedToEndpoint(const subscriber& sub, const endpoint& anEndpoint)
 {
     auto vEndpoint = SplitString(anEndpoint.Get() , '/');
-    for(auto sub : sub.setEndpoints)
+    for(auto endp : sub.setEndpoints)
     {
-        auto vSub = SplitString(sub.Get(), '/');
+        auto vSub = SplitString(endp.Get(), '/');
         if(vSub.size() <= vEndpoint.size())
         {
             if(vSub == std::vector<std::string>(vEndpoint.begin(), vEndpoint.begin()+vSub.size()))

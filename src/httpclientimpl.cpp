@@ -181,7 +181,7 @@ void HttpClientImpl::GetContentHeaders(mg_http_message* pReply)
         }
         catch(const std::exception& e)
         {
-            pmlLog(pml::LOG_WARN) << "RestGoose:HttpClient\tFailed to get content length: " << e.what();
+            pmlLog(pml::LOG_WARN) << "RestGoose:HttpClient\tFailed to get content length: " << e.what() << " '" << std::string(len->ptr, len->len) << "'";
         }
     }
 }
