@@ -606,12 +606,16 @@ methodpoint MongooseServer::GetMethodPoint(mg_http_message* pMessage)
     mg_url_decode(pMessage->uri.ptr, pMessage->uri.len, decode, 6000, 0);
 
     string sUri(decode);
+    pmlLog(pml::LOG_DEBUG) << "MongooseServer\tGetMethodPoint: " << sUri;
+
     if(sUri[sUri.length()-1] == '/')    //get rid of trailling /
     {
         sUri = sUri.substr(0, sUri.length()-1);
     }
 
-    transform(sUri.begin(), sUri.end(), sUri.begin(), ::tolower);
+    //@todo possibly allow user to decide if should be case insensitive or not
+    //transform(sUri.begin(), sUri.end(), sUri.begin(), ::tolower);
+
     //remove any double /
     std::string sPath;
     char c(0);
@@ -965,7 +969,7 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pDa
     else if(InApiTree(thePoint.second))
     {
 
-        pmlLog(pml::LOG_TRACE) << "RestGoose:Server\t" << thePoint.second << " in Api tree";
+        pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\t'" << thePoint.second << "' in Api tree";
         auto itWsEndpoint = m_mWebsocketAuthenticationEndpoints.find(thePoint.second);
         if(itWsEndpoint != m_mWebsocketAuthenticationEndpoints.end())
         {
@@ -982,7 +986,7 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pDa
     }
     else
     {
-        pmlLog(pml::LOG_TRACE) << "RestGoose:Server\t" << thePoint.second << " not in Api tree";
+        pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\t'" << thePoint.second << "' not in Api tree";
         auto auth = CheckAuthorization(pMessage);
         if(auth.first == false)
         {
@@ -1126,7 +1130,7 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
             EventWebsocketOpen(pConnection, nEvent, pData);
             break;
         case MG_EV_WS_CTL:
-            pmlLog(pml::LOG_DEBUG) << "MongooseServer\tHandleWebsocketCtl";
+            pmlLog(pml::LOG_TRACE) << "MongooseServer\tHandleWebsocketCtl";
             EventWebsocketCtl(pConnection, nEvent, pData);
             break;
         case MG_EV_WS_MSG:
@@ -1258,7 +1262,7 @@ bool MongooseServer::Init(const fileLocation& cert, const fileLocation& key, con
 
     mg_mgr_init(&m_mgr);
 
-    SetInterface(ipAddress("0.0.0.0"), nPort);
+    SetInterface(addr, nPort);
 
     return true;
 }
@@ -1575,14 +1579,15 @@ void MongooseServer::SendWSQueue()
     {
         while(m_qWsMessages.empty() == false)
         {
-            std::stringstream ssMessage;
-            ssMessage << m_qWsMessages.front().second;
+            //std::stringstream ssMessage;
+            auto sMessage = ConvertFromJson(m_qWsMessages.front().second);
+            //ssMessage << m_qWsMessages.front().second;
 
-            pmlLog(pml::LOG_TRACE) << "SendWSQueue: " << ssMessage.str();
+            pmlLog(pml::LOG_TRACE) << "SendWSQueue: " << sMessage;
 
             //turn message into array
-            char *cstr = new char[ssMessage.str().length() + 1];
-            strcpy(cstr, ssMessage.str().c_str());
+            char *cstr = new char[sMessage.length() + 1];
+            strcpy(cstr, sMessage.c_str());
 
 
 
