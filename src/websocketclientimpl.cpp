@@ -194,7 +194,8 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
             break;
         case MG_EV_CLOSE:
             pmlLog() << "RestGoose:WebsocketClient\tWebsocket closed by server";
-            if(m_bRun && m_pConnectCallback           {
+            if(m_bRun && m_pConnectCallback)
+	    {
                 m_pConnectCallback(FindUrl(pConnection), false);
             }
             break;

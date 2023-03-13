@@ -120,7 +120,7 @@ set_target_properties(restgoose PROPERTIES DEBUG_POSTFIX "d")
 list(APPEND flags "-fPIC" "-Wall" "-fpermissive"  "-std=c++14")
 
 if(CMAKE_BUILD_TYPE MATCHES Release)
-   list(APPEND flags "-O3")
+   list(APPEND flags "-O3" "-s")
    target_compile_definitions(restgoose PUBLIC NDEBUG DLL_EXPORTS _MSL_STDINT_H MG_ENABLE_OPENSSL)
 else()
    list(APPEND flags "-g")
