@@ -119,19 +119,22 @@ set_target_properties(restgoose PROPERTIES DEBUG_POSTFIX "d")
 
 list(APPEND flags "-fPIC" "-Wall" "-fpermissive"  "-std=c++14")
 
-if(CMAKE_BUILD_TYPE MATCHES Release)
-   message(STATUS "Release build")
-   list(APPEND flags "-O3" "-s")
-   target_compile_definitions(restgoose PUBLIC NDEBUG DLL_EXPORTS _MSL_STDINT_H MG_ENABLE_OPENSSL)
-else()
+if(CMAKE_BUILD_TYPE MATCHES Debug)
    message(STATUS "Debug build")
    list(APPEND flags "-g")
    target_compile_definitions(restgoose PUBLIC DEBUG DLL_EXPORTS _MSL_STDINT_H MG_ENABLE_OPENSSL)
+else()
+   message(STATUS "Release build")
+   list(APPEND flags "-O3" "-s")
+   target_compile_definitions(restgoose PUBLIC NDEBUG DLL_EXPORTS _MSL_STDINT_H MG_ENABLE_OPENSSL)
+
 endif()
 
 target_compile_options(restgoose PRIVATE ${flags})
 target_link_libraries(restgoose ssl)
 target_link_libraries(restgoose optimized pml_log debug pml_logd)
+
+set_target_properties(restgoose PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(restgoose PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
 set_target_properties(restgoose PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib/)
 
