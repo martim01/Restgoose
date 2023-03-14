@@ -7,46 +7,44 @@ using namespace pml::restgoose;
 
 
 
-HttpClient::~HttpClient()
-{
-}
+HttpClient::~HttpClient()=default;
 
-HttpClient::HttpClient(const httpMethod& method, const endpoint& target, const std::map<headerName, headerValue> mExtraHeaders, clientResponse::enumResponse eResponse) :
-    m_pImpl(std::shared_ptr<HttpClientImpl>(new HttpClientImpl(method, target, mExtraHeaders, eResponse)))
+HttpClient::HttpClient(const httpMethod& method, const endpoint& target, const std::map<headerName, headerValue>& mExtraHeaders, clientResponse::enumResponse eResponse) :
+    m_pImpl(std::shared_ptr<HttpClientImpl>(new HttpClientImpl(method, target, mExtraHeaders, eResponse)))  //using new as constructor is private
 {
 
 }
 
-HttpClient::HttpClient(const httpMethod& method, const endpoint& target, const Json::Value& jsData, const std::map<headerName, headerValue> mExtraHeaders, clientResponse::enumResponse eResponse) :
+HttpClient::HttpClient(const httpMethod& method, const endpoint& target, const Json::Value& jsData, const std::map<headerName, headerValue>& mExtraHeaders, clientResponse::enumResponse eResponse) :
     m_pImpl(std::shared_ptr<HttpClientImpl>(new HttpClientImpl(method, target, jsData, mExtraHeaders, eResponse)))
 {
 
 }
 
-HttpClient::HttpClient(const httpMethod& method, const endpoint& target, const textData& data, const headerValue& contentType, const std::map<headerName, headerValue> mExtraHeaders, clientResponse::enumResponse eResponse) :
+HttpClient::HttpClient(const httpMethod& method, const endpoint& target, const textData& data, const headerValue& contentType, const std::map<headerName, headerValue>& mExtraHeaders, clientResponse::enumResponse eResponse) :
     m_pImpl(std::shared_ptr<HttpClientImpl>(new HttpClientImpl(method, target,data, contentType, mExtraHeaders, eResponse)))
 {
 
 }
 
-HttpClient::HttpClient(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType, const std::map<headerName, headerValue> mExtraHeaders, clientResponse::enumResponse eResponse) :
+HttpClient::HttpClient(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType, const std::map<headerName, headerValue>& mExtraHeaders, clientResponse::enumResponse eResponse) :
     m_pImpl(std::shared_ptr<HttpClientImpl>(new HttpClientImpl(method, target, filename, filepath, contentType, mExtraHeaders, eResponse)))
 {
 
 }
 
-HttpClient::HttpClient(const httpMethod& method, const endpoint& target, const std::vector<partData>& vData, const std::map<headerName, headerValue> mExtraHeaders, clientResponse::enumResponse eResponse)  :
+HttpClient::HttpClient(const httpMethod& method, const endpoint& target, const std::vector<partData>& vData, const std::map<headerName, headerValue>& mExtraHeaders, clientResponse::enumResponse eResponse)  :
     m_pImpl(std::shared_ptr<HttpClientImpl>(new HttpClientImpl(method, target, vData,  mExtraHeaders, eResponse)))
 {
 
 }
 
-const clientResponse& HttpClient::Run(const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout)
+const clientResponse& HttpClient::Run(const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout) const
 {
     return m_pImpl->Run(connectionTimeout, processTimeout);
 }
 
-void HttpClient::Run(std::function<void(const clientResponse&, unsigned int )> pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout, const std::chrono::milliseconds& delay)
+void HttpClient::Run(const std::function<void(const clientResponse&, unsigned int )>& pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout, const std::chrono::milliseconds& delay) const
 {
 
     ThreadPool::Get().Submit([=, pImpl=m_pImpl]{
@@ -55,77 +53,77 @@ void HttpClient::Run(std::function<void(const clientResponse&, unsigned int )> p
                             });
 }
 
-void HttpClient::SetUploadProgressCallback(std::function<void(unsigned long, unsigned long)> pCallback)
+void HttpClient::SetUploadProgressCallback(const std::function<void(unsigned long, unsigned long)>& pCallback) const
 {
     m_pImpl->SetUploadProgressCallback(pCallback);
 }
 
-void HttpClient::SetDownloadProgressCallback(std::function<void(unsigned long, unsigned long)> pCallback)
+void HttpClient::SetDownloadProgressCallback(const std::function<void(unsigned long, unsigned long)>& pCallback) const
 {
     m_pImpl->SetDownloadProgressCallback(pCallback);
 }
 
-void HttpClient::Cancel()
+void HttpClient::Cancel() const
 {
     m_pImpl->Cancel();
 }
 
-bool HttpClient::SetBasicAuthentication(const userName& user, const password& pass)
+bool HttpClient::SetBasicAuthentication(const userName& user, const password& pass) const
 {
     return m_pImpl->SetBasicAuthentication(user, pass);
 }
 
-bool HttpClient::SetBearerAuthentication(const std::string& sToken)
+bool HttpClient::SetBearerAuthentication(const std::string& sToken) const
 {
     return m_pImpl->SetBearerAuthentication(sToken);
 }
 
-bool HttpClient::SetCertificateAuthority(const fileLocation& ca)
+bool HttpClient::SetCertificateAuthority(const fileLocation& ca) const
 {
     return m_pImpl->SetCertificateAuthority(ca);
 }
 
-bool HttpClient::SetClientCertificate(const fileLocation& cert, const fileLocation& key)
+bool HttpClient::SetClientCertificate(const fileLocation& cert, const fileLocation& key) const
 {
     return m_pImpl->SetClientCertificate(cert, key);
 }
 
-bool HttpClient::SetMethod(const httpMethod& method)
+bool HttpClient::SetMethod(const httpMethod& method) const
 {
     return m_pImpl->SetMethod(method);
 }
 
-bool HttpClient::SetEndpoint(const endpoint& target)
+bool HttpClient::SetEndpoint(const endpoint& target) const
 {
     return m_pImpl->SetEndpoint(target);
 }
 
-bool HttpClient::SetData(const Json::Value& jsData)
+bool HttpClient::SetData(const Json::Value& jsData) const
 {
     return m_pImpl->SetData(jsData);
 }
 
-bool HttpClient::SetData(const textData& data)
+bool HttpClient::SetData(const textData& data) const
 {
     return m_pImpl->SetData(data);
 }
 
-bool HttpClient::SetFile(const textData& filename, const fileLocation& filepath)
+bool HttpClient::SetFile(const textData& filename, const fileLocation& filepath) const
 {
     return m_pImpl->SetFile(filename, filepath);
 }
 
-bool HttpClient::SetPartData(const std::vector<partData>& vData)
+bool HttpClient::SetPartData(const std::vector<partData>& vData) const
 {
     return m_pImpl->SetPartData(vData);
 }
 
-bool HttpClient::AddHeaders(const std::map<headerName, headerValue>& mHeaders)
+bool HttpClient::AddHeaders(const std::map<headerName, headerValue>& mHeaders) const
 {
     return m_pImpl->AddHeaders(mHeaders);
 }
 
-bool HttpClient::SetExpectedResponse(const clientResponse::enumResponse eResponse)
+bool HttpClient::SetExpectedResponse(const clientResponse::enumResponse eResponse) const
 {
     return m_pImpl->SetExpectedResponse(eResponse);
 }

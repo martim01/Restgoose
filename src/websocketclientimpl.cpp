@@ -186,14 +186,14 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
 
                 if((pMessage->flags & 15) == WEBSOCKET_OP_CLOSE)
                 {
-                    pmlLog() << "RestGoose:WebsocketClient\tWebsocket closed by server";
+                    pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\tWebsocket closed by server";
                     m_pConnectCallback(FindUrl(pConnection), false);
                 }
                 CheckPong(pConnection, pMessage);
             }
             break;
         case MG_EV_CLOSE:
-            pmlLog() << "RestGoose:WebsocketClient\tWebsocket closed by server";
+            pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\tWebsocket closed by server";
             if(m_bRun && m_pConnectCallback)
 	    {
                 m_pConnectCallback(FindUrl(pConnection), false);
@@ -296,7 +296,7 @@ void WebSocketClientImpl::CloseConnection(mg_connection* pConnection, bool bTell
     {
         mg_ws_send(pConnection, nullptr, 0, WEBSOCKET_OP_CLOSE);
     }
-    pmlLog() << "WebSocketClientImpl::CloseConnection called by client";
+    pmlLog(pml::LOG_DEBUG) << "WebSocketClientImpl::CloseConnection called by client";
     pConnection->is_closing = 1;    //let mongoose know to get rid of the connection
 
     for(auto pairConnection : m_mConnection)

@@ -100,7 +100,7 @@ headerValue GetHeader(struct mg_http_message* pMessage, const headerName& name)
 
 std::vector<partData> CreatePartData(const mg_str& str, const headerValue& contentType)
 {
-    pmlLog() << "CreatePartData " << contentType;
+    pmlLog(pml::LOG_TRACE) << "CreatePartData " << contentType;
     if(contentType.Get() != "application/x-www-form-urlencoded")
     {
         return {partData(partName(""), textData(std::string(str.ptr, str.ptr+str.len)))};
@@ -406,7 +406,7 @@ void MongooseServer::DoWebsocketAuthentication(mg_connection* pConnection, subsc
     }
     else
     {
-        pmlLog() << "RestGoose:Server\ttWebsocket subscriber not authenticated: close";
+        pmlLog(LOG_DEBUG) << "RestGoose:Server\ttWebsocket subscriber not authenticated: close";
         m_mSubscribers.erase(pConnection);
         pConnection->is_closing = 1;
     }
@@ -587,8 +587,7 @@ authorised MongooseServer::CheckAuthorizationBearer(mg_http_message* pMessage)
     char sBearer[65535];
     char sPass[255];
     mg_http_creds(pMessage, sBearer, 65535, sPass, 255);
-    pmlLog() << "Bearer: " << std::string(sBearer) << "\tPass: " << std::string(sPass);
-
+    
     if(m_tokenCallback(sPass))
     {
         return std::make_pair(true, userName(sPass));
@@ -638,13 +637,13 @@ methodpoint MongooseServer::GetMethodPoint(mg_http_message* pMessage)
 
 void MongooseServer::HandleFirstChunk(httpchunks& chunk, mg_connection* pConnection, mg_http_message* pMessage)
 {
-    pmlLog() << "Restgoose:Server\tHandleFirstChunk";
+    pmlLog(pml::LOG_TRACE) << "Restgoose:Server\tHandleFirstChunk";
 
 
     auto auth = CheckAuthorization(pMessage);
     if(auth.first == false)
     {
-        pmlLog() << "Restgoose:Server\tHandleFirstChunk: SendAuthentication...";
+        pmlLog(pml::LOG_TRACE) << "Restgoose:Server\tHandleFirstChunk: SendAuthentication...";
         SendAuthenticationRequest(pConnection);
     }
     else

@@ -22,12 +22,9 @@ static const headerValue MULTIPART = headerValue("multipart/form-data; boundary=
 
 
 
-HttpClientImpl::HttpClientImpl()
-{
+HttpClientImpl::HttpClientImpl()=default;
 
-}
-
-HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const std::map<headerName, headerValue> mExtraHeaders, clientResponse::enumResponse eResponse) :
+HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const std::map<headerName, headerValue>& mExtraHeaders, clientResponse::enumResponse eResponse) :
     m_point(method, target),
     m_mHeaders(mExtraHeaders),
     m_eResponse(eResponse)
@@ -35,7 +32,7 @@ HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target,
 
 }
 
-HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& data, const headerValue& contentType, const std::map<headerName, headerValue> mExtraHeaders, clientResponse::enumResponse eResponse) :
+HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& data, const headerValue& contentType, const std::map<headerName, headerValue>& mExtraHeaders, clientResponse::enumResponse eResponse) :
     m_point(method, target),
     m_contentType(contentType),
     m_mHeaders(mExtraHeaders),
@@ -44,7 +41,7 @@ HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target,
     m_vPostData.push_back(partData(partName(""), data));
 }
 
-HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const Json::Value& jsData, const std::map<headerName, headerValue> mExtraHeaders, clientResponse::enumResponse eResponse) :
+HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const Json::Value& jsData, const std::map<headerName, headerValue>& mExtraHeaders, clientResponse::enumResponse eResponse) :
     m_point(method, target),
     m_contentType(headerValue("application/json")),
     m_mHeaders(mExtraHeaders),
@@ -53,7 +50,7 @@ HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target,
     m_vPostData.push_back(partData(partName(""), textData(ConvertFromJson(jsData))));
 }
 
-HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType, const std::map<headerName, headerValue> mExtraHeaders, clientResponse::enumResponse eResponse) :
+HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType, const std::map<headerName, headerValue>& mExtraHeaders, clientResponse::enumResponse eResponse) :
     m_point(method, target),
     m_contentType(contentType),
     m_mHeaders(mExtraHeaders),
@@ -62,9 +59,9 @@ HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target,
     m_vPostData.push_back(partData(partName(""), filename, filepath));
 }
 
-HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const std::vector<partData>& vData, const std::map<headerName, headerValue> mExtraHeaders, clientResponse::enumResponse eResponse) :
+HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const std::vector<partData>& vData, const std::map<headerName, headerValue>& mExtraHeaders, clientResponse::enumResponse eResponse) :
     m_point(method, target),
-    m_contentType(MULTIPART),//"text/plain"),
+    m_contentType(MULTIPART),
     m_vPostData(vData),
     m_mHeaders(mExtraHeaders),
     m_eResponse(eResponse)

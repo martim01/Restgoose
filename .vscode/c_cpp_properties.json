@@ -5,6 +5,7 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "/home/matt/jsoncpp/dist"
+                "/home/matt/log/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
