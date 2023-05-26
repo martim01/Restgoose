@@ -19,6 +19,7 @@ extern "C" {
 #include <atomic>
 #include <thread>
 #include <condition_variable>
+#include "safequeue.h"
 
 extern RG_EXPORT bool operator<(const methodpoint& e1, const methodpoint& e2);
 extern size_t GetNumberOfConnections(mg_mgr& mgr);
@@ -79,12 +80,19 @@ namespace pml
                                           std::function<bool(const endpoint&, const Json::Value&)> funcMessage,
                                           std::function<void(const endpoint&, const ipAddress&)> funcClose);
 
-                /** Adds a callback handler for an methodpoint
+                /** Adds a callback handler for an methodpoint - this method will run in the same thread as the server thread
                 *   @param theMethodPoint a pair definining the HTTP method and methodpoint address
                 *   @param func std::function that defines the callback function
                 *   @return <i>bool</i> true on success
                 **/
                 bool AddEndpoint(const methodpoint& theMethodPoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> func);
+
+                /** Adds a callback handler for an methodpoint - this method will run in a separate thread to the server thread
+                *   @param theMethodPoint a pair definining the HTTP method and methodpoint address
+                *   @param func std::function that defines the callback function
+                *   @return <i>bool</i> true on success
+                **/
+                bool AddEndpointThread(const methodpoint& theMethodPoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> func);
 
                 /** @brief Adds a callback handler that is called if no handler is found for the endpoint
                 **/
@@ -258,6 +266,7 @@ namespace pml
 
                 std::function<void(std::chrono::milliseconds)> m_loopCallback;
                 std::map<methodpoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)>> m_mEndpoints;
+                std::map<methodpoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)>> m_mEndpointsThreaded;
                 std::map<endpoint, std::function<bool(const endpoint&, const query&, const userName&, const ipAddress& peer)>, end_less> m_mWebsocketAuthenticationEndpoints;
                 std::map<endpoint, std::function<bool(const endpoint&, const Json::Value&)>, end_less> m_mWebsocketMessageEndpoints;
                 std::map<endpoint, std::function<void(const endpoint&, const ipAddress& peer)>, end_less> m_mWebsocketCloseEndpoints;
@@ -269,6 +278,8 @@ namespace pml
                 std::map<mg_connection*, subscriber > m_mSubscribers;
 
                 std::queue<wsMessage> m_qWsMessages;
+
+                std::map<mg_connection*, thread_safe_queue<response>> m_mConnectionQueue;
 
                 std::mutex m_mutex;
                 bool m_bThreaded;

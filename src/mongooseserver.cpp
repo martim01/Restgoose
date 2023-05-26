@@ -13,8 +13,8 @@
 #include "utils.h"
 #include <algorithm>
 #include <limits>
-
-
+#include "threadpool.h"
+#include "safequeue.h"
 using namespace std;
 using namespace std::placeholders;
 using namespace pml::restgoose;
@@ -1057,9 +1057,27 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
 
         //find the callback function assigned to the method and endpoint
         auto itCallback = m_mEndpoints.find(thePoint);
+        auto itCallbackThread = m_mEndpointsThreaded.find(thePoint);
         if(itCallback != m_mEndpoints.end())
         {
             DoReply(pConnection, itCallback->second(ExtractQuery(pMessage), CreatePartData(pMessage->body, GetHeader(pMessage, headerName("Content-Type"))), thePoint.second, auth.second));
+        }
+        else if(itCallbackThread != m_mEndpointsThreaded.end())
+        {
+            m_mConnectionQueue.insert({pConnection, thread_safe_queue<response>()});
+            ThreadPool::Get().Submit([this, pConnection, pMessage, thePoint, auth]()
+            {
+                auto itCallbackThread = m_mEndpointsThreaded.find(thePoint);
+                if(itCallbackThread != m_mEndpointsThreaded.end())
+                {
+                    auto theResponse = itCallbackThread->second(ExtractQuery(pMessage), CreatePartData(pMessage->body, GetHeader(pMessage, headerName("Content-Type"))), thePoint.second, auth.second);
+                    auto itQueue = m_mConnectionQueue.find(pConnection);
+                    if(itQueue != m_mConnectionQueue.end())
+                    {
+                        itQueue->second.push(theResponse);
+                    }
+                }
+            });
         }
         else if(m_callbackNotFound)
         {
@@ -1158,9 +1176,20 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
             else
             {
                 m_mFileDownloads.erase(pConnection);
+                m_mConnectionQueue.erase(pConnection);
             }
             break;
         case MG_EV_POLL:
+            auto itQueue = m_mConnectionQueue.find(pConnection);
+            if(itQueue != m_mConnectionQueue.end())
+            {
+                response theResponse;
+                if(itQueue->second.try_pop(theResponse))
+                {
+                    DoReply(pConnection, theResponse);
+                }
+            }
+            break;
         case MG_EV_READ:
             break;
     }
@@ -1385,7 +1414,7 @@ bool MongooseServer::AddEndpoint(const methodpoint& theMethodPoint, std::functio
 {
     pml::LogStream lg;
     lg << "MongooseServer\t" << "AddEndpoint <" << theMethodPoint.first.Get() << ", " << theMethodPoint.second.Get() << "> ";
-    if(m_mEndpoints.find(theMethodPoint) != m_mEndpoints.end())
+    if(m_mEndpoints.find(theMethodPoint) != m_mEndpoints.end() || m_mEndpointsThreaded.find(theMethodPoint) != m_mEndpointsThreaded.end())
     {
         lg(pml::LOG_TRACE) << "failed as methodpoint already exists";
         return false;
