@@ -2,17 +2,23 @@
     "configurations": [
         {
             "name": "Linux",
+            "compilerPathInCppPropertiesJson": "/usr/bin/gcc",
             "includePath": [
-                "${workspaceFolder}/**",
-                "/home/matt/jsoncpp/dist"
-                "/home/matt/log/include"
+                "/home/matt/Restgoose/**"
             ],
             "defines": [],
-            "compilerPath": "/usr/bin/gcc",
-            "cStandard": "gnu17",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+            "cStandard": "c17",
             "cppStandard": "gnu++17",
             "intelliSenseMode": "linux-gcc-x64",
-            "configurationProvider": "ms-vscode.cmake-tools"
+            "mergeConfigurations": false,
+            "compilerPath": "/usr/bin/gcc",
+            "browse": {
+                "limitSymbolsToIncludedHeaders": true,
+                "path": [
+                    "${workspaceFolder}/**"
+                ]
+            }
         }
     ],
     "version": 4

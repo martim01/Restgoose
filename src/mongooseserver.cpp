@@ -37,7 +37,7 @@ bool end_less::operator() (endpoint e1, endpoint e2) const
 bool is_chunked(struct mg_http_message *hm) {
   struct mg_str needle = mg_str_n("chunked", 7);
   struct mg_str *te = mg_http_get_header(hm, "Transfer-Encoding");
-  return te != NULL && mg_strstr(*te, needle) != NULL;
+  return te != nullptr && mg_strstr(*te, needle) != nullptr;
 }
 
 void http_delete_chunk(struct mg_connection *c, struct mg_http_message *hm) {
@@ -51,7 +51,7 @@ void http_delete_chunk(struct mg_connection *c, struct mg_http_message *hm) {
   ce = &ch.ptr[ch.len];
   if (ce < end) memmove((void *) ch.ptr, ce, (size_t) (end - ce));
   c->recv.len -= ch.len;
-  if (c->pfn_data != NULL) c->pfn_data = (char *) c->pfn_data - ch.len;
+  if (c->pfn_data != nullptr) c->pfn_data = (char *) c->pfn_data - ch.len;
 }
 
 
@@ -1186,13 +1186,19 @@ void MongooseServer::HandleAccept(mg_connection* pConnection)
     {
         pmlLog(pml::LOG_DEBUG) << "Restgoose:Server\tAccept connection: Turn on TLS";
         struct mg_tls_opts tls_opts;
-        tls_opts.ca = NULL;
-        tls_opts.srvname.len = 0;
-        tls_opts.srvname.ptr = NULL;
+        if(m_Ca.Get().length() == 0)
+        {
+            tls_opts.ca = nullptr;
+        }
+        else
+        {
+            tls_opts.ca = m_Ca.Get().c_str();
+        }
+        tls_opts.srvname.len = m_sHostname.length();
+        tls_opts.srvname.ptr = m_sHostname.c_str();
         tls_opts.cert = m_Cert.Get().c_str();
         tls_opts.certkey = m_Key.Get().c_str();
-        tls_opts.ciphers = NULL;
-        //tls_opts.ciphers = "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256";
+        tls_opts.ciphers = "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256";
         mg_tls_init(pConnection, &tls_opts);
         if(pConnection->is_closing == 1)
         {
@@ -1217,7 +1223,6 @@ MongooseServer::MongooseServer() :
     m_timeSinceLastPingSent{0},
     m_mHeaders({{headerName("X-Frame-Options"), headerValue("sameorigin")},
                 {headerName("Cache-Control"), headerValue("no-cache")},
-                {headerName("Strict-Transport-Security"), headerValue("max-age=31536000;includeSubDomains")},
                 {headerName("X-Content-Type-Options"), headerValue("nosniff")},
                 {headerName("Referrer-Policy"), headerValue("no-referrer")},
                 {headerName("Server"), headerValue("unknown")},
@@ -1243,12 +1248,20 @@ bool MongooseServer::Init(const fileLocation& cert, const fileLocation& key, con
     m_Key = key;
     m_Cert = cert;
 
+    if(m_Cert.Get().empty() == false)
+    {
+        m_mHeaders.insert({headerName("Strict-Transport-Security"), headerValue("max-age=31536000; includeSubDomains")});
+    }
+
     m_ApiRoot = apiRoot;
 
     char hostname[255];
     gethostname(hostname, 255);
+    
+    m_sHostname = hostname;
+
     stringstream ssRewrite;
-    ssRewrite << "%80=https://" << hostname;
+    ssRewrite << "%80=https://" << m_sHostname;
 
 
     m_bWebsocket = bEnableWebsocket;
@@ -1257,7 +1270,6 @@ bool MongooseServer::Init(const fileLocation& cert, const fileLocation& key, con
     pmlLog(pml::LOG_TRACE) << "Restgoose:Server\tWebsockets=" << m_bWebsocket;
 
     s_ServerOpts.root_dir = ".";
-// @todo    s_ServerOpts.extra_headers="X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown";
 
     mg_mgr_init(&m_mgr);
 
@@ -1509,9 +1521,14 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
     {
         stringstream ssHeaders;
         ssHeaders << "HTTP/1.1 404\r\n"
-                << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
+                << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
                   << "Access-Control-Allow-Origin:*\r\n"
                   << "Access-Control-Allow-Methods: OPTIONS";
+
+        if(m_Cert.Get().empty() == false)
+        {
+            ssHeaders << "Strict-Transport-Security: max-age=31536000; includeSubDomains\r\n";
+        }
 
         ssHeaders << "\r\n"
                   << "Content-Length: 0 \r\n"
@@ -1525,9 +1542,13 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
     {
         stringstream ssHeaders;
         ssHeaders << "HTTP/1.1 200\r\n"
-                << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
+                << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
                   << "Access-Control-Allow-Origin:*\r\n"
                   << "Access-Control-Allow-Methods: OPTIONS";
+        if(m_Cert.Get().empty() == false)
+        {
+            ssHeaders << "Strict-Transport-Security: max-age=31536000; includeSubDomains\r\n";
+        }
 
         for(; itOption != m_mmOptions.upper_bound(theEndpoint); ++itOption)
         {
@@ -1551,6 +1572,11 @@ void MongooseServer::SendAuthenticationRequest(mg_connection* pConnection)
         stringstream ssHeaders;
         ssHeaders << "HTTP/1.1 401\r\n"
                 << "WWW-Authenticate: Basic realm=\"User Visible Realm\"\r\n\r\n";
+
+        if(m_Cert.Get().empty() == false)
+        {
+            ssHeaders << "Strict-Transport-Security: max-age=31536000; includeSubDomains\r\n";
+        }
 
         mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
         pConnection->is_draining = 1;

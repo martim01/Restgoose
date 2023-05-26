@@ -252,6 +252,7 @@ namespace pml
 
                 fileLocation m_Cert;
                 fileLocation m_Key;
+                fileLocation m_Ca;
 
                 std::string m_sStaticRootDir;
                 endpoint m_ApiRoot;
@@ -340,6 +341,8 @@ namespace pml
                 std::map<mg_connection*, std::unique_ptr<std::ifstream> > m_mFileDownloads;
 
                 std::map<headerName, headerValue> m_mHeaders;
+
+                std::string m_sHostname;
         };
     };
 };
