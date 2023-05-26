@@ -44,12 +44,9 @@ namespace pml
         class MongooseServer
         {
             public:
-                //friend void pipe_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_data);
-               // friend void ev_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_data);
-
                 friend class Server;
 
-                bool Init(const fileLocation& cert, const fileLocation& key, const ipAddress& addr,  int nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings);
+                bool Init(const fileLocation& ca, const fileLocation& cert, const fileLocation& key, const ipAddress& addr,  int nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings);
 
                 void SetInterface(const ipAddress& addr, unsigned short nPort);
 
@@ -181,13 +178,6 @@ namespace pml
                 *   @param nCode the error code
                 **/
                 void SendError(mg_connection* pConnection, const std::string& sError, int nCode=-1);
-
-
-         //       bool MultipartBegin(mg_connection* pConnection, http_message* pMessage);
-         //       bool PartBegin(mg_connection* pConnection, mg_http_multipart_part* pPart);
-        //        bool PartData(mg_connection* pConnection, mg_http_multipart_part* pPart);
-        //        bool PartEnd(mg_connection* pConnection, mg_http_multipart_part* pPart);
-        //        bool MultipartEnd(mg_connection* pConnection, mg_http_multipart_part* pPart);
 
 
                 std::string CreateHeaders(const response& theResponse, size_t nLength);

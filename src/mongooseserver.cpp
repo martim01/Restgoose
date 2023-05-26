@@ -1241,12 +1241,13 @@ MongooseServer::~MongooseServer()
 
 }
 
-bool MongooseServer::Init(const fileLocation& cert, const fileLocation& key, const ipAddress& addr, int nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
+bool MongooseServer::Init(const fileLocation& ca, const fileLocation& cert, const fileLocation& key, const ipAddress& addr, int nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
 {
     m_nPort = nPort;
     //check for ssl
     m_Key = key;
     m_Cert = cert;
+    m_Ca = ca;
 
     if(m_Cert.Get().empty() == false)
     {

@@ -18,6 +18,20 @@ namespace pml
                 Server();
                 ~Server();
 
+
+                /** @brief Initialises the server
+                *   @param ca the full path and file name to a TLS certificate authorirty
+                *   @param cert the full path and file name to a TLS certificate if one is being used
+                *   @param key the full path and file name to a TLC key if one is being used
+                *   @param addr the ip address of the interface to run on (pass 0.0.0.0 to listen on all interfaces)
+                *   @param nPort the TCP/IP port number to listen on
+                *   @param apiRoot the relative URL that is the base of the API tree
+                *   @param bEnableWebsocket set to true to act as a websocket server as well
+                *   @param bSendPings set to true for the server to send websocket pings to the clients
+                *   @return <i>bool</i> true if the server has been successufully intialised
+                **/
+                bool Init(const fileLocation& ca, const fileLocation& cert, const fileLocation& key, const ipAddress& addr, int nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings=false);
+
                 /** @brief Initialises the server
                 *   @param cert the full path and file name to a TLS certificate if one is being used
                 *   @param key the full path and file name to a TLC key if one is being used
