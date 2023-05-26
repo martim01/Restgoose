@@ -29,7 +29,7 @@ WebSocketClientImpl::WebSocketClientImpl(std::function<bool(const endpoint& theE
 {
     mg_mgr_init(&m_mgr);        // Initialise event manager
 
-    m_nPipe = mg_mkpipe(&m_mgr, pipe_handler, reinterpret_cast<void*>(this));
+    m_nPipe = mg_mkpipe(&m_mgr, pipe_handler, reinterpret_cast<void*>(this), true);
 }
 
 WebSocketClientImpl::~WebSocketClientImpl()
@@ -152,7 +152,6 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
         case MG_EV_HTTP_CHUNK:
             pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\tWebsocket http chunk!";
         case MG_EV_CONNECT:
-            pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\tConnected";
             HandleInitialConnection(pConnection);
             break;
         case MG_EV_ERROR:
@@ -165,6 +164,7 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
             break;
         case MG_EV_WS_MSG:
             {
+                pmlLog(pml::LOG_TRACE) << "RestGoose:WebsocketClient\tMessage";
                 mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
                 //CheckPong(pConnection, pMessage);
 
@@ -179,7 +179,7 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
             }
             break;
         case MG_EV_WS_CTL:
-            if(m_bRun && m_pConnectCallback)
+            if(m_pConnectCallback)
             {
                 mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
                 std::string sMessage(pMessage->data.ptr, pMessage->data.len);
@@ -190,13 +190,6 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
                     m_pConnectCallback(FindUrl(pConnection), false);
                 }
                 CheckPong(pConnection, pMessage);
-            }
-            break;
-        case MG_EV_CLOSE:
-            pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\tWebsocket closed by server";
-            if(m_bRun && m_pConnectCallback)
-	    {
-                m_pConnectCallback(FindUrl(pConnection), false);
             }
             break;
     }

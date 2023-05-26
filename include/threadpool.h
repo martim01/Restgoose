@@ -7,7 +7,10 @@
 #include <mutex>
 #include <condition_variable>
 #include <queue>
-#include "response.h"
+//#include "response.h"
+#include "log.h"
+#include "threadsafequeue.h"
+#include "dllexport.h"
 
 namespace pml
 {
@@ -17,13 +20,12 @@ namespace pml
         {
             public:
                 static ThreadPool& Get();
+
                 template<typename FunctionType> void Submit(FunctionType f)
                 {
-                    {
-                        std::unique_lock<std::mutex> lock(m_mutex);
-                        m_qWork.push(std::function<void()>(f));
-                    }
-                    m_condition.notify_one();
+                    m_work_queue.push(std::function<void()>(f));
+
+                    //m_condition.notify_one();
 
                 }
                 template<typename Callable, typename... Args> void Submit(Callable&& func, Args&&... args)
@@ -35,19 +37,22 @@ namespace pml
                 size_t AddWorkers(size_t nWorkers);
 
                 void Stop();
+
             private:
                 ThreadPool();
                 ~ThreadPool();
 
-
                 void WorkerThread();
 
                 std::atomic_bool m_bDone;
-                std::queue<std::function<void()>> m_qWork;
+                threadsafe_queue<std::function<void()>> m_work_queue;
                 std::vector<std::thread> m_vThreads;
 
-                std::mutex m_mutex;
-                std::condition_variable m_condition;
+//                std::mutex m_mutex;
+//                std::condition_variable m_condition;
         };
     };
 };
+
+
+

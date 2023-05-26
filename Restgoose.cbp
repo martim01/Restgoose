@@ -124,12 +124,14 @@
 		</Unit>
 		<Unit filename="../mongoose/mongoose.h" />
 		<Unit filename="include/RestGoose.h" />
+		<Unit filename="include/dllexport.h" />
 		<Unit filename="include/httpclient.h" />
 		<Unit filename="include/httpclientimpl.h" />
 		<Unit filename="include/mongooseserver.h" />
 		<Unit filename="include/namedtype.h" />
 		<Unit filename="include/response.h" />
 		<Unit filename="include/threadpool.h" />
+		<Unit filename="include/threadsafequeue.h" />
 		<Unit filename="include/utils.h" />
 		<Unit filename="include/websocketclient.h" />
 		<Unit filename="include/websocketclientimpl.h" />
