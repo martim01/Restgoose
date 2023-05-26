@@ -36,13 +36,14 @@ bool end_less::operator() (endpoint e1, endpoint e2) const
 
 bool is_chunked(struct mg_http_message *hm) {
   struct mg_str needle = mg_str_n("chunked", 7);
-  struct mg_str *te = mg_http_get_header(hm, "Transfer-Encoding");
+  struct mg_str const *te = mg_http_get_header(hm, "Transfer-Encoding");
   return te != nullptr && mg_strstr(*te, needle) != nullptr;
 }
 
 void http_delete_chunk(struct mg_connection *c, struct mg_http_message *hm) {
   struct mg_str ch = hm->chunk;
-  const char *end = (char *) &c->recv.buf[c->recv.len], *ce;
+  const char *end = (char *) &c->recv.buf[c->recv.len];
+  const char *ce;
   bool chunked = is_chunked(hm);
   if (chunked) {
     ch.len += 4, ch.ptr -= 2;  // \r\n before and after the chunk
@@ -90,7 +91,7 @@ size_t DoGetNumberOfWebsocketConnections(const mg_mgr& mgr)
 headerValue GetHeader(struct mg_http_message* pMessage, const headerName& name)
 {
     headerValue value("");
-    mg_str* pStr = mg_http_get_header(pMessage, name.Get().c_str());
+    mg_str const* pStr = mg_http_get_header(pMessage, name.Get().c_str());
     if(pStr && pStr->len > 0)
     {
         value = headerValue(std::string(pStr->ptr, pStr->len));
@@ -159,7 +160,7 @@ bool RG_EXPORT operator<(const methodpoint& e1, const methodpoint& e2)
     return (e1.first.Get() < e2.first.Get() || (e1.first.Get() == e2.first.Get() && caseInsLess(e1.second.Get(), e2.second.Get())));
 }
 
-static void mgpmlLog(char ch, void* param)
+static void mgpmlLog(char ch, void*)
 {
     static pml::LogStream ls;
     ls.SetLevel(pml::LOG_TRACE);
@@ -174,7 +175,7 @@ static void mgpmlLog(char ch, void* param)
 }
 
 
-std::string DecodeQueryString(mg_http_message* pMessage)
+std::string DecodeQueryString(mg_http_message const* pMessage)
 {
     if(pMessage->query.len > 0)
     {
@@ -185,7 +186,7 @@ std::string DecodeQueryString(mg_http_message* pMessage)
     return std::string("");
 }
 
-query ExtractQuery(mg_http_message* pMessage)
+query ExtractQuery(mg_http_message const* pMessage)
 {
     query mDecode;
 
@@ -208,7 +209,7 @@ query ExtractQuery(mg_http_message* pMessage)
 }
 
 
-static int is_websocket(const struct mg_connection *nc)
+static int is_websocket(const struct mg_connection* nc)
 {
     return nc->is_websocket;
 }
@@ -222,27 +223,25 @@ void ev_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_da
         return;
     }
 
-    MongooseServer* pThread = reinterpret_cast<MongooseServer*>(pConnection->fn_data);
+    auto pThread = reinterpret_cast<MongooseServer*>(pConnection->fn_data);
 
     pThread->HandleEvent(pConnection, nEvent, pData);
 }
 
-void pipe_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_data)
+void pipe_handler(mg_connection const* pConnection, int nEvent, void* pData, void* fn_data)
 {
     if(nEvent == MG_EV_READ)
     {
 
-        MongooseServer* pThread = reinterpret_cast<MongooseServer*>(fn_data);
+        auto pThread = reinterpret_cast<MongooseServer*>(fn_data);
         pThread->SendWSQueue();
     }
 }
 
-MongooseServer::httpchunks::~httpchunks(){}
+MongooseServer::httpchunks::~httpchunks()=default;
 
-void MongooseServer::EventWebsocketOpen(mg_connection *pConnection, int nEvent, void* pData)
+void MongooseServer::EventWebsocketOpen(mg_connection const*, int , void* )
 {
-
-    //mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pData);
 
     pmlLog(pml::LOG_TRACE) << "RestGoose:Server\tEventWebsocketOpen";
 
@@ -271,11 +270,9 @@ bool MongooseServer::AuthenticateWebsocketBasic(const subscriber& sub, const Jso
 {
     if(jsData.isMember("user") && jsData["user"].isString() && jsData.isMember("password") && jsData["password"].isString())
     {
-        auto itUser = m_mUsers.find(userName(jsData["user"].asString()));
-        if(itUser != m_mUsers.end() && itUser->second.Get() == jsData["password"].asString())
+        if(auto itUser = m_mUsers.find(userName(jsData["user"].asString()));itUser != m_mUsers.end() && itUser->second.Get() == jsData["password"].asString())
         {
-            auto itEndpoint = m_mWebsocketAuthenticationEndpoints.find(sub.theEndpoint);
-            if(itEndpoint != m_mWebsocketAuthenticationEndpoints.end())
+            if(auto itEndpoint = m_mWebsocketAuthenticationEndpoints.find(sub.theEndpoint); itEndpoint != m_mWebsocketAuthenticationEndpoints.end())
             {
                 if(itEndpoint->second(sub.theEndpoint, sub.queryParams, itUser->first, sub.peer))
                 {
@@ -313,8 +310,7 @@ bool MongooseServer::AuthenticateWebsocketBearer(const subscriber& sub, const Js
     std::string sToken;
     if(m_bAuthenticateWSViaQuery)
     {
-        auto itToken = sub.queryParams.find(queryKey("access_token"));
-        if(itToken != sub.queryParams.end())
+        if(auto itToken = sub.queryParams.find(queryKey("access_token")); itToken != sub.queryParams.end())
         {
             sToken = itToken->second.Get();
         }
@@ -330,8 +326,7 @@ bool MongooseServer::AuthenticateWebsocketBearer(const subscriber& sub, const Js
     }
     pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tAuthenticateWebsocketBearer token=" << sToken;
 
-    auto itEndpoint = m_mWebsocketAuthenticationEndpoints.find(sub.theEndpoint);
-    if(itEndpoint != m_mWebsocketAuthenticationEndpoints.end())
+    if(auto itEndpoint = m_mWebsocketAuthenticationEndpoints.find(sub.theEndpoint); itEndpoint != m_mWebsocketAuthenticationEndpoints.end())
     {
         if(itEndpoint->second(sub.theEndpoint, sub.queryParams, userName(sToken), sub.peer))
         {
@@ -355,14 +350,14 @@ bool MongooseServer::AuthenticateWebsocketBearer(const subscriber& sub, const Js
 
 
 
-void MongooseServer::EventWebsocketMessage(mg_connection *pConnection, int nEvent, void* pData)
+void MongooseServer::EventWebsocketMessage(mg_connection* pConnection, int, void* pData )
 {
-    pmlLog(pml::LOG_TRACE) << "RestGoose::Server\EventWebsocketMessage";
+    pmlLog(pml::LOG_TRACE) << "RestGoose::Server\tEventWebsocketMessage";
 
     auto itSubscriber = m_mSubscribers.find(pConnection);
     if(itSubscriber != m_mSubscribers.end())
     {
-        mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pData);
+        auto pMessage = reinterpret_cast<mg_ws_message*>(pData);
         string sMessage(pMessage->data.ptr, pMessage->data.len);
 
         Json::Value jsData;
@@ -436,7 +431,7 @@ void MongooseServer::HandleInternalWebsocketMessage(mg_connection* pConnection, 
 
 }
 
-void MongooseServer::HandleExternalWebsocketMessage(mg_connection* pConnection, subscriber& sub, const Json::Value& jsData)
+void MongooseServer::HandleExternalWebsocketMessage(mg_connection* pConnection, const subscriber& sub, const Json::Value& jsData)
 {
     pmlLog(pml::LOG_TRACE) << "RestGoose::Server\tHandleExternalWebsocketMessage";
     if(sub.bAuthenticated)
@@ -467,7 +462,7 @@ void MongooseServer::AddWebsocketSubscriptions(subscriber& sub, const Json::Valu
     {
         for(Json::ArrayIndex ai = 0; ai < jsData["endpoints"].size(); ++ai)
         {
-            sub.setEndpoints.insert(endpoint(jsData["endpoints"][ai].asString()));
+            sub.setEndpoints.emplace(jsData["endpoints"][ai].asString());
         }
     }
 }
@@ -487,7 +482,7 @@ void MongooseServer::RemoveWebsocketSubscriptions(subscriber& sub, const Json::V
 
 void MongooseServer::EventWebsocketCtl(mg_connection *pConnection, int nEvent, void* pData)
 {
-    mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pData);
+    auto pMessage = reinterpret_cast<mg_ws_message*>(pData);
     switch((pMessage->flags&15))
     {
         case WEBSOCKET_OP_PONG:
@@ -702,7 +697,6 @@ void MongooseServer::WorkoutBoundary(httpchunks& chunk)
         {
             chunk.sBoundary = "\r\n--"+vSplit[1].substr(10)+"\r\n";
             chunk.sBoundaryLast = "\r\n--"+vSplit[1].substr(10)+"--\r\n";
-            //chunk.sBoundaryLast = chunk.sBoundary+"--\r\n";
             chunk.vBuffer.reserve(chunk.sBoundaryLast.length());
             chunk.vBuffer.push_back('\r');
             chunk.vBuffer.push_back('\n');
@@ -712,7 +706,7 @@ void MongooseServer::WorkoutBoundary(httpchunks& chunk)
 
 void MongooseServer::EventHttpChunk(mg_connection *pConnection, void* pData)
 {
-    mg_http_message* pMessage = reinterpret_cast<mg_http_message*>(pData);
+    auto pMessage = reinterpret_cast<mg_http_message*>(pData);
 
     //Mongoose now fires a Chunk event whether the message is chunked encoded or not. So double check here
     auto chunked = mg_http_get_header(pMessage, "Transfer-Encoding");
@@ -806,8 +800,6 @@ void MongooseServer::HandleLastChunk(httpchunks& chunk, mg_connection* pConnecti
 
 void MongooseServer::MultipartChunkBoundary(httpchunks& chunk, char c)
 {
-    //pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tMCB: " << c << "\t" << std::string(chunk.vBuffer.begin(), chunk.vBuffer.end());
-
     if(c == chunk.sBoundaryLast[chunk.vBuffer.size()])
     {
         chunk.vBuffer.push_back(c);
@@ -951,7 +943,7 @@ void MongooseServer::MultipartChunkHeader(httpchunks& chunk, char c)
 
 void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pData)
 {
-    mg_http_message* pMessage = reinterpret_cast<mg_http_message*>(pData);
+    auto pMessage = reinterpret_cast<mg_http_message*>(pData);
 
     auto thePoint = GetMethodPoint(pMessage);
     auto content = mg_http_get_header(pMessage, "Content-Type");
@@ -1011,7 +1003,8 @@ void MongooseServer::EventHttpWebsocket(mg_connection *pConnection, mg_http_mess
 
     //create the peer address
     char buffer[256];
-    mg_ntoa(&pConnection->rem, buffer, 256);
+    mg_snprintf(buffer, sizeof(buffer), "%M", mg_print_ip, &pConnection->rem);
+
     std::stringstream ssPeer;
     ssPeer << buffer << ":" << pConnection->rem.port;
 
@@ -1047,7 +1040,7 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
     {
 
         char buffer[256];
-        mg_ntoa(&pConnection->rem, buffer, 256);
+        mg_snprintf(buffer, sizeof(buffer), "%M", mg_print_ip, &pConnection->rem);
         std::stringstream ssPeer;
         ssPeer << buffer;
         m_lastPeer = ipAddress(ssPeer.str());
@@ -1069,8 +1062,7 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
             m_mConnectionQueue.insert({pConnection, thread_safe_queue<response>()});
             ThreadPool::Get().Submit([this, pConnection, pMessage, thePoint, auth]()
             {
-                auto itCallbackThread = m_mEndpointsThreaded.find(thePoint);
-                if(itCallbackThread != m_mEndpointsThreaded.end())
+                if(auto itCallbackThread = m_mEndpointsThreaded.find(thePoint); itCallbackThread != m_mEndpointsThreaded.end())
                 {
                     auto theResponse = itCallbackThread->second(ExtractQuery(pMessage), CreatePartData(pMessage->body, GetHeader(pMessage, headerName("Content-Type"))), thePoint.second, auth.second);
                     auto itQueue = m_mConnectionQueue.find(pConnection);
@@ -1182,21 +1174,24 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
             }
             break;
         case MG_EV_POLL:
-            auto itQueue = m_mConnectionQueue.find(pConnection);
-            if(itQueue != m_mConnectionQueue.end())
-            {
-                response theResponse;
-                if(itQueue->second.try_pop(theResponse))
-                {
-                    DoReply(pConnection, theResponse);
-                }
-            }
+                HandleThreadedMessage(pConnection);
             break;
         case MG_EV_READ:
             break;
     }
 }
-
+void MongooseServer::HandleThreadedMessage(mg_connection* pConnection)
+{
+    auto itQueue = m_mConnectionQueue.find(pConnection);
+    if(itQueue != m_mConnectionQueue.end())
+    {
+        response theResponse;
+        if(itQueue->second.try_pop(theResponse))
+        {
+            DoReply(pConnection, theResponse);
+        }
+    }
+}
 void MongooseServer::HandleOpen(mg_connection* pConnection)
 {
     if(m_sAcl.empty() == false && mg_check_ip_acl(mg_str(m_sAcl.c_str()), pConnection->rem.ip) != 1)
@@ -1217,7 +1212,7 @@ void MongooseServer::HandleAccept(mg_connection* pConnection)
     {
         pmlLog(pml::LOG_DEBUG) << "Restgoose:Server\tAccept connection: Turn on TLS";
         struct mg_tls_opts tls_opts;
-        if(m_Ca.Get().length() == 0)
+        if(m_Ca.Get().empty())
         {
             tls_opts.ca = nullptr;
         }
@@ -1240,18 +1235,7 @@ void MongooseServer::HandleAccept(mg_connection* pConnection)
 
 
 MongooseServer::MongooseServer() :
-    m_pConnection(nullptr),
-    m_nPipe(0),
-    m_bWebsocket(false),
-    m_nPort(0),
-    m_nMaxConnections(std::numeric_limits<size_t>::max()),
-    m_PollTimeout{100},
-    m_loopCallback(nullptr),
-    m_tokenCallback(nullptr),
     m_bLoop(true),
-    m_pThread(nullptr),
-    m_callbackNotFound(nullptr),
-    m_timeSinceLastPingSent{0},
     m_mHeaders({{headerName("X-Frame-Options"), headerValue("sameorigin")},
                 {headerName("Cache-Control"), headerValue("no-cache")},
                 {headerName("X-Content-Type-Options"), headerValue("nosniff")},
@@ -1262,8 +1246,8 @@ MongooseServer::MongooseServer() :
                 {headerName("Access-Control-Allow-Headers"), headerValue("Content-Type, Accept, Authorization")},
                 {headerName("Access-Control-Max-Age"), headerValue("3600")}})
 {
-    mg_log_set("2");
-    mg_log_set_callback(mgpmlLog, NULL);
+    mg_log_set(2);
+    mg_log_set_fn(mgpmlLog, NULL);
 }
 
 MongooseServer::~MongooseServer()
@@ -1272,7 +1256,7 @@ MongooseServer::~MongooseServer()
 
 }
 
-bool MongooseServer::Init(const fileLocation& ca, const fileLocation& cert, const fileLocation& key, const ipAddress& addr, int nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
+bool MongooseServer::Init(const fileLocation& ca, const fileLocation& cert, const fileLocation& key, const ipAddress& addr, unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
 {
     m_nPort = nPort;
     //check for ssl
@@ -1395,7 +1379,6 @@ void MongooseServer::Stop()
         m_pThread->join();
         m_pThread = nullptr;
     }
-    //mg_mgr_free(&m_mgr);
 }
 
 bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, std::function<bool(const endpoint&, const query&, const userName&, const ipAddress& )> funcAuthentication, std::function<bool(const endpoint&, const Json::Value&)> funcMessage, std::function<void(const endpoint&, const ipAddress&)> funcClose)
@@ -1616,14 +1599,29 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
 
 void MongooseServer::SendAuthenticationRequest(mg_connection* pConnection)
 {
-    if(m_tokenCallback == nullptr)
+     if(m_tokenCallback == nullptr)
     {
         stringstream ssHeaders;
         ssHeaders << "HTTP/1.1 401\r\n"
                 << "WWW-Authenticate: Basic realm=\"User Visible Realm\"\r\n\r\n";
 
-    mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
-    pConnection->is_draining = 1;
+        if(m_Cert.Get().empty() == false)
+        {
+            ssHeaders << "Strict-Transport-Security: max-age=31536000; includeSubDomains\r\n";
+        }
+
+        mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
+        pConnection->is_draining = 1;
+    }
+    else if(m_tokenCallbackHandleNotAuthorized)
+    {
+        DoReply(pConnection, m_tokenCallbackHandleNotAuthorized());
+    }
+    else
+    {
+        //@todo ask application what to send back - possibly redirect to login page or something
+        DoReply(pConnection, response(401, "Not authenticated"));
+    }
 }
 
 
@@ -1636,9 +1634,7 @@ void MongooseServer::SendWSQueue()
     {
         while(m_qWsMessages.empty() == false)
         {
-            //std::stringstream ssMessage;
             auto sMessage = ConvertFromJson(m_qWsMessages.front().second);
-            //ssMessage << m_qWsMessages.front().second;
 
             pmlLog(pml::LOG_TRACE) << "SendWSQueue: " << sMessage;
 

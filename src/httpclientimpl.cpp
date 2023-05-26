@@ -327,7 +327,7 @@ void HttpClientImpl::HandleErrorEvent(const char* error)
 
 static void evt_handler(mg_connection* pConnection, int nEvent, void* pEventData, void* pfnData)
 {
-    HttpClientImpl* pMessage = reinterpret_cast<HttpClientImpl*>(pfnData);
+    auto pMessage = reinterpret_cast<HttpClientImpl*>(pfnData);
 
     if(nEvent == MG_EV_CONNECT)
     {
@@ -339,14 +339,14 @@ static void evt_handler(mg_connection* pConnection, int nEvent, void* pEventData
     }
     else if(nEvent == MG_EV_HTTP_MSG)
     {
-        mg_http_message* pReply = reinterpret_cast<mg_http_message*>(pEventData);
+        auto pReply = reinterpret_cast<mg_http_message*>(pEventData);
         pMessage->HandleMessageEvent(pReply);
         pConnection->is_closing = 1;
     }
     else if(nEvent == MG_EV_HTTP_CHUNK)
     {
         pmlLog(pml::LOG_TRACE) << "HttpClient:MG_EV_HTTP_CHUNK";
-        mg_http_message* pReply = reinterpret_cast<mg_http_message*>(pEventData);
+        auto pReply = reinterpret_cast<mg_http_message*>(pEventData);
         pMessage->HandleChunkEvent(pConnection, pReply);
     }
     else if(nEvent == MG_EV_ERROR)
@@ -355,11 +355,11 @@ static void evt_handler(mg_connection* pConnection, int nEvent, void* pEventData
     }
 }
 
-void HttpClientImpl::RunAsync(std::function<void(const clientResponse&, unsigned int)> pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout)
+void HttpClientImpl::RunAsync(const std::function<void(const clientResponse&, unsigned int)>& pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout)
 {
     m_pAsyncCallback = pCallback;
     m_nRunId = nRunId;
-    pmlLog(pml::LOG_TRACE) << "RestGoose:HttpClient::RunAsync: nRunId = " << nRunId << " Endpoint: " << m_point.second;// << " data: " << m_vPostData.back().filepath;
+    pmlLog(pml::LOG_TRACE) << "RestGoose:HttpClient::RunAsync: nRunId = " << nRunId << " Endpoint: " << m_point.second;
     Run(connectionTimeout, processTimeout);
 }
 
@@ -572,12 +572,12 @@ bool HttpClientImpl::SendFile(mg_connection* pConnection, const fileLocation& fi
     return false;
 }
 
-void HttpClientImpl::SetUploadProgressCallback(std::function<void(unsigned long, unsigned long)> pCallback)
+void HttpClientImpl::SetUploadProgressCallback(const std::function<void(unsigned long, unsigned long)>& pCallback)
 {
     m_pUploadProgressCallback = pCallback;
 }
 
-void HttpClientImpl::SetDownloadProgressCallback(std::function<void(unsigned long, unsigned long)> pCallback)
+void HttpClientImpl::SetDownloadProgressCallback(const std::function<void(unsigned long, unsigned long)>& pCallback)
 {
     m_pDownloadProgressCallback = pCallback;
 }
@@ -604,13 +604,10 @@ void HttpClientImpl::HandleMultipartWroteEvent(mg_connection* pConnection)
 
                 ++m_nPostPart;
             }
-            else
-            {
-                if(SendFile(pConnection, m_vPostData[m_nPostPart].filepath, true) == true)
-                {   //opened and sent in one fell swoop
-                    mg_send(pConnection, CRLF.c_str(), CRLF.length());
-                    ++m_nPostPart;
-                }
+            else if(SendFile(pConnection, m_vPostData[m_nPostPart].filepath, true) == true)
+            {   //opened and sent in one fell swoop
+                mg_send(pConnection, CRLF.c_str(), CRLF.length());
+                ++m_nPostPart;
             }
         }
         else
@@ -629,9 +626,7 @@ void HttpClientImpl::HandleMultipartWroteEvent(mg_connection* pConnection)
     }
 }
 
-HttpClientImpl::~HttpClientImpl()
-{
-}
+HttpClientImpl::~HttpClientImpl()=default;
 
 
 void HttpClientImpl::Cancel()

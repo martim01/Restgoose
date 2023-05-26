@@ -4,7 +4,8 @@
             "name": "Linux",
             "compilerPathInCppPropertiesJson": "/usr/bin/gcc",
             "includePath": [
-                "/home/matt/Restgoose/**"
+                "/home/matt/Restgoose/**",
+                "/home/matt/Restgoose/include"
             ],
             "defines": [],
             "compileCommands": "${workspaceFolder}/build/compile_commands.json",

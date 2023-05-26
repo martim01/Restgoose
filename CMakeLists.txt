@@ -11,7 +11,7 @@ SET(DIR_BASE $ENV{HOME} CACHE STRING "base location for libraries")
 SET(DIR_JSON ${DIR_BASE}/jsoncpp CACHE STRING "location of jsoncpp")
 SET(DIR_MONGOOSE ${DIR_BASE}/mongoose CACHE STRING "location of mongoose")
 SET(DIR_LOG ${DIR_BASE}/log CACHE STRING "location of pml log")
-SET(MONGOOSE_CHECKOUT "7.8" CACHE STRING "Mongoose release 7.8")
+SET(MONGOOSE_CHECKOUT "7.10" CACHE STRING "Mongoose release 7.10")
 
 message(STATUS, ${CMAKE_SOURCE_DIR})
 
@@ -122,7 +122,7 @@ add_library(restgoose SHARED ${SOURCES})
 target_include_directories(restgoose PUBLIC ${CMAKE_BINARY_DIR}/include)
 set_target_properties(restgoose PROPERTIES DEBUG_POSTFIX "d")
 
-list(APPEND flags "-fPIC" "-Wall" "-fpermissive"  "-std=c++14")
+list(APPEND flags "-fPIC" "-Wall" "-fpermissive"  "-std=c++17")
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
    message(STATUS "Debug build")

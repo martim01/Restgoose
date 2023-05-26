@@ -47,7 +47,7 @@ namespace pml
             public:
                 friend class Server;
 
-                bool Init(const fileLocation& ca, const fileLocation& cert, const fileLocation& key, const ipAddress& addr,  int nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings);
+                bool Init(const fileLocation& ca, const fileLocation& cert, const fileLocation& key, const ipAddress& addr,  unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings);
 
                 void SetInterface(const ipAddress& addr, unsigned short nPort);
 
@@ -163,10 +163,10 @@ namespace pml
                 *   @param nEvent the event type
                 *   @param pData any associated data
                 **/
-                void EventWebsocketOpen(mg_connection *pConnection, int nEvent, void* pData);
+                void EventWebsocketOpen(mg_connection const* pConnection, int nEvent, void* pData);
 
-                void EventWebsocketMessage(mg_connection *pConnection, int nEvent, void* pData);
-                void EventWebsocketCtl(mg_connection *pConnection, int nEvent, void* pData);
+                void EventWebsocketMessage(mg_connection* pConnection, int nEvent, void* pData);
+                void EventWebsocketCtl(mg_connection* pConnection, int nEvent, void* pData);
 
 
                 /** @brief Handles all Mongoose http request events
@@ -204,23 +204,24 @@ namespace pml
                 authorised CheckAuthorizationBasic(struct mg_http_message* pMessage);
                 authorised CheckAuthorizationBearer(struct mg_http_message* pMessage);
 
+                void HandleThreadedMessage(mg_connection* pConnection);
 
 
                 struct subscriber
                 {
-                    subscriber(const endpoint& anEndpoint, const ipAddress& Ip, const query& q) : theEndpoint(anEndpoint), peer(Ip), queryParams(q), bAuthenticated(false), bPonged(true){}
+                    subscriber(const endpoint& anEndpoint, const ipAddress& Ip, const query& q) : theEndpoint(anEndpoint), peer(Ip), queryParams(q){}
                     endpoint theEndpoint;
                     ipAddress peer;
                     query queryParams;
-                    bool bAuthenticated;
-                    bool bPonged;
+                    bool bAuthenticated = false;
+                    bool bPonged = true;
                     std::set<endpoint> setEndpoints;
                 };
 
                 bool WebsocketSubscribedToEndpoint(const subscriber& sub, const endpoint& anEndpoint);
 
                 void HandleInternalWebsocketMessage(mg_connection* pConnection, subscriber& sub, const Json::Value& jsData);
-                void HandleExternalWebsocketMessage(mg_connection* pConnection, subscriber& sub, const Json::Value& jsData);
+                void HandleExternalWebsocketMessage(mg_connection* pConnection, const subscriber& sub, const Json::Value& jsData);
 
                 void AddWebsocketSubscriptions(subscriber& sub, const Json::Value& jsData);
                 void RemoveWebsocketSubscriptions(subscriber& sub, const Json::Value& jsData);
@@ -243,8 +244,8 @@ namespace pml
 
                 void SendAndCheckPings(const std::chrono::milliseconds& elapsed);
 
-                mg_connection* m_pConnection;
-                int m_nPipe;
+                mg_connection* m_pConnection = nullptr;
+                int m_nPipe =0;
                 std::string m_sIniPath;
                 std::string m_sServerName;
 
@@ -255,16 +256,17 @@ namespace pml
                 std::string m_sStaticRootDir;
                 endpoint m_ApiRoot;
 
-                bool m_bWebsocket;
-                bool m_bSendPings;
-                bool m_bAuthenticateWSViaQuery;
+                bool m_bWebsocket = false;
+                bool m_bSendPings = false;
+                bool m_bAuthenticateWSViaQuery = false;
                 mg_mgr m_mgr;
-                unsigned long m_nPort;
-                size_t m_nMaxConnections;
+                unsigned long m_nPort = 80;
+                size_t m_nMaxConnections = std::numeric_limits<size_t>::max();
 
-                std::chrono::milliseconds m_PollTimeout;
+                std::chrono::milliseconds m_PollTimeout = std::chrono::milliseconds(100);
 
-                std::function<void(std::chrono::milliseconds)> m_loopCallback;
+                std::function<void(std::chrono::milliseconds)> m_loopCallback = nullptr;
+
                 std::map<methodpoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)>> m_mEndpoints;
                 std::map<methodpoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)>> m_mEndpointsThreaded;
                 std::map<endpoint, std::function<bool(const endpoint&, const query&, const userName&, const ipAddress& peer)>, end_less> m_mWebsocketAuthenticationEndpoints;
@@ -272,8 +274,8 @@ namespace pml
                 std::map<endpoint, std::function<void(const endpoint&, const ipAddress& peer)>, end_less> m_mWebsocketCloseEndpoints;
                 std::multimap<endpoint, httpMethod, end_less> m_mmOptions;
 
-                std::function<bool(const std::string&)> m_tokenCallback;
-                std::function<response()> m_tokenCallbackHandleNotAuthorized;
+                std::function<bool(const std::string&)> m_tokenCallback = nullptr;
+                std::function<response()> m_tokenCallbackHandleNotAuthorized = nullptr;
 
                 std::map<mg_connection*, subscriber > m_mSubscribers;
 
@@ -282,20 +284,20 @@ namespace pml
                 std::map<mg_connection*, thread_safe_queue<response>> m_mConnectionQueue;
 
                 std::mutex m_mutex;
-                bool m_bThreaded;
+                bool m_bThreaded = true;
                 std::condition_variable m_cvSync;
 
                 response m_signal;
 
                 std::atomic<bool> m_bLoop;
-                std::unique_ptr<std::thread> m_pThread;
-                std::function<response(const httpMethod&, const query&, const std::vector<partData>&, const endpoint&, const userName&)> m_callbackNotFound;
+                std::unique_ptr<std::thread> m_pThread = nullptr;
+                std::function<response(const httpMethod&, const query&, const std::vector<partData>&, const endpoint&, const userName&)> m_callbackNotFound = nullptr;
 
                 std::map<userName, password> m_mUsers;
 
                 std::set<methodpoint> m_setUnprotected;
 
-                std::chrono::milliseconds m_timeSinceLastPingSent;
+                std::chrono::milliseconds m_timeSinceLastPingSent = std::chrono::milliseconds(0);
 
                 ipAddress m_lastPeer;
                 ipAddress m_lastPeerAndPort;
@@ -304,26 +306,26 @@ namespace pml
 
                 struct httpchunks
                 {
-                    httpchunks() : nTotalSize(0), nCurrentSize(0), pCallback(nullptr), ePlace(BOUNDARY), pofs(nullptr){}
+                    httpchunks()=default;
                     ~httpchunks();
-                    size_t nTotalSize;
-                    size_t nCurrentSize;
+                    size_t nTotalSize = 0;
+                    size_t nCurrentSize =0;
                     headerValue contentType;
                     methodpoint thePoint;
                     query theQuery;
-                    std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> pCallback;
+                    std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> pCallback = nullptr;
 
                     userName theUser;
                     //multipart stuff
                     enum enumPlace{BOUNDARY, HEADER};
-                    enumPlace ePlace;
+                    enumPlace ePlace = BOUNDARY;
 
                     std::vector<char> vBuffer;
                     std::string sBoundary;
                     std::string sBoundaryLast;
                     std::vector<partData> vParts;
 
-                    std::shared_ptr<std::ofstream> pofs;
+                    std::shared_ptr<std::ofstream> pofs = nullptr;
                 };
 
                 void HandleFirstChunk(httpchunks& chunk, mg_connection* pConnection, mg_http_message* pMessage);

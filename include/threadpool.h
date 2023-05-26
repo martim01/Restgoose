@@ -44,12 +44,9 @@ namespace pml
 
                 void WorkerThread();
 
-                std::atomic_bool m_bDone;
+                std::atomic_bool m_bDone = ATOMIC_VAR_INIT(false);
                 threadsafe_queue<std::function<void()>> m_work_queue;
                 std::vector<std::thread> m_vThreads;
-
-//                std::mutex m_mutex;
-//                std::condition_variable m_condition;
         };
     };
 };

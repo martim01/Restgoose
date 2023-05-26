@@ -7,7 +7,7 @@ template <typename T, typename Parameter>
 class NamedType
 {
     public:
-        explicit NamedType(){}
+        explicit NamedType()=default;
         explicit NamedType(T const& value) : m_value(value){}
         explicit NamedType(T&& value) : m_value(std::move(value)){}
         T& Get() {return m_value;}
@@ -25,7 +25,7 @@ class NamedType
         {
             return m_value <= other.Get();
         }
-        bool operator>=(T const& other)
+        bool operator>=(T const& other) const
         {
             return !(*this < other);
         }

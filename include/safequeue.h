@@ -1,3 +1,4 @@
+#pragma once
 #include <mutex>
 #include <memory>
 #include <condition_variable>
@@ -7,7 +8,9 @@ template <typename T>
 class thread_safe_queue {
     public:
         // constructor
-        thread_safe_queue() {}
+        thread_safe_queue()=default;
+        ~thread_safe_queue()=default;
+
         thread_safe_queue(const thread_safe_queue& other)
         {
             std::lock_guard<std::mutex> lock{other.mutex};

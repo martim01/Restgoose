@@ -9,8 +9,7 @@ ThreadPool& ThreadPool::Get()
     return pool;
 }
 
-ThreadPool::ThreadPool() :
-    m_bDone(false)
+ThreadPool::ThreadPool()
 {
     AddWorkers(1);    //we want at least 1 threaad otherwise why are we calling this
 }

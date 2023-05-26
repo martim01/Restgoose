@@ -82,7 +82,7 @@ namespace pml
                 *   @param delay the amount of time to wait before running the function. This wait time may be longer depending on thread allocation.
                 *   @return <i>clientResponse</i> a clientResponse object containing the HTTP repsonse code and any data sent from the server
                 **/
-                void Run(std::function<void(const clientResponse&, unsigned int )> pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0), const std::chrono::milliseconds& delay = std::chrono::milliseconds(0));
+                void Run(const std::function<void(const clientResponse&, unsigned int )>& pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0), const std::chrono::milliseconds& delay = std::chrono::milliseconds(0)) const;
 
                 /** @brief Sets a callback function that is called every time a "chunk" of data is sent to the server. This is useful for showing the progress of large uploads
                 *   @param pCallback the callback function. It is passed two values: the first is the number of bytes uploaded and the second the total number of bytes that will be uploaded
