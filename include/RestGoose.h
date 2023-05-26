@@ -4,7 +4,7 @@
 #include <set>
 #include <functional>
 #include <chrono>
-
+#include <filesystem>
 
 namespace pml
 {
@@ -30,7 +30,7 @@ namespace pml
                 *   @param bSendPings set to true for the server to send websocket pings to the clients
                 *   @return <i>bool</i> true if the server has been successufully intialised
                 **/
-                bool Init(const fileLocation& ca, const fileLocation& cert, const fileLocation& key, const ipAddress& addr, int nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings=false);
+                bool Init(const std::filesystem::path& ca, const std::filesystem::path& cert, const std::filesystem::path& key, const ipAddress& addr, unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings=false);
 
                 /** @brief Initialises the server
                 *   @param cert the full path and file name to a TLS certificate if one is being used
@@ -42,7 +42,7 @@ namespace pml
                 *   @param bSendPings set to true for the server to send websocket pings to the clients
                 *   @return <i>bool</i> true if the server has been successufully intialised
                 **/
-                bool Init(const fileLocation& cert, const fileLocation& key, const ipAddress& addr, int nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings=false);
+                bool Init(const std::filesystem::path& cert, const std::filesystem::path& key, const ipAddress& addr, unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings=false);
 
                 /** @brief Initialises the server
                 *   @param addr the ip address of the interface to run on (pass 0.0.0.0 to listen on all interfaces)
@@ -51,7 +51,7 @@ namespace pml
                 *   @param bEnableWebsocket set to true to act as a websocket server as well
                 *   @return <i>bool</i> true if the server has been successufully intialised
                 **/
-                bool Init(const ipAddress& addr, int nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings=false);
+                bool Init(const ipAddress& addr, unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings=false);
 
                 /** @brief Runs the webserver
                 *   @param bThread if true will run in a separate thread, if false will run in main thread
@@ -69,7 +69,7 @@ namespace pml
                 *   @param callback a callback function that should inspect the token and return true if authorization is allowed
                 *   @param bAuthenticateWebsocketsViaQuery if true then, for websocket connections, the bearer token is expected to be passed as a query param in the connecting websocket url (e.g. wss://127.0.0.1:/ws/api?jwt=923834aa9q3....). If false then the token must be passed as the first message from the client to the server
                 **/
-                void SetAuthorizationTypeBearer(std::function<bool(const std::string& theToken)> callback, std::function<response()> callbackHandleNotAuthorized, bool bAuthenticateWebsocketsViaQuery);
+                void SetAuthorizationTypeBearer(const std::function<bool(const std::string& theToken)>& callback, const std::function<response()>& callbackHandleNotAuthorized, bool bAuthenticateWebsocketsViaQuery);
 
                 /** @brief Sets the authorization type to basic authentication
                 *   @param aUser a user name
@@ -108,14 +108,13 @@ namespace pml
                  *  @param funcClose a function that is called when the client closes the websocket connection. The function is passed the methodpoint address and the client ip address
                  *  @return <i>bool</i> true if the websocket methodpoint was added
                  **/
-                bool AddWebsocketEndpoint(const endpoint& theEndpoint, std::function<bool(const endpoint&, const query&, const userName&, const ipAddress&)> funcAuthentication,
-                std::function<bool(const endpoint&, const Json::Value&)> funcMessage, std::function<void(const endpoint&, const ipAddress&)> funcClose);
+                bool AddWebsocketEndpoint(const endpoint& theEndpoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress&)>& funcAuthentication, const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage, const std::function<void(const endpoint&, const ipAddress&)>& funcClose);
 
                 /** @brief Adds a function to be called everytime a client attempts to connect to a methodpoint that is not defined
                 *   @param func the function to be called. The function is passed the query data, std::vector<partData> (for a PUT,PATCH or POST) the methodpoint and the userName if any.
                 The function should return a response which will be sent back to the client
                 **/
-                void AddNotFoundCallback(std::function<response(const httpMethod&, const query&, const std::vector<partData>&, const endpoint&, const userName&)> func);
+                void AddNotFoundCallback(const std::function<response(const httpMethod&, const query&, const std::vector<partData>&, const endpoint&, const userName&)>& func);
 
                 ///< @brief Stops the server
                 void Stop();
@@ -139,10 +138,11 @@ namespace pml
                 /** Adds a callback handler for an methodpoint
                 *   @param theEndpoint a pair definining the HTTP method and methodpoint address
                 *   @param func std::function that defines the callback function.The function is passed the query data, std::vector<partData> (for a PUT,PATCH or POST) the methodpoint and the userName if any.
+                *   @param bUseThread if false then the callback will be called in the server thread
                 The function should return a response which will be sent back to the client
                 *   @return <i>bool</i> true on success
                 **/
-                bool AddEndpoint(const httpMethod& method, const endpoint& theEndpoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> func);
+                bool AddEndpoint(const httpMethod& method, const endpoint& theEndpoint, const std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)>& func, bool bUseThread = false);
 
                 /** Removes a callback handler for an methodpoint
                 *   @param theEndpoint a pair definining the HTTP method and methodpoint address
@@ -153,7 +153,7 @@ namespace pml
                 /** Sets the function that will be called every time the poll function times out or an event happens
                 *   @param func the function to call. It will be passed one argument, the number of milliseconds since it was last called
                 **/
-                void SetLoopCallback(std::function<void(std::chrono::milliseconds)> func);
+                void SetLoopCallback(const std::function<void(std::chrono::milliseconds)>& func);
 
                 /** @brief Sends a JSON formatted websocket message
                 *   @param setEnpoints the set of websocket methodpoints that the message should be sent to

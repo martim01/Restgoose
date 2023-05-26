@@ -777,7 +777,7 @@ void MongooseServer::HandleLastChunk(httpchunks& chunk, mg_connection* pConnecti
         chunk.pofs->close();
         chunk.pofs = nullptr;
     }
-    if(chunk.pCallback == nullptr)
+    if(chunk.pCallback.first == nullptr)
     {
         pmlLog(pml::LOG_ERROR) << "RestGoose:Server\tSomeone uploaded a big file to a non allowed endpoint";
         //@todo in the end we shouldn't get here.
@@ -792,7 +792,14 @@ void MongooseServer::HandleLastChunk(httpchunks& chunk, mg_connection* pConnecti
     }
     else
     {
-        DoReply(pConnection, chunk.pCallback(chunk.theQuery, chunk.vParts, chunk.thePoint.second, chunk.theUser));
+        if(chunk.pCallback.second == false)
+        {
+            DoReply(pConnection, chunk.pCallback.first(chunk.theQuery, chunk.vParts, chunk.thePoint.second, chunk.theUser));
+        }
+        else
+        {
+            DoReplyThreaded(pConnection, chunk.theQuery, chunk.vParts, chunk.thePoint, chunk.theUser);
+        }
     }
     m_mChunks.erase(pConnection);
 }
@@ -1052,26 +1059,16 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
 
         //find the callback function assigned to the method and endpoint
         auto itCallback = m_mEndpoints.find(thePoint);
-        auto itCallbackThread = m_mEndpointsThreaded.find(thePoint);
         if(itCallback != m_mEndpoints.end())
         {
-            DoReply(pConnection, itCallback->second(ExtractQuery(pMessage), CreatePartData(pMessage->body, GetHeader(pMessage, headerName("Content-Type"))), thePoint.second, auth.second));
-        }
-        else if(itCallbackThread != m_mEndpointsThreaded.end())
-        {
-            m_mConnectionQueue.insert({pConnection, thread_safe_queue<response>()});
-            ThreadPool::Get().Submit([this, pConnection, pMessage, thePoint, auth]()
+            if(itCallback->second.second == false)
             {
-                if(auto itCallbackThread = m_mEndpointsThreaded.find(thePoint); itCallbackThread != m_mEndpointsThreaded.end())
-                {
-                    auto theResponse = itCallbackThread->second(ExtractQuery(pMessage), CreatePartData(pMessage->body, GetHeader(pMessage, headerName("Content-Type"))), thePoint.second, auth.second);
-                    auto itQueue = m_mConnectionQueue.find(pConnection);
-                    if(itQueue != m_mConnectionQueue.end())
-                    {
-                        itQueue->second.push(theResponse);
-                    }
-                }
-            });
+                DoReply(pConnection, itCallback->second.first(ExtractQuery(pMessage), CreatePartData(pMessage->body, GetHeader(pMessage, headerName("Content-Type"))), thePoint.second, auth.second));
+            }
+            else
+            {
+                DoReplyThreaded(pConnection, ExtractQuery(pMessage), CreatePartData(pMessage->body, GetHeader(pMessage, headerName("Content-Type"))), thePoint, auth.second);
+            }
         }
         else if(m_callbackNotFound)
         {
@@ -1082,6 +1079,23 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
             SendError(pConnection, "Not Found", 404);
         }
     }
+}
+
+void MongooseServer::DoReplyThreaded(mg_connection* pConnection,const query& theQuery, const std::vector<partData>& theData, const methodpoint& thePoint, const userName& theUser)
+{
+    m_mConnectionQueue.try_emplace(pConnection, thread_safe_queue<response>());
+    ThreadPool::Get().Submit([this, pConnection, theQuery, theData, thePoint, theUser]()
+    {
+        if(auto itCallback = m_mEndpoints.find(thePoint); itCallback != m_mEndpoints.end())
+        {
+            auto theResponse = itCallback->second.first(theQuery, theData, thePoint.second, theUser);
+            auto itQueue = m_mConnectionQueue.find(pConnection);
+            if(itQueue != m_mConnectionQueue.end())
+            {
+                itQueue->second.push(theResponse);
+            }
+        }
+    });
 }
 
 void MongooseServer::EventHttpApiMultipart(mg_connection *pConnection, mg_http_message* pMessage, const methodpoint& thePoint)
@@ -1104,7 +1118,15 @@ void MongooseServer::EventHttpApiMultipart(mg_connection *pConnection, mg_http_m
             {
                 vData.push_back(CreatePartData(part, GetHeader(pMessage, headerName("Content-Type"))));
             }
-            DoReply(pConnection, itCallback->second(ExtractQuery(pMessage), vData, thePoint.second, auth.second));
+            
+            if(itCallback->second.second == false)
+            {
+                DoReply(pConnection, itCallback->second.first(ExtractQuery(pMessage), vData, thePoint.second, auth.second));
+            }
+            else
+            {
+                DoReplyThreaded(pConnection, ExtractQuery(pMessage), vData, thePoint, auth.second);
+            }
         }
         else if(m_callbackNotFound)
         {
@@ -1212,18 +1234,18 @@ void MongooseServer::HandleAccept(mg_connection* pConnection)
     {
         pmlLog(pml::LOG_DEBUG) << "Restgoose:Server\tAccept connection: Turn on TLS";
         struct mg_tls_opts tls_opts;
-        if(m_Ca.Get().empty())
+        if(m_Ca.empty())
         {
             tls_opts.ca = nullptr;
         }
         else
         {
-            tls_opts.ca = m_Ca.Get().c_str();
+            tls_opts.ca = m_Ca.string().c_str();
         }
         tls_opts.srvname.len = m_sHostname.length();
         tls_opts.srvname.ptr = m_sHostname.c_str();
-        tls_opts.cert = m_Cert.Get().c_str();
-        tls_opts.certkey = m_Key.Get().c_str();
+        tls_opts.cert = m_Cert.string().c_str();
+        tls_opts.certkey = m_Key.string().c_str();
         tls_opts.ciphers = "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256";
         mg_tls_init(pConnection, &tls_opts);
         if(pConnection->is_closing == 1)
@@ -1256,7 +1278,7 @@ MongooseServer::~MongooseServer()
 
 }
 
-bool MongooseServer::Init(const fileLocation& ca, const fileLocation& cert, const fileLocation& key, const ipAddress& addr, unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
+bool MongooseServer::Init(const std::filesystem::path& ca, const std::filesystem::path& cert, const std::filesystem::path& key, const ipAddress& addr, unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
 {
     m_nPort = nPort;
     //check for ssl
@@ -1264,7 +1286,7 @@ bool MongooseServer::Init(const fileLocation& ca, const fileLocation& cert, cons
     m_Cert = cert;
     m_Ca = ca;
 
-    if(m_Cert.Get().empty() == false)
+    if(m_Cert.empty() == false)
     {
         m_mHeaders.insert({headerName("Strict-Transport-Security"), headerValue("max-age=31536000; includeSubDomains")});
     }
@@ -1297,7 +1319,7 @@ bool MongooseServer::Init(const fileLocation& ca, const fileLocation& cert, cons
 void MongooseServer::SetInterface(const ipAddress& addr, unsigned short nPort)
 {
     stringstream ss;
-    if(m_Cert.Get().empty())
+    if(m_Cert.empty())
     {
         ss << "http://";
     }
@@ -1399,17 +1421,18 @@ bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, std::func
            m_mWebsocketCloseEndpoints.insert(std::make_pair(theEndpoint, funcClose)).second;
 }
 
-bool MongooseServer::AddEndpoint(const methodpoint& theMethodPoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName& )> func)
+bool MongooseServer::AddEndpoint(const methodpoint& theMethodPoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName& )> func, bool bUseThread)
 {
     pml::LogStream lg;
     lg << "MongooseServer\t" << "AddEndpoint <" << theMethodPoint.first.Get() << ", " << theMethodPoint.second.Get() << "> ";
-    if(m_mEndpoints.find(theMethodPoint) != m_mEndpoints.end() || m_mEndpointsThreaded.find(theMethodPoint) != m_mEndpointsThreaded.end())
+    if(m_mEndpoints.find(theMethodPoint) != m_mEndpoints.end())
     {
         lg(pml::LOG_TRACE) << "failed as methodpoint already exists";
         return false;
     }
 
-    m_mEndpoints.insert(std::make_pair(theMethodPoint, func));
+    m_mEndpoints.try_emplace(theMethodPoint, std::make_pair(func, bUseThread));
+    
     m_mmOptions.insert(std::make_pair(theMethodPoint.second, theMethodPoint.first));
     lg.SetLevel(pml::LOG_TRACE);
     lg << "success";
@@ -1555,7 +1578,7 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
                   << "Access-Control-Allow-Origin: *\r\n"
                   << "Access-Control-Allow-Methods: OPTIONS";
 
-        if(m_Cert.Get().empty() == false)
+        if(m_Cert.empty() == false)
         {
             ssHeaders << "Strict-Transport-Security: max-age=31536000; includeSubDomains\r\n";
         }
@@ -1576,7 +1599,7 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
                 << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
                   << "Access-Control-Allow-Origin: *\r\n"
                   << "Access-Control-Allow-Methods: OPTIONS";
-        if(m_Cert.Get().empty() == false)
+        if(m_Cert.empty() == false)
         {
             ssHeaders << "Strict-Transport-Security: max-age=31536000; includeSubDomains\r\n";
         }
@@ -1605,7 +1628,7 @@ void MongooseServer::SendAuthenticationRequest(mg_connection* pConnection)
         ssHeaders << "HTTP/1.1 401\r\n"
                 << "WWW-Authenticate: Basic realm=\"User Visible Realm\"\r\n\r\n";
 
-        if(m_Cert.Get().empty() == false)
+        if(m_Cert.empty() == false)
         {
             ssHeaders << "Strict-Transport-Security: max-age=31536000; includeSubDomains\r\n";
         }

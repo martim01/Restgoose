@@ -20,6 +20,7 @@ extern "C" {
 #include <thread>
 #include <condition_variable>
 #include "safequeue.h"
+#include <filesystem>
 
 extern RG_EXPORT bool operator<(const methodpoint& e1, const methodpoint& e2);
 extern size_t GetNumberOfConnections(mg_mgr& mgr);
@@ -41,13 +42,15 @@ namespace pml
 {
     namespace restgoose
     {
+        using endpointCallback = std::pair<std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)>, bool>;
+
         class Server;
         class MongooseServer
         {
             public:
                 friend class Server;
 
-                bool Init(const fileLocation& ca, const fileLocation& cert, const fileLocation& key, const ipAddress& addr,  unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings);
+                bool Init(const std::filesystem::path& ca, const std::filesystem::path& cert, const std::filesystem::path& key, const ipAddress& addr,  unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings);
 
                 void SetInterface(const ipAddress& addr, unsigned short nPort);
 
@@ -83,16 +86,10 @@ namespace pml
                 /** Adds a callback handler for an methodpoint - this method will run in the same thread as the server thread
                 *   @param theMethodPoint a pair definining the HTTP method and methodpoint address
                 *   @param func std::function that defines the callback function
+                *   @param bUseThread if false then the callback will be called in the server thread
                 *   @return <i>bool</i> true on success
                 **/
-                bool AddEndpoint(const methodpoint& theMethodPoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> func);
-
-                /** Adds a callback handler for an methodpoint - this method will run in a separate thread to the server thread
-                *   @param theMethodPoint a pair definining the HTTP method and methodpoint address
-                *   @param func std::function that defines the callback function
-                *   @return <i>bool</i> true on success
-                **/
-                bool AddEndpointThread(const methodpoint& theMethodPoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> func);
+                bool AddEndpoint(const methodpoint& theMethodPoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> func, bool bUseThread=false);
 
                 /** @brief Adds a callback handler that is called if no handler is found for the endpoint
                 **/
@@ -193,6 +190,7 @@ namespace pml
                 void DoReply(mg_connection* pConnection, const response& theResponse);
                 void DoReplyText(mg_connection* pConnection, const response& theResponse);
                 void DoReplyFile(mg_connection* pConnection, const response& theResponse);
+                void DoReplyThreaded(mg_connection* pConnection, const query& theQuery, const std::vector<partData>& theData, const methodpoint& thePoint, const userName& theUser);
                 void SendAuthenticationRequest(mg_connection* pConnection);
 
                 void SendOptions(mg_connection* pConnection, const endpoint& thEndpoint);
@@ -249,9 +247,9 @@ namespace pml
                 std::string m_sIniPath;
                 std::string m_sServerName;
 
-                fileLocation m_Cert;
-                fileLocation m_Key;
-                fileLocation m_Ca;
+                std::filesystem::path m_Cert;
+                std::filesystem::path m_Key;
+                std::filesystem::path m_Ca;
 
                 std::string m_sStaticRootDir;
                 endpoint m_ApiRoot;
@@ -267,8 +265,7 @@ namespace pml
 
                 std::function<void(std::chrono::milliseconds)> m_loopCallback = nullptr;
 
-                std::map<methodpoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)>> m_mEndpoints;
-                std::map<methodpoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)>> m_mEndpointsThreaded;
+                std::map<methodpoint, endpointCallback> m_mEndpoints;
                 std::map<endpoint, std::function<bool(const endpoint&, const query&, const userName&, const ipAddress& peer)>, end_less> m_mWebsocketAuthenticationEndpoints;
                 std::map<endpoint, std::function<bool(const endpoint&, const Json::Value&)>, end_less> m_mWebsocketMessageEndpoints;
                 std::map<endpoint, std::function<void(const endpoint&, const ipAddress& peer)>, end_less> m_mWebsocketCloseEndpoints;
@@ -313,7 +310,7 @@ namespace pml
                     headerValue contentType;
                     methodpoint thePoint;
                     query theQuery;
-                    std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> pCallback = nullptr;
+                    endpointCallback pCallback = {nullptr, false};
 
                     userName theUser;
                     //multipart stuff

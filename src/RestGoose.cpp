@@ -13,19 +13,19 @@ Server::~Server()
     m_pImpl->Stop();
 }
 
-bool Server::Init(const fileLocation& ca, const fileLocation& cert, const fileLocation& key,const ipAddress& addr, int nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
+bool Server::Init(const std::filesystem::path& ca, const std::filesystem::path& cert, const std::filesystem::path& key,const ipAddress& addr, unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
 {
     return m_pImpl->Init(ca, cert, key, addr, nPort, apiRoot, bEnableWebsocket, bSendPings);
 }
 
-bool Server::Init(const fileLocation& cert, const fileLocation& key,const ipAddress& addr, int nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
+bool Server::Init(const std::filesystem::path& cert, const std::filesystem::path& key,const ipAddress& addr, unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
 {
-    return m_pImpl->Init(fileLocation(""), cert, key, addr, nPort, apiRoot, bEnableWebsocket, bSendPings);
+    return m_pImpl->Init({}, cert, key, addr, nPort, apiRoot, bEnableWebsocket, bSendPings);
 }
 
-bool Server::Init(const ipAddress& addr, int nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
+bool Server::Init(const ipAddress& addr, unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
 {
-    return m_pImpl->Init(fileLocation(""),  fileLocation(""), fileLocation(""), addr, nPort, apiRoot, bEnableWebsocket, bSendPings);
+    return m_pImpl->Init({},  {}, {}, addr, nPort, apiRoot, bEnableWebsocket, bSendPings);
 }
 
 void Server::SetInterface(const ipAddress& addr, unsigned short nPort)
@@ -44,17 +44,17 @@ void Server::Stop()
     m_pImpl->Stop();
 }
 
-bool Server::AddEndpoint(const httpMethod& method, const endpoint& theEndpoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> func)
+bool Server::AddEndpoint(const httpMethod& method, const endpoint& theEndpoint, const std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)>& func, bool bUseThread)
 {
-    return m_pImpl->AddEndpoint(methodpoint(method, theEndpoint), func);
+    return m_pImpl->AddEndpoint(methodpoint(method, theEndpoint), func, bUseThread);
 }
 
-void Server::AddNotFoundCallback(std::function<response(const httpMethod&, const query&, const std::vector<partData>&, const endpoint&, const userName&)> func)
+void Server::AddNotFoundCallback(const std::function<response(const httpMethod&, const query&, const std::vector<partData>&, const endpoint&, const userName&)>& func)
 {
     return m_pImpl->AddNotFoundCallback(func);
 }
 
-bool Server::AddWebsocketEndpoint(const endpoint& theMethodPoint, std::function<bool(const endpoint&, const query&, const userName&, const ipAddress&)> funcAuthentication, std::function<bool(const endpoint&, const Json::Value&)> funcMessage, std::function<void(const endpoint&, const ipAddress&)> funcClose)
+bool Server::AddWebsocketEndpoint(const endpoint& theMethodPoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress&)>& funcAuthentication, const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage, const std::function<void(const endpoint&, const ipAddress&)>& funcClose)
 {
     return m_pImpl->AddWebsocketEndpoint(theMethodPoint, funcAuthentication, funcMessage, funcClose);
 }
@@ -64,7 +64,7 @@ bool Server::DeleteEndpoint(const httpMethod& method, const endpoint& theEndpoin
     return m_pImpl->DeleteEndpoint(methodpoint(method, theEndpoint));
 }
 
-void Server::SetLoopCallback(std::function<void(std::chrono::milliseconds)> func)
+void Server::SetLoopCallback(const std::function<void(std::chrono::milliseconds)>& func)
 {
     m_pImpl->SetLoopCallback(func);
 }
@@ -74,7 +74,7 @@ void Server::SendWebsocketMessage(const std::set<endpoint>& setEndpoints, const 
     m_pImpl->SendWebsocketMessage(setEndpoints, jsMessage);
 }
 
-void Server::SetAuthorizationTypeBearer(std::function<bool(const std::string& theToken)> callback, std::function<response()> callbackHandleNotAuthorized, bool bAuthenticateWebsocketsViaQuery)
+void Server::SetAuthorizationTypeBearer(const std::function<bool(const std::string& theToken)>& callback, const std::function<response()>& callbackHandleNotAuthorized, bool bAuthenticateWebsocketsViaQuery)
 {
     m_pImpl->SetAuthorizationTypeBearer(callback, callbackHandleNotAuthorized, bAuthenticateWebsocketsViaQuery);
 }
