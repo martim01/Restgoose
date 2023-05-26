@@ -228,7 +228,7 @@ void ev_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_da
     pThread->HandleEvent(pConnection, nEvent, pData);
 }
 
-void pipe_handler(mg_connection const* pConnection, int nEvent, void* pData, void* fn_data)
+void pipe_handler(mg_connection* pConnection, int nEvent, void* pData, void* fn_data)
 {
     if(nEvent == MG_EV_READ)
     {
@@ -1492,10 +1492,10 @@ void MongooseServer::DoReplyText(mg_connection* pConnection, const response& the
               << "Content-Type: " << theResponse.contentType.Get() << "\r\n"
               << "Content-Length: " << sReply.length() << "\r\n"
               << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
-              << "Access-Control-Allow-Origin:*\r\n"
-              << "Access-Control-Allow-Methods:GET, PUT, POST, HEAD, OPTIONS, DELETE\r\n"
-              << "Access-Control-Allow-Headers:Content-Type, Accept, Authorization\r\n"
-              << "Access-Control-Max-Age:3600\r\n\r\n";
+              << "Access-Control-Allow-Origin: *\r\n"
+              << "Access-Control-Allow-Methods: GET, PUT, POST, HEAD, OPTIONS, DELETE\r\n"
+              << "Access-Control-Allow-Headers: Content-Type, Accept, Authorization\r\n"
+              << "Access-Control-Max-Age: 3600\r\n\r\n";
 
 
         mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
@@ -1552,7 +1552,7 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
         stringstream ssHeaders;
         ssHeaders << "HTTP/1.1 404\r\n"
                 << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
-                  << "Access-Control-Allow-Origin:*\r\n"
+                  << "Access-Control-Allow-Origin: *\r\n"
                   << "Access-Control-Allow-Methods: OPTIONS";
 
         if(m_Cert.Get().empty() == false)
@@ -1562,8 +1562,8 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
 
         ssHeaders << "\r\n"
                   << "Content-Length: 0 \r\n"
-                  << "Access-Control-Allow-Headers:Content-Type, Accept, Authorization\r\n"
-                  << "Access-Control-Max-AgeL3600\r\n\r\n";
+                  << "Access-Control-Allow-Headers: Content-Type, Accept, Authorization\r\n"
+                  << "Access-Control-Max-Age: 3600\r\n\r\n";
 
         mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
         pConnection->is_resp = 0;
@@ -1574,7 +1574,7 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
         stringstream ssHeaders;
         ssHeaders << "HTTP/1.1 200\r\n"
                 << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
-                  << "Access-Control-Allow-Origin:*\r\n"
+                  << "Access-Control-Allow-Origin: *\r\n"
                   << "Access-Control-Allow-Methods: OPTIONS";
         if(m_Cert.Get().empty() == false)
         {
@@ -1587,8 +1587,8 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
         }
         ssHeaders << "\r\n"
                   << "Content-Length: 0 \r\n"
-                  << "Access-Control-Allow-Headers:Content-Type, Accept, Authorization\r\n"
-                  << "Access-Control-Max-AgeL3600\r\n\r\n";
+                  << "Access-Control-Allow-Headers: Content-Type, Accept, Authorization\r\n"
+                  << "Access-Control-Max-Age: 3600\r\n\r\n";
 
         mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
         pConnection->is_resp = 0;
