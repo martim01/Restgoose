@@ -54,7 +54,7 @@ namespace pml
 
                 void SetInterface(const ipAddress& addr, unsigned short nPort);
 
-                void SetAuthorizationTypeBearer(std::function<bool(const std::string&)> callback, std::function<response()> callbackHandleNotAuthorized,bool bAuthenticateWebsocketsViaQuery);
+                void SetAuthorizationTypeBearer(const std::function<bool(const methodpoint&, const std::string&)>& callback, const std::function<response()>&  callbackHandleNotAuthorized,bool bAuthenticateWebsocketsViaQuery);
                 void SetAuthorizationTypeBasic(const userName& aUser, const password& aPassword);
                 void SetAuthorizationTypeNone();
                 void SetUnprotectedEndpoints(const std::set<methodpoint>& setUnprotected);
@@ -79,9 +79,9 @@ namespace pml
                 void Stop();
 
 
-                bool AddWebsocketEndpoint(const endpoint& theEndpoint, std::function<bool(const endpoint&, const query&, const userName&, const ipAddress&)> funcAuthentication,
-                                          std::function<bool(const endpoint&, const Json::Value&)> funcMessage,
-                                          std::function<void(const endpoint&, const ipAddress&)> funcClose);
+                bool AddWebsocketEndpoint(const endpoint& theEndpoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress&)>& funcAuthentication,
+                                          const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage,
+                                          const std::function<void(const endpoint&, const ipAddress&)>& funcClose);
 
                 /** Adds a callback handler for an methodpoint - this method will run in the same thread as the server thread
                 *   @param theMethodPoint a pair definining the HTTP method and methodpoint address
@@ -89,11 +89,11 @@ namespace pml
                 *   @param bUseThread if false then the callback will be called in the server thread
                 *   @return <i>bool</i> true on success
                 **/
-                bool AddEndpoint(const methodpoint& theMethodPoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)> func, bool bUseThread=false);
+                bool AddEndpoint(const methodpoint& theMethodPoint, const std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)>& func, bool bUseThread=false);
 
                 /** @brief Adds a callback handler that is called if no handler is found for the endpoint
                 **/
-                void AddNotFoundCallback(std::function<response(const httpMethod&, const query&, const std::vector<partData>&, const endpoint&, const userName&)> func);
+                void AddNotFoundCallback(const std::function<response(const httpMethod&, const query&, const std::vector<partData>&, const endpoint&, const userName&)>& func);
 
                 /** Removes a callback handler for an methodpoint
                 *   @param theMethodPoint a pair definining the HTTP method and methodpoint address
@@ -104,7 +104,7 @@ namespace pml
                 /** Sets the function that will be called every time the poll function times out or an event happens
                 *   @param func the function to call. It will be passed one argument, the number of milliseconds since it was last called
                 **/
-                void SetLoopCallback(std::function<void(std::chrono::milliseconds)> func);
+                void SetLoopCallback(const std::function<void(std::chrono::milliseconds)>& func);
 
                 void SendWebsocketMessage(const std::set<endpoint>& setEndpoints, const Json::Value& jsMessage);
 
@@ -113,7 +113,7 @@ namespace pml
                 void RemoveHeaders(const std::set<headerName>& setHeaders);
                 void SetHeaders(const std::map<headerName, headerValue>& mHeaders);
 
-                std::set<methodpoint> GetEndpoints();
+                std::set<methodpoint> GetEndpoints() const;
 
 
                 void SetStaticDirectory(const std::string& sDir) { m_sStaticRootDir = sDir;}
@@ -200,7 +200,7 @@ namespace pml
 
                 authorised CheckAuthorization(struct mg_http_message* pMessage);
                 authorised CheckAuthorizationBasic(struct mg_http_message* pMessage);
-                authorised CheckAuthorizationBearer(struct mg_http_message* pMessage);
+                authorised CheckAuthorizationBearer(const methodpoint& thePoint, struct mg_http_message* pMessage);
 
                 void HandleThreadedMessage(mg_connection* pConnection);
 
@@ -236,7 +236,7 @@ namespace pml
 
                 void EventHttpChunk(mg_connection *pConnection, void* pData);
 
-                methodpoint GetMethodPoint(mg_http_message* pMessage);
+                methodpoint GetMethodPoint(mg_http_message* pMessage) const;
 
                 bool InApiTree(const endpoint& theEndpoint);
 
@@ -271,7 +271,7 @@ namespace pml
                 std::map<endpoint, std::function<void(const endpoint&, const ipAddress& peer)>, end_less> m_mWebsocketCloseEndpoints;
                 std::multimap<endpoint, httpMethod, end_less> m_mmOptions;
 
-                std::function<bool(const std::string&)> m_tokenCallback = nullptr;
+                std::function<bool(const methodpoint&, const std::string&)> m_tokenCallback = nullptr;
                 std::function<response()> m_tokenCallbackHandleNotAuthorized = nullptr;
 
                 std::map<mg_connection*, subscriber > m_mSubscribers;

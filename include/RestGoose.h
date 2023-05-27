@@ -69,7 +69,7 @@ namespace pml
                 *   @param callback a callback function that should inspect the token and return true if authorization is allowed
                 *   @param bAuthenticateWebsocketsViaQuery if true then, for websocket connections, the bearer token is expected to be passed as a query param in the connecting websocket url (e.g. wss://127.0.0.1:/ws/api?jwt=923834aa9q3....). If false then the token must be passed as the first message from the client to the server
                 **/
-                void SetAuthorizationTypeBearer(const std::function<bool(const std::string& theToken)>& callback, const std::function<response()>& callbackHandleNotAuthorized, bool bAuthenticateWebsocketsViaQuery);
+                void SetAuthorizationTypeBearer(const std::function<bool(const methodpoint&,const std::string& theToken)>& callback, const std::function<response()>& callbackHandleNotAuthorized, bool bAuthenticateWebsocketsViaQuery);
 
                 /** @brief Sets the authorization type to basic authentication
                 *   @param aUser a user name

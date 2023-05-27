@@ -15,7 +15,8 @@
 #include <limits>
 #include "threadpool.h"
 #include "safequeue.h"
-using namespace std;
+
+
 using namespace std::placeholders;
 using namespace pml::restgoose;
 
@@ -44,8 +45,9 @@ void http_delete_chunk(struct mg_connection *c, struct mg_http_message *hm) {
   struct mg_str ch = hm->chunk;
   const char *end = (char *) &c->recv.buf[c->recv.len];
   const char *ce;
-  bool chunked = is_chunked(hm);
-  if (chunked) {
+  
+  if (bool chunked = is_chunked(hm);chunked) 
+  {
     ch.len += 4, ch.ptr -= 2;  // \r\n before and after the chunk
     while (ch.ptr > hm->body.ptr && *ch.ptr != '\n') ch.ptr--, ch.len++;
   }
@@ -91,8 +93,7 @@ size_t DoGetNumberOfWebsocketConnections(const mg_mgr& mgr)
 headerValue GetHeader(struct mg_http_message* pMessage, const headerName& name)
 {
     headerValue value("");
-    mg_str const* pStr = mg_http_get_header(pMessage, name.Get().c_str());
-    if(pStr && pStr->len > 0)
+    if(mg_str const* pStr = mg_http_get_header(pMessage, name.Get().c_str()); pStr && pStr->len > 0)
     {
         value = headerValue(std::string(pStr->ptr, pStr->len));
     }
@@ -117,18 +118,18 @@ std::vector<partData> CreatePartData(const mg_str& str, const headerValue& conte
             auto nPos = sEntry.find('=');
             if(nPos == std::string::npos)
             {
-                vData.push_back(partData(partName(""), textData(sEntry)));
+                vData.emplace_back(partData(partName(""), textData(sEntry)));
             }
             else
             {
-                vData.push_back(partData(partName(sEntry.substr(0,nPos)), textData(sEntry.substr(nPos+1))));
+                vData.emplace_back(partData(partName(sEntry.substr(0,nPos)), textData(sEntry.substr(nPos+1))));
             }
         }
         return vData;
     }
 }
 
-partData CreatePartData(const mg_http_part& mgpart, const headerValue& contentType)
+partData CreatePartData(const mg_http_part& mgpart, const headerValue& )
 {
     partData part(partName(std::string(mgpart.name.ptr, mgpart.name.len)), textData(std::string(mgpart.filename.ptr, mgpart.filename.len)), CreateTmpFileName("/tmp/"));
 
@@ -149,7 +150,7 @@ partData CreatePartData(const mg_http_part& mgpart, const headerValue& contentTy
     return part;
 }
 
-bool caseInsLess(const string& s1, const string& s2)
+bool caseInsLess(const std::string& s1, const std::string& s2)
 {
     return std::lexicographical_compare(s1.begin(), s1.end(), s2.begin(), s2.end(), [](unsigned char a, unsigned char b){ return toupper(a) < toupper(b); });
 }
@@ -198,11 +199,11 @@ query ExtractQuery(mg_http_message const* pMessage)
         auto vValue = SplitString(sParam, '=');
         if(vValue.size() == 2)
         {
-            mDecode.insert(make_pair(queryKey(vValue[0]), queryValue(vValue[1])));
+            mDecode.try_emplace(queryKey(vValue[0]), queryValue(vValue[1]));
         }
         else if(vValue.size() == 1)
         {
-            mDecode.insert(make_pair(queryKey(vValue[0]), queryValue("")));
+            mDecode.try_emplace(queryKey(vValue[0]), queryValue(""));
         }
     }
     return mDecode;
@@ -249,7 +250,7 @@ void MongooseServer::EventWebsocketOpen(mg_connection const*, int , void* )
 
 bool MongooseServer::AuthenticateWebsocket(const subscriber& sub, const Json::Value& jsData)
 {
-    std::lock_guard<std::mutex> lg(m_mutex);
+    std::scoped_lock lg(m_mutex);
 
     pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tAuthenticateWebsocket";
     if(m_tokenCallback)
@@ -358,7 +359,7 @@ void MongooseServer::EventWebsocketMessage(mg_connection* pConnection, int, void
     if(itSubscriber != m_mSubscribers.end())
     {
         auto pMessage = reinterpret_cast<mg_ws_message*>(pData);
-        string sMessage(pMessage->data.ptr, pMessage->data.len);
+        std::string sMessage(pMessage->data.ptr, pMessage->data.len);
 
         Json::Value jsData;
         try
@@ -538,7 +539,7 @@ authorised MongooseServer::CheckAuthorization(mg_http_message* pMessage)
 
     if(m_tokenCallback)
     {
-        return CheckAuthorizationBearer(pMessage);
+        return CheckAuthorizationBearer(thePoint, pMessage);
     }
     else if(m_mUsers.empty() == false)
     {
@@ -570,7 +571,7 @@ authorised MongooseServer::CheckAuthorizationBasic(mg_http_message* pMessage)
     }
 }
 
-authorised MongooseServer::CheckAuthorizationBearer(mg_http_message* pMessage)
+authorised MongooseServer::CheckAuthorizationBearer(const methodpoint& thePoint, mg_http_message* pMessage)
 {
     std::lock_guard<std::mutex> lg(m_mutex);
 
@@ -578,7 +579,7 @@ authorised MongooseServer::CheckAuthorizationBearer(mg_http_message* pMessage)
     char sPass[255];
     mg_http_creds(pMessage, sBearer, 65535, sPass, 255);
     
-    if(m_tokenCallback(sPass))
+    if(m_tokenCallback(thePoint, sPass))
     {
         return std::make_pair(true, userName(sPass));
     }
@@ -589,12 +590,12 @@ authorised MongooseServer::CheckAuthorizationBearer(mg_http_message* pMessage)
 
 }
 
-methodpoint MongooseServer::GetMethodPoint(mg_http_message* pMessage)
+methodpoint MongooseServer::GetMethodPoint(mg_http_message* pMessage) const
 {
     char decode[6000];
     mg_url_decode(pMessage->uri.ptr, pMessage->uri.len, decode, 6000, 0);
 
-    string sUri(decode);
+    std::string sUri(decode);
     pmlLog(pml::LOG_DEBUG) << "MongooseServer\tGetMethodPoint: " << sUri;
 
     if(sUri[sUri.length()-1] == '/')    //get rid of trailling /
@@ -618,7 +619,7 @@ methodpoint MongooseServer::GetMethodPoint(mg_http_message* pMessage)
     }
     sUri = sPath;
 
-    string sMethod(pMessage->method.ptr);
+    std::string sMethod(pMessage->method.ptr);
     size_t nSpace = sMethod.find(' ');
     sMethod = sMethod.substr(0, nSpace);
     return methodpoint(httpMethod(sMethod), endpoint(sUri));
@@ -1198,7 +1199,7 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
         case MG_EV_POLL:
                 HandleThreadedMessage(pConnection);
             break;
-        case MG_EV_READ:
+        default:
             break;
     }
 }
@@ -1298,7 +1299,7 @@ bool MongooseServer::Init(const std::filesystem::path& ca, const std::filesystem
     
     m_sHostname = hostname;
 
-    stringstream ssRewrite;
+    std::stringstream ssRewrite;
     ssRewrite << "%80=https://" << m_sHostname;
 
 
@@ -1318,7 +1319,7 @@ bool MongooseServer::Init(const std::filesystem::path& ca, const std::filesystem
 
 void MongooseServer::SetInterface(const ipAddress& addr, unsigned short nPort)
 {
-    stringstream ss;
+    std::stringstream ss;
     if(m_Cert.empty())
     {
         ss << "http://";
@@ -1403,7 +1404,7 @@ void MongooseServer::Stop()
     }
 }
 
-bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, std::function<bool(const endpoint&, const query&, const userName&, const ipAddress& )> funcAuthentication, std::function<bool(const endpoint&, const Json::Value&)> funcMessage, std::function<void(const endpoint&, const ipAddress&)> funcClose)
+bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress& )>& funcAuthentication, const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage, const std::function<void(const endpoint&, const ipAddress&)>& funcClose)
 {
     pml::LogStream lg;
     lg << "MongooseServer\t" << "AddWebsocketEndpoint <" << theEndpoint.Get() << "> ";
@@ -1421,7 +1422,7 @@ bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, std::func
            m_mWebsocketCloseEndpoints.insert(std::make_pair(theEndpoint, funcClose)).second;
 }
 
-bool MongooseServer::AddEndpoint(const methodpoint& theMethodPoint, std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName& )> func, bool bUseThread)
+bool MongooseServer::AddEndpoint(const methodpoint& theMethodPoint, const std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName& )>& func, bool bUseThread)
 {
     pml::LogStream lg;
     lg << "MongooseServer\t" << "AddEndpoint <" << theMethodPoint.first.Get() << ", " << theMethodPoint.second.Get() << "> ";
@@ -1446,7 +1447,7 @@ bool MongooseServer::DeleteEndpoint(const methodpoint& theMethodPoint)
 }
 
 
-void MongooseServer::SendError(mg_connection* pConnection, const string& sError, int nCode)
+void MongooseServer::SendError(mg_connection* pConnection, const std::string& sError, int nCode)
 {
     DoReply(pConnection, response(nCode, sError));
 }
@@ -1466,7 +1467,7 @@ void MongooseServer::DoReply(mg_connection* pConnection,const response& theRespo
 
 std::string MongooseServer::CreateHeaders(const response& theResponse, size_t nLength)
 {
-    stringstream ssHeaders;
+    std::stringstream ssHeaders;
     ssHeaders << "HTTP/1.1 " << theResponse.nHttpCode << " \r\n";
     if(nLength > 0)
     {
@@ -1510,7 +1511,7 @@ void MongooseServer::DoReplyText(mg_connection* pConnection, const response& the
     pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tDoReply " << theResponse.nHttpCode;
     pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tDoReply " << sReply;
 
-    stringstream ssHeaders;
+    std::stringstream ssHeaders;
     ssHeaders << "HTTP/1.1 " << theResponse.nHttpCode << " \r\n"
               << "Content-Type: " << theResponse.contentType.Get() << "\r\n"
               << "Content-Length: " << sReply.length() << "\r\n"
@@ -1572,7 +1573,7 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
     auto itOption = m_mmOptions.lower_bound(theEndpoint);
     if(itOption == m_mmOptions.upper_bound(theEndpoint))
     {
-        stringstream ssHeaders;
+        std::stringstream ssHeaders;
         ssHeaders << "HTTP/1.1 404\r\n"
                 << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
                   << "Access-Control-Allow-Origin: *\r\n"
@@ -1594,7 +1595,7 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
     }
     else
     {
-        stringstream ssHeaders;
+        std::stringstream ssHeaders;
         ssHeaders << "HTTP/1.1 200\r\n"
                 << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
                   << "Access-Control-Allow-Origin: *\r\n"
@@ -1624,7 +1625,7 @@ void MongooseServer::SendAuthenticationRequest(mg_connection* pConnection)
 {
      if(m_tokenCallback == nullptr)
     {
-        stringstream ssHeaders;
+        std::stringstream ssHeaders;
         ssHeaders << "HTTP/1.1 401\r\n"
                 << "WWW-Authenticate: Basic realm=\"User Visible Realm\"\r\n\r\n";
 
@@ -1729,7 +1730,7 @@ void MongooseServer::SendWebsocketMessage(const std::set<endpoint>& setEndpoints
     }
 }
 
-void MongooseServer::SetLoopCallback(std::function<void(std::chrono::milliseconds)> func)
+void MongooseServer::SetLoopCallback(const std::function<void(std::chrono::milliseconds)>& func)
 {
     std::lock_guard<std::mutex> lg(m_mutex);
     m_loopCallback = func;
@@ -1742,8 +1743,7 @@ bool MongooseServer::AddBAUser(const userName& aUser, const password& aPassword)
 
     std::lock_guard<std::mutex> lg(m_mutex);
 
-    auto ins = m_mUsers.insert(std::make_pair(aUser, aPassword));
-    if(ins.second == false)
+    if(auto ins = m_mUsers.insert(std::make_pair(aUser, aPassword)); ins.second == false)
     {
         ins.first->second = aPassword;
         return true;
@@ -1760,12 +1760,12 @@ bool MongooseServer::DeleteBAUser(const userName& aUser)
     return true;
 }
 
-std::set<methodpoint> MongooseServer::GetEndpoints()
+std::set<methodpoint> MongooseServer::GetEndpoints() const
 {
     std::set<methodpoint> setEndpoints;
-    for(auto pairEnd : m_mEndpoints)
+    for(const auto& [thePoint, fn] : m_mEndpoints)
     {
-        setEndpoints.insert(pairEnd.first);
+        setEndpoints.insert(thePoint);
     }
     return setEndpoints;
 }
@@ -1779,7 +1779,7 @@ bool MongooseServer::InApiTree(const endpoint& theEndpoint)
 
 void MongooseServer::PrimeWait()
 {
-    lock_guard<mutex> lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
     m_signal.nHttpCode = 0;
 }
 
@@ -1799,18 +1799,18 @@ const response& MongooseServer::GetSignalResponse() const
 
 void MongooseServer::Signal(const response& resp)
 {
-    lock_guard<mutex> lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
     m_signal = resp;
     m_cvSync.notify_one();
 }
 
 
-void MongooseServer::AddNotFoundCallback(std::function<response(const httpMethod&, const query&, const std::vector<partData>&, const endpoint&, const userName&)> func)
+void MongooseServer::AddNotFoundCallback(const std::function<response(const httpMethod&, const query&, const std::vector<partData>&, const endpoint&, const userName&)>& func)
 {
     m_callbackNotFound = func;
 }
 
-void MongooseServer::SetAuthorizationTypeBearer(std::function<bool(const std::string&)> callback, std::function<response()> callbackHandleNotAuthorized, bool bAuthenticateWebsocketsViaQuery)
+void MongooseServer::SetAuthorizationTypeBearer(const std::function<bool(const methodpoint&, const std::string&)>& callback, const std::function<response()>& callbackHandleNotAuthorized, bool bAuthenticateWebsocketsViaQuery)
 {
     if(callback)
     {
