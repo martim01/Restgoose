@@ -47,7 +47,7 @@ namespace pml
             friend class HttpClientImpl;
             friend class MongooseServer;
 
-            partData(){}
+            partData()=default;
             partData(const partName& n, const textData& d) : name(n), data(d){}
             partData(const partName& n, const textData& filename, const std::filesystem::path& filelocation) : name(n), data(filename), filepath(filelocation){}
 
@@ -64,7 +64,7 @@ namespace pml
 
         struct RG_EXPORT response
         {
-            response(unsigned short nCode=200);
+            explicit response(unsigned short nCode=200);
             response(unsigned short nCode, const std::string& sReason);
             response(const response& aResponse);
             response& operator=(const response& aResponse);

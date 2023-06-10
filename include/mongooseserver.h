@@ -139,7 +139,7 @@ namespace pml
 
                 void SendWSQueue();
 
-                const ipAddress& GetCurrentPeer(bool bIncludePort = true);
+                const ipAddress& GetCurrentPeer(bool bIncludePort = true) const;
 
                 ~MongooseServer();
 
@@ -160,7 +160,7 @@ namespace pml
                 *   @param nEvent the event type
                 *   @param pData any associated data
                 **/
-                void EventWebsocketOpen(mg_connection const* pConnection, int nEvent, void* pData);
+                void EventWebsocketOpen(mg_connection const* pConnection, int nEvent, void* pData) const;
 
                 void EventWebsocketMessage(mg_connection* pConnection, int nEvent, void* pData);
                 void EventWebsocketCtl(mg_connection* pConnection, int nEvent, void* pData);
@@ -185,10 +185,10 @@ namespace pml
                 void SendError(mg_connection* pConnection, const std::string& sError, int nCode=-1);
 
 
-                std::string CreateHeaders(const response& theResponse, size_t nLength);
+                std::string CreateHeaders(const response& theResponse, size_t nLength) const;
 
                 void DoReply(mg_connection* pConnection, const response& theResponse);
-                void DoReplyText(mg_connection* pConnection, const response& theResponse);
+                void DoReplyText(mg_connection* pConnection, const response& theResponse) const;
                 void DoReplyFile(mg_connection* pConnection, const response& theResponse);
                 void DoReplyThreaded(mg_connection* pConnection, const query& theQuery, const std::vector<partData>& theData, const methodpoint& thePoint, const userName& theUser);
                 void SendAuthenticationRequest(mg_connection* pConnection);
@@ -216,13 +216,13 @@ namespace pml
                     std::set<endpoint> setEndpoints;
                 };
 
-                bool WebsocketSubscribedToEndpoint(const subscriber& sub, const endpoint& anEndpoint);
+                bool WebsocketSubscribedToEndpoint(const subscriber& sub, const endpoint& anEndpoint) const;
 
                 void HandleInternalWebsocketMessage(mg_connection* pConnection, subscriber& sub, const Json::Value& jsData);
                 void HandleExternalWebsocketMessage(mg_connection* pConnection, const subscriber& sub, const Json::Value& jsData);
 
-                void AddWebsocketSubscriptions(subscriber& sub, const Json::Value& jsData);
-                void RemoveWebsocketSubscriptions(subscriber& sub, const Json::Value& jsData);
+                void AddWebsocketSubscriptions(subscriber& sub, const Json::Value& jsData) const;
+                void RemoveWebsocketSubscriptions(subscriber& sub, const Json::Value& jsData) const;
 
 
                 void DoWebsocketAuthentication(mg_connection* pConnection, subscriber& sub, const Json::Value& jsData);
@@ -231,7 +231,7 @@ namespace pml
                 bool AuthenticateWebsocketBearer(const subscriber& sub, const Json::Value& jsData);
                 bool MethodPointUnprotected(const methodpoint& thePoint);
 
-                void HandleAccept(mg_connection* pConnection);
+                void HandleAccept(mg_connection* pConnection) const;
                 void HandleOpen(mg_connection* pConnection);
 
                 void EventHttpChunk(mg_connection *pConnection, void* pData);
@@ -286,7 +286,7 @@ namespace pml
 
                 response m_signal;
 
-                std::atomic<bool> m_bLoop;
+                std::atomic_bool m_bLoop = ATOMIC_VAR_INIT(true);
                 std::unique_ptr<std::thread> m_pThread = nullptr;
                 std::function<response(const httpMethod&, const query&, const std::vector<partData>&, const endpoint&, const userName&)> m_callbackNotFound = nullptr;
 
@@ -328,13 +328,13 @@ namespace pml
                 void HandleFirstChunk(httpchunks& chunk, mg_connection* pConnection, mg_http_message* pMessage);
                 void HandleLastChunk(httpchunks& chunk, mg_connection* pConnection);
                 void HandleMultipartChunk(httpchunks& chunk, mg_http_message* pMessage);
-                void HandleGenericChunk(httpchunks& chunk, mg_http_message* pMessage);
-                void WorkoutBoundary(httpchunks& chunk);
-                void MultipartChunkBoundary(httpchunks& chunk, char c);
-                void MultipartChunkHeader(httpchunks& chunk, char c);
-                void MultipartChunkBoundaryFound(httpchunks& chunk, char c);
-                void MultipartChunkLastBoundaryFound(httpchunks& chunk, char c);
-                void MultipartChunkBoundarySearch(httpchunks& chunk, char c);
+                void HandleGenericChunk(httpchunks& chunk, mg_http_message* pMessage) const;
+                void WorkoutBoundary(httpchunks& chunk) const;
+                void MultipartChunkBoundary(httpchunks& chunk, char c) const;
+                void MultipartChunkHeader(httpchunks& chunk, char c) const;
+                void MultipartChunkBoundaryFound(httpchunks& chunk, char c) const;
+                void MultipartChunkLastBoundaryFound(httpchunks& chunk, char c) const;
+                void MultipartChunkBoundarySearch(httpchunks& chunk, char c) const;
 
                 std::map<mg_connection*, httpchunks> m_mChunks;
 
