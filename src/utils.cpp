@@ -22,37 +22,36 @@ std::filesystem::path CreateTmpFileName(const std::filesystem::path& path)
     return ret;
 }
 
-std::vector<std::string> SplitString(std::string str, char cSplit, size_t nMax)
+std::vector<std::string> SplitString(const std::string& str, char cSplit, size_t nMax)
 {
-    std::vector<std::string> vSplit;
+    
     if(str.find(cSplit) == std::string::npos)
     {
-        vSplit.push_back(str);
+        return {str};
     }
-    else
-    {
-        std::istringstream f(str);
-        std::string s;
+    
+    std::vector<std::string> vSplit;
+    std::istringstream f(str);
+    std::string s;
 
-        while (getline(f, s, cSplit))
+    while (getline(f, s, cSplit))
+    {
+        if(s.empty() == false)
         {
-            if(s.empty() == false)
+            if(nMax == 0 || vSplit.size() < nMax)
             {
-                if(nMax == 0 || vSplit.size() < nMax)
-                {
-                    vSplit.push_back(s);
-                }
-                else
-                {
-                    vSplit[nMax-1] = vSplit[nMax-1]+cSplit+s;
-                }
+                vSplit.push_back(s);
+            }
+            else
+            {
+                vSplit[nMax-1] = vSplit[nMax-1]+cSplit+s;
             }
         }
     }
     return vSplit;
 }
 
-void SplitString(std::queue<std::string>& qSplit, std::string str, char cSplit)
+void SplitString(std::queue<std::string>& qSplit, const std::string& str, char cSplit)
 {
     while(qSplit.empty() == false)
     {
@@ -72,7 +71,7 @@ void SplitString(std::queue<std::string>& qSplit, std::string str, char cSplit)
 }
 
 
-bool CmpNoCase(const std::string& str1, const std::string& str2)
+bool CmpNoCase(std::string_view str1, std::string_view str2)
 {
     return ((str1.size() == str2.size()) && std::equal(str1.begin(), str1.end(), str2.begin(), [](char c1, char c2)
     {
