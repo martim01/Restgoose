@@ -52,7 +52,7 @@ HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target,
     m_vPostData.push_back(partData(partName(""), textData(sData)));
 }
 
-HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& filename, const std::filesytem::path& filepath, const headerValue& contentType, const std::map<headerName, headerValue>& mExtraHeaders, clientResponse::enumResponse eResponse) :
+HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& filename, const std::filesystem::path& filepath, const headerValue& contentType, const std::map<headerName, headerValue>& mExtraHeaders, clientResponse::enumResponse eResponse) :
     m_point(method, target),
     m_contentType(contentType),
     m_mHeaders(mExtraHeaders),
@@ -88,14 +88,14 @@ void HttpClientImpl::HandleConnectEvent(mg_connection* pConnection)
         mg_tls_opts opts{};
         opts.srvname = host;
 
-        if(m_ca.Get().empty() == false)
+        if(m_ca.empty() == false)
         {
-            opts.ca = m_ca.Get().c_str();
+            opts.ca = m_ca.c_str();
         }
-        if(m_Cert.Get().empty() == false && m_Key.Get().empty() == false)
+        if(m_Cert.empty() == false && m_Key.empty() == false)
         {
-            opts.cert = m_Cert.Get().c_str();
-            opts.certkey = m_Key.Get().c_str();
+            opts.cert = m_Cert.c_str();
+            opts.certkey = m_Key.c_str();
         }
         mg_tls_init(pConnection, &opts);
     }
@@ -429,7 +429,7 @@ void HttpClientImpl::DoLoop(mg_mgr& mgr)
 unsigned long HttpClientImpl::WorkoutFileSize(const std::filesystem::path& filename)
 {
     unsigned long nLength = 0;
-    m_ifs.open(filename.Get(), std::ifstream::ate | std::ifstream::binary);
+    m_ifs.open(filename.string(), std::ifstream::ate | std::ifstream::binary);
     if(m_ifs.is_open() == false)
     {
         m_response.nHttpCode = clientResponse::enumError::ERROR_FILE_READ;
@@ -451,7 +451,7 @@ unsigned long HttpClientImpl::WorkoutDataSize()
     }
     else if(m_vPostData.size() == 1)
     {
-        if(m_vPostData.back().filepath.Get().empty())
+        if(m_vPostData.back().filepath.string().empty())
         {
             m_nContentLength =  m_vPostData.back().data.Get().length();
         }
@@ -464,7 +464,7 @@ unsigned long HttpClientImpl::WorkoutDataSize()
     {
         for(auto& part : m_vPostData)
         {
-            if(part.filepath.Get().empty())
+            if(part.filepath.string().empty())
             {
                 part.sHeader = BOUNDARY_DIVIDER;
                 part.sHeader += CONTENT_DISPOSITION+part.name.Get()+CLOSE_QUOTE+CRLF;
@@ -522,7 +522,7 @@ void HttpClientImpl::HandleWroteEvent(mg_connection* pConnection, int nBytes)
 
 void HttpClientImpl::HandleSimpleWroteEvent(mg_connection* pConnection)
 {
-    if(m_vPostData.back().filepath.Get().empty())    //no filepath so sending the text
+    if(m_vPostData.back().filepath.string().empty())    //no filepath so sending the text
     {
         if(m_eStatus == CONNECTED)
         {
@@ -541,7 +541,7 @@ bool HttpClientImpl::SendFile(mg_connection* pConnection, const std::filesystem:
 {
     if(bOpen)
     {
-        m_ifs.open(filepath.Get());
+        m_ifs.open(filepath.string());
         if(m_ifs.is_open() == false)
         {
             pmlLog(pml::LOG_ERROR) << "HttpClient: Unable to open file " << filepath << " to upload.";
@@ -597,7 +597,7 @@ void HttpClientImpl::HandleMultipartWroteEvent(mg_connection* pConnection)
         {
             mg_send(pConnection, m_vPostData[m_nPostPart].sHeader.c_str(), m_vPostData[m_nPostPart].sHeader.length());
 
-            if(m_vPostData[m_nPostPart].filepath.Get().empty())
+            if(m_vPostData[m_nPostPart].filepath.string().empty())
             {
                 mg_send(pConnection, m_vPostData[m_nPostPart].data.Get().c_str(), m_vPostData[m_nPostPart].data.Get().length());
                 mg_send(pConnection, CRLF.c_str(), CRLF.length());
