@@ -131,12 +131,12 @@ std::vector<partData> CreatePartData(const mg_str& str, const headerValue& conte
 
 partData CreatePartData(const mg_http_part& mgpart, const headerValue& )
 {
-    partData part(partName(std::string(mgpart.name.ptr, mgpart.name.len)), textData(std::string(mgpart.filename.ptr, mgpart.filename.len)), CreateTmpFileName("/tmp/"));
+    partData part(partName(std::string(mgpart.name.ptr, mgpart.name.len)), textData(std::string(mgpart.filename.ptr, mgpart.filename.len)), CreateTmpFileName("/tmp"));
 
-    if(part.filepath.Get().empty() == false)
+    if(part.filepath.empty() == false)
     {
         std::ofstream ofs;
-        ofs.open(part.filepath.Get());
+        ofs.open(part.filepath.string());
         if(ofs.is_open())
         {
             ofs.write(mgpart.body.ptr, mgpart.body.len);
@@ -664,8 +664,8 @@ void MongooseServer::HandleFirstChunk(httpchunks& chunk, mg_connection* pConnect
         {
             chunk.vParts.push_back(partData());
             chunk.vParts.back().filepath = CreateTmpFileName("/tmp/");
-            chunk.vParts.back().data = textData(chunk.vParts.back().filepath.Get());
-            chunk.pofs = std::make_shared<std::ofstream>(chunk.vParts.back().filepath.Get());
+            chunk.vParts.back().data = textData(chunk.vParts.back().filepath.string());
+            chunk.pofs = std::make_shared<std::ofstream>(chunk.vParts.back().filepath.string());
             if(chunk.pofs->is_open() == false)
             {
                 chunk.pofs = nullptr;
@@ -785,9 +785,9 @@ void MongooseServer::HandleLastChunk(httpchunks& chunk, mg_connection* pConnecti
         //for now remove any files that were uploaded
         for(auto data : chunk.vParts)
         {
-            if(data.filepath.Get().empty() == false)
+            if(data.filepath.empty() == false)
             {
-                remove(data.filepath.Get().c_str());
+                remove(data.filepath.string().c_str());
             }
         }
     }
@@ -834,7 +834,7 @@ void MongooseServer::MultipartChunkBoundaryFound(httpchunks& chunk, char c)
 {
     if(chunk.vParts.empty() == false)
     {
-        if(chunk.vParts.back().filepath.Get().empty() == false && chunk.pofs)
+        if(chunk.vParts.back().filepath.empty() == false && chunk.pofs)
         {
             pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tClose file" << chunk.vParts.back().filepath;
             chunk.pofs->close();
@@ -861,7 +861,7 @@ void MongooseServer::MultipartChunkLastBoundaryFound(httpchunks& chunk, char c)
 
     if(chunk.vParts.empty() == false)
     {
-        if(chunk.vParts.back().filepath.Get().empty() == false && chunk.pofs)
+        if(chunk.vParts.back().filepath.empty() == false && chunk.pofs)
         {
             chunk.pofs->close();
             chunk.pofs = nullptr;
@@ -876,7 +876,7 @@ void MongooseServer::MultipartChunkBoundarySearch(httpchunks& chunk, char c)
     //store the buffered data before clearing it
     if(chunk.vBuffer.empty() == false && chunk.vParts.empty() == false)
     {
-        if(chunk.vParts.back().filepath.Get().empty())
+        if(chunk.vParts.back().filepath.empty())
         {
             chunk.vParts.back().data= textData(chunk.vParts.back().data.Get()+std::string(chunk.vBuffer.begin(), chunk.vBuffer.end()));
         }
@@ -893,7 +893,7 @@ void MongooseServer::MultipartChunkBoundarySearch(httpchunks& chunk, char c)
     }
     else if(chunk.vParts.empty() == false)
     {
-        if(chunk.vParts.back().filepath.Get().empty())
+        if(chunk.vParts.back().filepath.empty())
         {
             chunk.vParts.back().data.Get() += c;
         }
@@ -931,9 +931,9 @@ void MongooseServer::MultipartChunkHeader(httpchunks& chunk, char c)
                         auto nEnd = sPart.find('"', nStart);
 
                         chunk.vParts.back().data =  textData(sPart.substr(nStart, nEnd-nStart));
-                        chunk.vParts.back().filepath =CreateTmpFileName("/tmp/");
+                        chunk.vParts.back().filepath =CreateTmpFileName("/tmp");
 
-                        chunk.pofs = std::make_shared<std::ofstream>(chunk.vParts.back().filepath.Get());
+                        chunk.pofs = std::make_shared<std::ofstream>(chunk.vParts.back().filepath.string());
                         if(chunk.pofs->is_open() == false)
                         {
                             chunk.pofs = nullptr;

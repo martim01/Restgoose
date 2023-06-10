@@ -4,6 +4,7 @@
 #include <chrono>
 #include <memory>
 #include "response.h"
+#include <filesystem>
 
 namespace pml
 {
@@ -54,7 +55,7 @@ namespace pml
                 *   @param mExtraHeaders map of extra headers to send.
                 *   @param eResponse one of clientResponse::enumResponse::TEXT, FILE or AUTO, decides whether the response data should be saved to a file or stored in the clientResponse data variable. If set to AUTO then the content-type header is looked at.
                 **/
-                HttpClient(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType = headerValue("application/octet-stream"), const std::map<headerName, headerValue>& mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO);
+                HttpClient(const httpMethod& method, const endpoint& target, const textData& filename, const std::filesystem::path& filepath, const headerValue& contentType = headerValue("application/octet-stream"), const std::map<headerName, headerValue>& mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO);
 
                 /** @brief Constructor - creates an HttpClient object that sends multipart/form data to the server
                 *   @param method the HTTP action - one of POST, PUT, PATCH
@@ -105,14 +106,14 @@ namespace pml
                 *   @param ca the file location
                 *   @return <i>bool</i> false if already called Run with a callback function
                 **/
-                bool SetCertificateAuthority(const fileLocation& ca) const;
+                bool SetCertificateAuthority(const std::filesystem::path& ca) const;
 
                 /** @brief Sets the client certificate to use if server requires authentication
                 *   @param cert the path to the certificate file
                 *   @param key the path to the private key file
                 *   @return <i>bool</i> false if already called Run with a callback function
                 **/
-                bool SetClientCertificate(const fileLocation& cert, const fileLocation& key) const;
+                bool SetClientCertificate(const std::filesystem::path& cert, const std::filesystem::path& key) const;
 
 
                 /** @brief Set the HTTP method to use
@@ -144,7 +145,7 @@ namespace pml
                 *   @param filepath the location of the file
                 *   @return <i>bool</i> false if already called Run with a callback function
                 **/
-                bool SetFile(const textData& filename, const fileLocation& filepath) const;
+                bool SetFile(const textData& filename, const std::filesystem::path& filepath) const;
 
                 /** @brief Set the multipart data to send (if a POST/PULL/PUT request)
                 *   @param vData the data to send

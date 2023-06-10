@@ -8,6 +8,7 @@
 #include <functional>
 #include <atomic>
 #include "json/json.h"
+#include <filesystem>
 
 struct mg_mgr;
 struct mg_connection;
@@ -49,17 +50,17 @@ namespace pml
                 HttpClientImpl(const httpMethod& method, const endpoint& target, const std::map<headerName, headerValue>& mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO);
                 HttpClientImpl(const httpMethod& method, const endpoint& target, const Json::Value& jsData, const std::map<headerName, headerValue>& mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO);
                 HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& data, const headerValue& contentType = headerValue("text/plain"), const std::map<headerName, headerValue>& mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO);
-                HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType = headerValue("application/octet-stream"), const std::map<headerName, headerValue>& mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO);
+                HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& filename, const std::filesystem::path& filepath, const headerValue& contentType = headerValue("application/octet-stream"), const std::map<headerName, headerValue>& mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO);
                 HttpClientImpl(const httpMethod& method, const endpoint& target, const std::vector<partData>& vData, const std::map<headerName, headerValue>& mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO); //multipart
 
-                bool SetCertificateAuthority(const fileLocation& ca);
-                bool SetClientCertificate(const fileLocation& cert, const fileLocation& key);
+                bool SetCertificateAuthority(const std::filesystem::path& ca);
+                bool SetClientCertificate(const std::filesystem::path& cert, const std::filesystem::path& key);
 
                 bool SetMethod(const httpMethod& method);
                 bool SetEndpoint(const endpoint& target);
                 bool SetData(const Json::Value& jsData);
                 bool SetData(const textData& data);
-                bool SetFile(const textData& filename, const fileLocation& filepath);
+                bool SetFile(const textData& filename, const std::filesystem::path& filepath);
                 bool SetPartData(const std::vector<partData>& vData);
                 bool AddHeaders(const std::map<headerName, headerValue>& mHeaders);
                 bool SetExpectedResponse(const clientResponse::enumResponse eResponse);
@@ -74,10 +75,10 @@ namespace pml
                 void HandleSimpleWroteEvent(mg_connection* pConnection);
                 void HandleMultipartWroteEvent(mg_connection* pConnection);
 
-                bool SendFile(mg_connection* pConnection, const fileLocation& filename, bool bOpen);
+                bool SendFile(mg_connection* pConnection, const std::filesystem::path& filename, bool bOpen);
 
                 unsigned long WorkoutDataSize();
-                unsigned long WorkoutFileSize(const fileLocation& filename);
+                unsigned long WorkoutFileSize(const std::filesystem::path& filename);
                 void SetupRedirect();
 
                 methodpoint m_point = methodpoint(GET, endpoint("127.0.0.1"));
@@ -103,9 +104,9 @@ namespace pml
                 std::ifstream m_ifs;
                 unsigned int m_nRunId = 0;
 
-                fileLocation m_ca;
-                fileLocation m_Cert;
-                fileLocation m_Key;
+                std::filesystem::path m_ca;
+                std::filesystem::path m_Cert;
+                std::filesystem::path m_Key;
 
                 std::function<void(unsigned long, unsigned long)> m_pUploadProgressCallback = nullptr;
                 std::function<void(unsigned long, unsigned long)> m_pDownloadProgressCallback = nullptr;

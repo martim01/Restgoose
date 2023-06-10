@@ -5,17 +5,21 @@
 #include "utils.h"
 #include <algorithm>
 #include <string>
+#include <filesystem>
 
 using namespace pml::restgoose;
 
-fileLocation CreateTmpFileName(const std::string& sPath)
+std::filesystem::path CreateTmpFileName(const std::filesystem::path& path)
 {
     std::stringstream sstr;
     auto tp = std::chrono::system_clock::now();
     auto seconds = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
-    sstr << sPath << seconds.count();
+    sstr << seconds.count();
     sstr << "_" << (std::chrono::duration_cast<std::chrono::nanoseconds>(tp.time_since_epoch()).count()%1000000000);
-    return fileLocation(sstr.str());
+
+    auto ret = path;
+    ret /= sstr.str();
+    return ret;
 }
 
 std::vector<std::string> SplitString(std::string str, char cSplit, size_t nMax)

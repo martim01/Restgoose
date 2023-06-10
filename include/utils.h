@@ -4,6 +4,7 @@
 #include <string>
 #include <chrono>
 #include "response.h"
+#include <filesystem>
 
 
 RG_EXPORT std::vector<std::string> SplitString(std::string str, char cSplit, size_t nMax=0);
@@ -16,4 +17,4 @@ RG_EXPORT std::string& rtrim(std::string& s);
 RG_EXPORT std::string& trim(std::string& s);
 RG_EXPORT std::string ConvertFromJson(const Json::Value& jsValue);
 
-RG_EXPORT fileLocation CreateTmpFileName(const std::string& sPath);
+RG_EXPORT std::filesystem::path CreateTmpFileName(const std::filesystem::path& path);

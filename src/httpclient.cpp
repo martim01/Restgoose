@@ -27,7 +27,7 @@ HttpClient::HttpClient(const httpMethod& method, const endpoint& target, const t
 
 }
 
-HttpClient::HttpClient(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType, const std::map<headerName, headerValue>& mExtraHeaders, clientResponse::enumResponse eResponse) :
+HttpClient::HttpClient(const httpMethod& method, const endpoint& target, const textData& filename, const std::filesystem::path& filepath, const headerValue& contentType, const std::map<headerName, headerValue>& mExtraHeaders, clientResponse::enumResponse eResponse) :
     m_pImpl(std::shared_ptr<HttpClientImpl>(new HttpClientImpl(method, target, filename, filepath, contentType, mExtraHeaders, eResponse)))
 {
 
@@ -81,12 +81,12 @@ bool HttpClient::SetBearerAuthentication(const std::string& sToken) const
     return m_pImpl->SetBearerAuthentication(sToken);
 }
 
-bool HttpClient::SetCertificateAuthority(const fileLocation& ca) const
+bool HttpClient::SetCertificateAuthority(const std::filesystem::path& ca) const
 {
     return m_pImpl->SetCertificateAuthority(ca);
 }
 
-bool HttpClient::SetClientCertificate(const fileLocation& cert, const fileLocation& key) const
+bool HttpClient::SetClientCertificate(const std::filesystem::path& cert, const std::filesystem::path& key) const
 {
     return m_pImpl->SetClientCertificate(cert, key);
 }
@@ -111,7 +111,7 @@ bool HttpClient::SetData(const textData& data) const
     return m_pImpl->SetData(data);
 }
 
-bool HttpClient::SetFile(const textData& filename, const fileLocation& filepath) const
+bool HttpClient::SetFile(const textData& filename, const std::filesystem::path& filepath) const
 {
     return m_pImpl->SetFile(filename, filepath);
 }

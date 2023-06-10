@@ -52,7 +52,7 @@ HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target,
     m_vPostData.push_back(partData(partName(""), textData(sData)));
 }
 
-HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& filename, const fileLocation& filepath, const headerValue& contentType, const std::map<headerName, headerValue>& mExtraHeaders, clientResponse::enumResponse eResponse) :
+HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const textData& filename, const std::filesytem::path& filepath, const headerValue& contentType, const std::map<headerName, headerValue>& mExtraHeaders, clientResponse::enumResponse eResponse) :
     m_point(method, target),
     m_contentType(contentType),
     m_mHeaders(mExtraHeaders),
@@ -171,7 +171,7 @@ void HttpClientImpl::GetContentHeaders(mg_http_message* pReply)
 
         if(m_response.bBinary)
         {   //if binary data then we save it to a file and pass back the filename
-            m_response.data.Get() = CreateTmpFileName("/tmp/").Get();
+            m_response.data.Get() = CreateTmpFileName("/tmp").string();
             m_ofs.open(m_response.data.Get());
         }
 
@@ -426,7 +426,7 @@ void HttpClientImpl::DoLoop(mg_mgr& mgr)
     }
 }
 
-unsigned long HttpClientImpl::WorkoutFileSize(const fileLocation& filename)
+unsigned long HttpClientImpl::WorkoutFileSize(const std::filesystem::path& filename)
 {
     unsigned long nLength = 0;
     m_ifs.open(filename.Get(), std::ifstream::ate | std::ifstream::binary);
@@ -537,7 +537,7 @@ void HttpClientImpl::HandleSimpleWroteEvent(mg_connection* pConnection)
     }
 }
 
-bool HttpClientImpl::SendFile(mg_connection* pConnection, const fileLocation& filepath, bool bOpen)
+bool HttpClientImpl::SendFile(mg_connection* pConnection, const std::filesystem::path& filepath, bool bOpen)
 {
     if(bOpen)
     {
@@ -701,7 +701,7 @@ bool HttpClientImpl::SetData(const textData& data)
     return false;
 }
 
-bool HttpClientImpl::SetFile(const textData& filename, const fileLocation& filepath)
+bool HttpClientImpl::SetFile(const textData& filename, const std::filesystem::path& filepath)
 {
     if(m_pAsyncCallback == nullptr)
     {
@@ -742,7 +742,7 @@ bool HttpClientImpl::SetExpectedResponse(const clientResponse::enumResponse eRes
     return false;
 }
 
-bool HttpClientImpl::SetCertificateAuthority(const fileLocation& ca)
+bool HttpClientImpl::SetCertificateAuthority(const std::filesystem::path& ca)
 {
     if(m_pAsyncCallback == nullptr)
     {
@@ -752,7 +752,7 @@ bool HttpClientImpl::SetCertificateAuthority(const fileLocation& ca)
     return false;
 }
 
-bool HttpClientImpl::SetClientCertificate(const fileLocation& cert, const fileLocation& key)
+bool HttpClientImpl::SetClientCertificate(const std::filesystem::path& cert, const std::filesystem::path& key)
 {
     if(m_pAsyncCallback == nullptr)
     {

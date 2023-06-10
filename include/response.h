@@ -3,7 +3,7 @@
 #include <vector>
 #include "json/json.h"
 #include "dllexport.h"
-
+#include <filesystem>
 
 using httpMethod = NamedType<std::string, struct MethodParameter>;
 using endpoint = NamedType<std::string, struct endpointParameter>;
@@ -15,7 +15,6 @@ using headerName = NamedType<std::string, struct headerNameParameter>;
 using headerValue = NamedType<std::string, struct headerValueParameter>;
 
 using textData = NamedType<std::string, struct textDataParameter>;
-using fileLocation = NamedType<std::string, struct fileLocationParameter>;
 using partName = NamedType<std::string, struct partNameParameter>;
 using queryKey = NamedType<std::string, struct queryKeyParameter>;
 using queryValue = NamedType<std::string, struct queryValueParameter>;
@@ -50,12 +49,12 @@ namespace pml
 
             partData(){}
             partData(const partName& n, const textData& d) : name(n), data(d){}
-            partData(const partName& n, const textData& filename, const fileLocation& filelocation) : name(n), data(filename), filepath(filelocation){}
+            partData(const partName& n, const textData& filename, const std::filesystem::path& filelocation) : name(n), data(filename), filepath(filelocation){}
 
 
             partName name;
             textData data;
-            fileLocation filepath;
+            std::filesystem::path filepath;
 
             private:
                 std::string sHeader;
