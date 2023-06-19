@@ -1257,6 +1257,7 @@ MongooseServer::MongooseServer() :
                 {headerName("Access-Control-Allow-Headers"), headerValue("Content-Type, Accept, Authorization")},
                 {headerName("Access-Control-Max-Age"), headerValue("3600")}})
 {
+    
     mg_log_set(2);
     mg_log_set_fn(mgpmlLog, nullptr);
 }
@@ -1498,25 +1499,10 @@ void MongooseServer::DoReplyText(mg_connection* pConnection, const response& the
 
     pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tDoReply " << theResponse.nHttpCode;
     pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tDoReply " << sReply;
-/*
-    std::stringstream ssHeaders;
-    ssHeaders << "HTTP/1.1 " << theResponse.nHttpCode << " \r\n"
-              << "Content-Type: " << theResponse.contentType.Get() << "\r\n"
-              << "Content-Length: " << sReply.length() << "\r\n"
-              << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\n";
-    if(m_Cert.empty() == false)
-    {
-        ssHeaders << "Strict-Transport-Security: max-age=31536000; includeSubDomains\r\n";
-    }
-    ssHeaders << "X-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
-              << "Access-Control-Allow-Origin: *\r\n"
-              << "Access-Control-Allow-Methods: GET, PUT, POST, HEAD, OPTIONS, DELETE\r\n"
-              << "Access-Control-Allow-Headers: Content-Type, Accept, Authorization\r\n"
-              << "Access-Control-Max-Age: 3600\r\n\r\n";
-*/
+
     std::string sHeaders = CreateHeaders(theResponse, sReply.length());
 
-    mg_send(pConnection, sHeaders.c_str(), ssHeaders.str().length());
+    mg_send(pConnection, sHeaders.c_str(), sHeaders.length());
     mg_send(pConnection, sReply.c_str(), sReply.length());
 }
 
