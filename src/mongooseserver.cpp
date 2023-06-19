@@ -1498,7 +1498,7 @@ void MongooseServer::DoReplyText(mg_connection* pConnection, const response& the
 
     pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tDoReply " << theResponse.nHttpCode;
     pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tDoReply " << sReply;
-
+/*
     std::stringstream ssHeaders;
     ssHeaders << "HTTP/1.1 " << theResponse.nHttpCode << " \r\n"
               << "Content-Type: " << theResponse.contentType.Get() << "\r\n"
@@ -1513,10 +1513,11 @@ void MongooseServer::DoReplyText(mg_connection* pConnection, const response& the
               << "Access-Control-Allow-Methods: GET, PUT, POST, HEAD, OPTIONS, DELETE\r\n"
               << "Access-Control-Allow-Headers: Content-Type, Accept, Authorization\r\n"
               << "Access-Control-Max-Age: 3600\r\n\r\n";
+*/
+    std::string sHeaders = CreateHeaders(theResponse, sReply.length());
 
-
-        mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
-        mg_send(pConnection, sReply.c_str(), sReply.length());
+    mg_send(pConnection, sHeaders.c_str(), ssHeaders.str().length());
+    mg_send(pConnection, sReply.c_str(), sReply.length());
 }
 
 void MongooseServer::DoReplyFile(mg_connection* pConnection, const response& theResponse)
