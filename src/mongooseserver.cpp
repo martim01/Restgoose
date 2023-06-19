@@ -1503,7 +1503,12 @@ void MongooseServer::DoReplyText(mg_connection* pConnection, const response& the
     ssHeaders << "HTTP/1.1 " << theResponse.nHttpCode << " \r\n"
               << "Content-Type: " << theResponse.contentType.Get() << "\r\n"
               << "Content-Length: " << sReply.length() << "\r\n"
-              << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
+              << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\n";
+    if(m_Cert.empty() == false)
+    {
+        ssHeaders << "Strict-Transport-Security: max-age=31536000; includeSubDomains\r\n";
+    }
+    ssHeaders << "X-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
               << "Access-Control-Allow-Origin: *\r\n"
               << "Access-Control-Allow-Methods: GET, PUT, POST, HEAD, OPTIONS, DELETE\r\n"
               << "Access-Control-Allow-Headers: Content-Type, Accept, Authorization\r\n"
