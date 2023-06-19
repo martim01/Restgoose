@@ -65,7 +65,7 @@ namespace pml
 
                 void SetMaxConnections(size_t nMax);
 
-                void SetAccessControlList(const std::string& sAcl) { m_sAcl = sAcl; }
+                void SetAccessControlList(std::string_view sAcl) { m_sAcl = sAcl; }
                 const std::string& GetAccessControlList() const { return m_sAcl;}
 
                 /** @brief Creates the thread that runs the webserver loop
@@ -116,7 +116,7 @@ namespace pml
                 std::set<methodpoint> GetEndpoints() const;
 
 
-                void SetStaticDirectory(const std::string& sDir) { m_sStaticRootDir = sDir;}
+                void SetStaticDirectory(std::string_view sDir) { m_sStaticRootDir = sDir;}
                 const std::string& GetStaticDirectory() const {return m_sStaticRootDir;}
 
                 unsigned long GetPort() const { return m_nPort; }
@@ -125,7 +125,7 @@ namespace pml
 
                 void Wait();
                 void PrimeWait();
-                bool IsOk();
+                //bool IsOk();
                 void Signal(const response& resp);
                 const response& GetSignalResponse() const;
 
@@ -196,7 +196,7 @@ namespace pml
                 void SendOptions(mg_connection* pConnection, const endpoint& thEndpoint);
 
 
-                void ClearMultipartData();
+                //void ClearMultipartData();
 
                 authorised CheckAuthorization(struct mg_http_message* pMessage);
                 authorised CheckAuthorizationBasic(struct mg_http_message* pMessage);

@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 project(restgoose LANGUAGES CXX C VERSION 3.0.0)
+set(CMAKE_INSTALL_PREFIX "/usr/local")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -138,12 +139,12 @@ endif()
 
 target_compile_options(restgoose PRIVATE ${flags})
 target_link_libraries(restgoose ssl)
-target_link_libraries(restgoose optimized pml_log debug pml_logd)
+target_link_libraries(restgoose optimized pml_log)
 
 set_target_properties(restgoose PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(restgoose PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
 set_target_properties(restgoose PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib/)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        install(TARGETS restgoose LIBRARY DESTINATION /usr/local/lib)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux") 
+    install(TARGETS restgoose LIBRARY DESTINATION lib)
 endif()

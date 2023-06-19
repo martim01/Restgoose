@@ -65,11 +65,11 @@ namespace pml
 
                 struct connection
                 {
-                    connection(mg_connection* pc) : pConnection(pc), bConnected(false), bPonged(true), tp(std::chrono::system_clock::now()){}
+                    explicit connection(mg_connection* pc) : pConnection(pc){}
                     mg_connection* pConnection;
-                    bool bConnected;
-                    bool bPonged;
-                    std::chrono::time_point<std::chrono::system_clock> tp;
+                    bool bConnected = false;
+                    bool bPonged = true;
+                    std::chrono::time_point<std::chrono::system_clock> tp = std::chrono::system_clock::now();
                     std::queue<std::string> q;
                 };
 
