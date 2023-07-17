@@ -44,3 +44,8 @@ void WebSocketClient::CloseConnection(const endpoint& theEndpoint)
 {
     m_pImpl->CloseConnection(theEndpoint);
 }
+
+void WebSocketClient::RemoveCallbacks()
+{
+    m_pImpl->RemoveCallbacks();
+}

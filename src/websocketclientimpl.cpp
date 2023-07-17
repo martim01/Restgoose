@@ -179,6 +179,7 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
             }
             break;
         case MG_EV_CLOSE:
+            pmlLog(pml::LOG_TRACE) << "RestGoose:WebsocketClient\tMG_EV_CLOSE";
             if(m_pConnectCallback)
             {
                 m_pConnectCallback(FindUrl(pConnection), false);
@@ -246,8 +247,10 @@ bool WebSocketClientImpl::SendMessage(const endpoint& theEndpoint, const std::st
             send(m_nPipe, "hi", 2, 0);
             //mg_mgr_wakeup(m_pPipe, nullptr, 0);
         }
+        pmlLog(pml::LOG_DEBUG) << "WebSocketClient: " << theEndpoint << " sent " << sMessage;
         return true;
     }
+    pmlLog(pml::LOG_DEBUG) << "WebSocketClient: " << theEndpoint << " not connected";
     m_mutex.unlock();
     return false;
 }
@@ -347,4 +350,8 @@ void WebSocketClientImpl::MarkConnectionConnected(mg_connection* pConnection, bo
     }
 }
 
-
+void WebSocketClientImpl::RemoveCallbacks()
+{
+    m_pConnectCallback = nullptr;
+    m_pMessageCallback = nullptr;
+}

@@ -35,6 +35,7 @@ namespace pml
 
                 void SendMessages();
 
+                void RemoveCallbacks();
 
             private:
                 WebSocketClientImpl(std::function<bool(const endpoint& theEndpoint, bool)> pConnectCallback, std::function<bool(const endpoint& theEndpoint, const std::string&)> pMessageCallback, unsigned int nTimeout=250);

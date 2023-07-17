@@ -947,7 +947,7 @@ void MongooseServer::EventHttpWebsocket(mg_connection *pConnection, mg_http_mess
 
     //create the peer address
     char buffer[256];
-    mg_ntoa(&pConnection->rem, buffer, 256);
+    mg_snprintf(buffer, sizeof(buffer), "%M", mg_print_ip, &pConnection->rem);
     std::stringstream ssPeer;
     ssPeer << buffer << ":" << pConnection->rem.port;
 
@@ -977,7 +977,7 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
     {
 
         char buffer[256];
-        mg_ntoa(&pConnection->rem, buffer, 256);
+        mg_snprintf(buffer, sizeof(buffer), "%M", mg_print_ip, &pConnection->rem);
         std::stringstream ssPeer;
         ssPeer << buffer << ":" << pConnection->rem.port;
         m_lastPeer = ipAddress(ssPeer.str());
@@ -1137,7 +1137,6 @@ MongooseServer::MongooseServer() :
     m_timeSinceLastPingSent{0}
 {
     mg_log_set(2);
-    mg_log_set_fn(mgpmlLog, NULL);
 }
 
 MongooseServer::~MongooseServer()
@@ -1343,10 +1342,10 @@ void MongooseServer::DoReplyText(mg_connection* pConnection, const response& the
               << "Content-Type: " << theResponse.contentType.Get() << "\r\n"
               << "Content-Length: " << sReply.length() << "\r\n"
               << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
-              << "Access-Control-Allow-Origin:*\r\n"
-              << "Access-Control-Allow-Methods:GET, PUT, POST, HEAD, OPTIONS, DELETE\r\n"
-              << "Access-Control-Allow-Headers:Content-Type, Accept, Authorization\r\n"
-              << "Access-Control-Max-Age:3600\r\n\r\n";
+              << "Access-Control-Allow-Origin: *\r\n"
+              << "Access-Control-Allow-Methods: GET, PUT, POST, HEAD, OPTIONS, DELETE\r\n"
+              << "Access-Control-Allow-Headers: Content-Type, Accept, Authorization\r\n"
+              << "Access-Control-Max-Age: 3600\r\n\r\n";
 
 
         mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());

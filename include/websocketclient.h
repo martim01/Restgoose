@@ -55,6 +55,8 @@ namespace pml
                 **/
                 void CloseConnection(const endpoint& theEndpoint);
 
+                void RemoveCallbacks();
+
             private:
                 std::unique_ptr<WebSocketClientImpl> m_pImpl;
         };
