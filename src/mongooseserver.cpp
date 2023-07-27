@@ -459,8 +459,13 @@ void MongooseServer::AddWebsocketSubscriptions(subscriber& sub, const Json::Valu
     {
         for(Json::ArrayIndex ai = 0; ai < jsData["endpoints"].size(); ++ai)
         {
+            pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\ttWebsocket subscriber: " << sub.peer << " adding subscription " << jsData["endpoints"][ai].asString();
             sub.setEndpoints.emplace(jsData["endpoints"][ai].asString());
         }
+    }
+    else
+    {
+        pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\ttWebsocket subscriber: Incorrect JSON";
     }
 }
 
@@ -1300,7 +1305,6 @@ bool MongooseServer::Init(const std::filesystem::path& ca, const std::filesystem
     s_ServerOpts.root_dir = ".";
 
     mg_mgr_init(&m_mgr);
-
     SetInterface(addr, nPort);
 
     return true;
@@ -1504,6 +1508,7 @@ void MongooseServer::DoReplyText(mg_connection* pConnection, const response& the
 
     mg_send(pConnection, sHeaders.c_str(), sHeaders.length());
     mg_send(pConnection, sReply.c_str(), sReply.length());
+    pConnection->is_draining = 1;
 }
 
 void MongooseServer::DoReplyFile(mg_connection* pConnection, const response& theResponse)
@@ -1524,6 +1529,8 @@ void MongooseServer::DoReplyFile(mg_connection* pConnection, const response& the
         mg_send(pConnection, sHeaders.c_str(), sHeaders.length());
         EventWrite(pConnection);
         pConnection->is_resp = 0;
+        pConnection->is_draining = 1;
+
     }
     else
     {
@@ -1570,7 +1577,7 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
                   << "Access-Control-Max-Age: 3600\r\n\r\n";
 
         mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
-        pConnection->is_resp = 0;
+        pConnection->is_draining = 1;
 
     }
     else
@@ -1660,6 +1667,7 @@ void MongooseServer::SendWSQueue()
                             {
                                 if(WebsocketSubscribedToEndpoint(itSubscriber->second, anEndpoint))
                                 {
+                                    pmlLog(pml::LOG_DEBUG) << "MongooseServer::WebsocketSubscribedToEndpoint " << anEndpoint;
                                     mg_ws_send(pConnection, cstr, strlen(cstr), WEBSOCKET_OP_TEXT);
                                     break;
                                 }
@@ -1680,9 +1688,11 @@ void MongooseServer::SendWSQueue()
 
 bool MongooseServer::WebsocketSubscribedToEndpoint(const subscriber& sub, const endpoint& anEndpoint) const
 {
+    
     auto vEndpoint = SplitString(anEndpoint.Get() , '/');
     for(auto endp : sub.setEndpoints)
     {
+        pmlLog(pml::LOG_TRACE) << "WebsocketSubscribedToEndpoint: " << endp;
         auto vSub = SplitString(endp.Get(), '/');
         if(vSub.size() <= vEndpoint.size() && vSub == std::vector<std::string>(vEndpoint.begin(), vEndpoint.begin()+vSub.size()))
         {
@@ -1921,4 +1931,10 @@ void MongooseServer::RemoveHeaders(const std::set<headerName>& setHeaders)
 void MongooseServer::SetHeaders(const std::map<headerName, headerValue>& mHeaders)
 {
     m_mHeaders = mHeaders;
+}
+
+void MongooseServer::SetStaticDirectory(std::string_view sDir)
+{
+    pmlLog() << "MongooseServer::SetStaticDirectory " << sDir;
+     m_sStaticRootDir = sDir;
 }

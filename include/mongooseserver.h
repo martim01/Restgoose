@@ -116,7 +116,7 @@ namespace pml
                 std::set<methodpoint> GetEndpoints() const;
 
 
-                void SetStaticDirectory(std::string_view sDir) { m_sStaticRootDir = sDir;}
+                void SetStaticDirectory(std::string_view sDir);
                 const std::string& GetStaticDirectory() const {return m_sStaticRootDir;}
 
                 unsigned long GetPort() const { return m_nPort; }

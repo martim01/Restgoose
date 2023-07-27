@@ -1,5 +1,7 @@
 #include "RestGoose.h"
 #include "mongooseserver.h"
+#include <iostream>
+
 using namespace pml::restgoose;
 
 
@@ -25,6 +27,7 @@ bool Server::Init(const std::filesystem::path& cert, const std::filesystem::path
 
 bool Server::Init(const ipAddress& addr, unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
 {
+    std::cout << "Server::init" << std::endl;
     return m_pImpl->Init({},  {}, {}, addr, nPort, apiRoot, bEnableWebsocket, bSendPings);
 }
 
