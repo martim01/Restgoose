@@ -463,10 +463,6 @@ void MongooseServer::AddWebsocketSubscriptions(subscriber& sub, const Json::Valu
             sub.setEndpoints.emplace(jsData["endpoints"][ai].asString());
         }
     }
-    else
-    {
-        pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\ttWebsocket subscriber: Incorrect JSON";
-    }
 }
 
 void MongooseServer::RemoveWebsocketSubscriptions(subscriber& sub, const Json::Value& jsData) const
@@ -533,8 +529,10 @@ authorised MongooseServer::CheckAuthorization(mg_http_message* pMessage)
     //check if the endpoint is one we've unprotected
     auto thePoint = GetMethodPoint(pMessage);
 
+    pmlLog(pml::LOG_DEBUG) << "CheckAuthorization - " << thePoint.first << ": " << thePoint.second;
     if(MethodPointUnprotected(thePoint))
     {
+        pmlLog(pml::LOG_DEBUG) << "CheckAuthorization - " << thePoint.first << ": " << thePoint.second << " is unprotected";
         return std::make_pair(true, userName(""));
     }
 
@@ -991,6 +989,7 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int, void* pData)
         //none found so sne a "not found" error
         if(m_sStaticRootDir.empty() == false)
         {
+            pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tServe static webpage";
             mg_http_serve_opts opts = {.root_dir = m_sStaticRootDir.c_str()};
             mg_http_serve_dir(pConnection, pMessage, &opts);
         }
@@ -1874,6 +1873,11 @@ size_t MongooseServer::GetNumberOfWebsocketConnections() const
 void MongooseServer::SetUnprotectedEndpoints(const std::set<methodpoint>& setUnprotected)
 {
     m_setUnprotected = setUnprotected;
+
+    for(const auto& thePoint : m_setUnprotected)
+    {
+        pmlLog(pml::LOG_DEBUG) << "Unprotected: " << thePoint.first << " " << thePoint.second;
+    }
 }
 
 bool MongooseServer::MethodPointUnprotected(const methodpoint& thePoint)
@@ -1881,6 +1885,15 @@ bool MongooseServer::MethodPointUnprotected(const methodpoint& thePoint)
     if(m_setUnprotected.find(thePoint) != m_setUnprotected.end())
     {
         return true;
+    }
+
+    if(m_setUnprotected.empty())
+    {
+        pmlLog(pml::LOG_DEBUG) << "Unprotected: None!";
+    }
+    for(const auto& thePoint : m_setUnprotected)
+    {
+        pmlLog(pml::LOG_DEBUG) << "Unprotected: " << thePoint.first << " " << thePoint.second;
     }
 
     auto vEndpoint = SplitString(thePoint.second.Get() , '/');
