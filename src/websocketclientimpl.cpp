@@ -186,10 +186,22 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
 
                 if((pMessage->flags & 15) == WEBSOCKET_OP_CLOSE)
                 {
-                    pmlLog(pml::LOG_DEBUG) << "RestGoose:WebsocketClient\tWebsocket closed by server";
+                    pmlLog(pml::LOG_WARN) << "Websocket closed by server";
                     m_pConnectCallback(FindUrl(pConnection), false);
+                    EraseConnection(pConnection);
                 }
-                CheckPong(pConnection, pMessage);
+                else
+                {
+                    CheckPong(pConnection, pMessage);
+                }
+            }
+            break;
+        case MG_EV_CLOSE:
+            pmlLog(pml::LOG_WARN) << "Websocket receieved a close event";
+            if(m_pConnectCallback)
+            {
+                m_pConnectCallback(FindUrl(pConnection), false);
+                EraseConnection(pConnection);
             }
             break;
     }
@@ -356,4 +368,15 @@ void WebSocketClientImpl::MarkConnectionConnected(mg_connection* pConnection, bo
     }
 }
 
+void WebSocketClientImpl::EraseConnection(mg_connection* pConnection)
+{
+    for(const auto& pairConnection : m_mConnection)
+    {
+        if(pairConnection.second.pConnection == pConnection)
+        {
+            m_mConnection.erase(pairConnection.first);
+            break;
+        }
+    }
+}
 
