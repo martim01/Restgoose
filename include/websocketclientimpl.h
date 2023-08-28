@@ -51,6 +51,7 @@ namespace pml
                 void CheckConnections();
 
                 endpoint FindUrl(mg_connection* pConnection);
+                void EraseConnection(mg_connection* pConnection);
 
                 mg_mgr m_mgr;
 
