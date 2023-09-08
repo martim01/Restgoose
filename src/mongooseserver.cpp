@@ -1715,7 +1715,13 @@ void MongooseServer::SendWebsocketMessage(const std::set<endpoint>& setEndpoints
         const char* hi="hi";
         if(send(m_nPipe, hi, 2, 0) == -1)
         {
-            pmlLog(pml::LOG_ERROR) << "RestGoose:Server\tSendWebsocketMessage: Failed";
+            pmlLog(pml::LOG_ERROR) << "RestGoose:Server\tSendWebsocketMessage: Failed. Try to remake pipe";
+            
+            m_nPipe = mg_mkpipe(&m_mgr, pipe_handler, reinterpret_cast<void*>(this), true);
+            if(m_nPipe == 0)
+            {
+                pmlLog(pml::LOG_ERROR) << "No pipe!";
+            }
         }
     }
 }
