@@ -1667,7 +1667,6 @@ void MongooseServer::SendWSQueue()
                             {
                                 if(WebsocketSubscribedToEndpoint(itSubscriber->second, anEndpoint))
                                 {
-                                    pmlLog(pml::LOG_DEBUG) << "MongooseServer::WebsocketSubscribedToEndpoint " << anEndpoint;
                                     mg_ws_send(pConnection, cstr, strlen(cstr), WEBSOCKET_OP_TEXT);
                                     break;
                                 }
