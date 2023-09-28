@@ -29,6 +29,8 @@ response::response(unsigned short nCode, const std::string& sReason) : nHttpCode
 response::response(unsigned short nCode) : nHttpCode(nCode), contentType("application/json"), bFile(false)
 {}
 
+response::response(unsigned short nCode, const Json::Value& jsData) : nHttpCode(nCode), jsonData(jsData), contentType("application/json"), bFile(false){}
+
 response::response(const response& aResponse) : nHttpCode(aResponse.nHttpCode),
 jsonData(aResponse.jsonData),
 contentType(aResponse.contentType),

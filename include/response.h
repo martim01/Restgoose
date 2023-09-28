@@ -66,6 +66,7 @@ namespace pml
         {
             explicit response(unsigned short nCode=200);
             response(unsigned short nCode, const std::string& sReason);
+            response(unsigned short nCode, const Json::Value& jsData);
             response(const response& aResponse);
             response& operator=(const response& aResponse);
             ~response();

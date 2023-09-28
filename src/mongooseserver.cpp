@@ -1349,11 +1349,13 @@ void MongooseServer::Loop()
     {
         m_pConnection->fn_data = reinterpret_cast<void*>(this);
 
+        /* removing pipe and using loop to send messages
         m_nPipe = mg_mkpipe(&m_mgr, pipe_handler, reinterpret_cast<void*>(this), true);
         if(m_nPipe == 0)
         {
             pmlLog(pml::LOG_TRACE) << "No pipe!";
         }
+        */
         pmlLog(pml::LOG_DEBUG) << "RestGoose:Server\tStarted: " << m_sServerName;
 
         auto now = std::chrono::high_resolution_clock::now();
@@ -1373,8 +1375,8 @@ void MongooseServer::Loop()
             }
             now = std::chrono::high_resolution_clock::now();
 
-            if(m_bWebsocket && m_nPipe == 0)
-            {   //if we are doing websockets and for some reason our interupt pipe didn't get created then send the websocket messages
+            if(m_bWebsocket)
+            {   //We are now sending ws in the loop rather than using the pipe as it keeps breaking
                 SendWSQueue();
             }
         }
@@ -1428,7 +1430,7 @@ bool MongooseServer::AddEndpoint(const methodpoint& theMethodPoint, const std::f
     m_mEndpoints.try_emplace(theMethodPoint, func, bUseThread);
     
     m_mmOptions.insert(std::make_pair(theMethodPoint.second, theMethodPoint.first));
-    lg.SetLevel(pml::LOG_TRACE);
+    lg.SetLevel(pml::LOG_DEBUG);
     lg << "success";
     return true;
 }
@@ -1631,7 +1633,7 @@ void MongooseServer::SendAuthenticationRequest(mg_connection* pConnection)
     else
     {
         //@todo ask application what to send back - possibly redirect to login page or something
-        DoReply(pConnection, response(401, "Not authenticated"));
+        DoReply(pConnection, response(401, std::string("Not authenticated")));
     }
 }
 
@@ -1709,12 +1711,13 @@ void MongooseServer::SendWebsocketMessage(const std::set<endpoint>& setEndpoints
         std::scoped_lock lg(m_mutex);
         m_qWsMessages.emplace(setEndpoints, jsMessage);
     }
+    /* removed pipe
     if(m_nPipe != 0)
     {
         const char* hi="hi";
         if(send(m_nPipe, hi, 2, 0) == -1)
         {
-            pmlLog(pml::LOG_ERROR) << "RestGoose:Server\tSendWebsocketMessage: Failed. Try to remake pipe";
+            pmlLog(pml::LOG_ERROR) << "RestGoose:Server\tSendWebsocketMessage: Failed. Try to remake pipe\t" << strerror(errno);
             
             m_nPipe = mg_mkpipe(&m_mgr, pipe_handler, reinterpret_cast<void*>(this), true);
             if(m_nPipe == 0)
@@ -1723,6 +1726,7 @@ void MongooseServer::SendWebsocketMessage(const std::set<endpoint>& setEndpoints
             }
         }
     }
+    */
 }
 
 void MongooseServer::SetLoopCallback(const std::function<void(std::chrono::milliseconds)>& func)
