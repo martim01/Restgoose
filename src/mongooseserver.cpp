@@ -162,7 +162,7 @@ bool RG_EXPORT operator<(const methodpoint& e1, const methodpoint& e2)
 static void mgpmlLog(char ch, void*)
 {
     static pml::LogStream ls;
-    ls.SetLevel(pml::LOG_TRACE);
+    ls.SetLevel(pml::LOG_DEBUG);
     if(ch != '\n')
     {
         ls << ch;
@@ -577,8 +577,8 @@ authorised MongooseServer::CheckAuthorizationBearer(const methodpoint& thePoint,
     std::scoped_lock lg(m_mutex);
 
     char sBearer[65535];
-    char sPass[255];
-    mg_http_creds(pMessage, sBearer, 65535, sPass, 255);
+    char sPass[65535];
+    mg_http_creds(pMessage, sBearer, 65535, sPass, 65535);
     
     if(m_tokenCallback(thePoint, sPass))
     {
@@ -597,7 +597,6 @@ methodpoint MongooseServer::GetMethodPoint(mg_http_message* pMessage) const
     mg_url_decode(pMessage->uri.ptr, pMessage->uri.len, decode, 6000, 0);
 
     std::string sUri(decode);
-    pmlLog(pml::LOG_DEBUG) << "MongooseServer\tGetMethodPoint: " << sUri;
 
     if(sUri[sUri.length()-1] == '/')    //get rid of trailling /
     {
@@ -623,6 +622,8 @@ methodpoint MongooseServer::GetMethodPoint(mg_http_message* pMessage) const
     std::string sMethod(pMessage->method.ptr);
     size_t nSpace = sMethod.find(' ');
     sMethod = sMethod.substr(0, nSpace);
+    pmlLog(pml::LOG_DEBUG) << "MongooseServer\tGetMethodPoint: " << sMethod << "\t" << sUri;
+
     return methodpoint(httpMethod(sMethod), endpoint(sUri));
 
 }
@@ -1263,7 +1264,7 @@ MongooseServer::MongooseServer() :
                 {headerName("Access-Control-Max-Age"), headerValue("3600")}})
 {
     
-    mg_log_set(2);
+    mg_log_set(2);  //info and worse
     mg_log_set_fn(mgpmlLog, nullptr);
 }
 
