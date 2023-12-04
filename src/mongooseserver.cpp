@@ -554,7 +554,7 @@ authorised MongooseServer::CheckAuthorization(mg_http_message* pMessage)
 
 authorised MongooseServer::CheckAuthorizationBasic(mg_http_message* pMessage)
 {
-    std::lock_guard<std::mutex> lg(m_mutex);
+    std::scoped_lock lg(m_mutex);
 
     char sUser[255];
     char sPass[255];
@@ -622,7 +622,7 @@ methodpoint MongooseServer::GetMethodPoint(mg_http_message* pMessage) const
     std::string sMethod(pMessage->method.ptr);
     size_t nSpace = sMethod.find(' ');
     sMethod = sMethod.substr(0, nSpace);
-    pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "MongooseServer\tGetMethodPoint: " << sMethod << "\t" << sUri;
+    pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "GetMethodPoint: " << sMethod << "\t" << sUri;
 
     return methodpoint(httpMethod(sMethod), endpoint(sUri));
 
@@ -1147,27 +1147,27 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
             }
             break;
         case MG_EV_OPEN:
-            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "MongooseServer\tHandleOpen";
+            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "HandleOpen";
             HandleOpen(pConnection);
             break;
         case MG_EV_ACCEPT:
-            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "MongooseServer\tHandleAccept";
+            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "HandleAccept";
             HandleAccept(pConnection);
             break;
         case MG_EV_WS_OPEN:
-            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "MongooseServer\tHandleWebsocketOpen";
+            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "HandleWebsocketOpen";
             EventWebsocketOpen(pConnection, nEvent, pData);
             break;
         case MG_EV_WS_CTL:
-            pmlLog(pml::LOG_TRACE, "pml::restgoose") << "MongooseServer\tHandleWebsocketCtl";
+            pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HandleWebsocketCtl";
             EventWebsocketCtl(pConnection, nEvent, pData);
             break;
         case MG_EV_WS_MSG:
-            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "MongooseServer\tHandleWebsocketMsg";
+            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "HandleWebsocketMsg";
             EventWebsocketMessage(pConnection, nEvent, pData);
             break;
         case MG_EV_HTTP_MSG:
-            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "MongooseServer\tHandleHTTPMsg";
+            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "HandleHTTPMsg";
             pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HTTP_MSG: " << pConnection;
             EventHttp(pConnection, nEvent, pData);
             break;
@@ -1179,7 +1179,7 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
             EventWrite(pConnection);
             break;
         case MG_EV_CLOSE:
-            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "MongooseServer\tHandleClose";
+            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "HandleClose";
             if (is_websocket(pConnection))
             {
                 pConnection->fn_data = nullptr;
@@ -1403,7 +1403,7 @@ void MongooseServer::Stop()
 bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress& )>& funcAuthentication, const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage, const std::function<void(const endpoint&, const ipAddress&)>& funcClose)
 {
     pml::LogStream lg(pml::LOG_INFO, "pml::restgoose");
-    lg << "MongooseServer\t" << "AddWebsocketEndpoint <" << theEndpoint.Get() << "> ";
+    lg << "AddWebsocketEndpoint <" << theEndpoint.Get() << "> ";
 
     if(!m_bWebsocket)
     {
@@ -1712,27 +1712,11 @@ void MongooseServer::SendWebsocketMessage(const std::set<endpoint>& setEndpoints
         std::scoped_lock lg(m_mutex);
         m_qWsMessages.emplace(setEndpoints, jsMessage);
     }
-    /* removed pipe
-    if(m_nPipe != 0)
-    {
-        const char* hi="hi";
-        if(send(m_nPipe, hi, 2, 0) == -1)
-        {
-            pmlLog(pml::LOG_ERROR, "pml::restgoose") << "SendWebsocketMessage: Failed. Try to remake pipe\t" << strerror(errno);
-            
-            m_nPipe = mg_mkpipe(&m_mgr, pipe_handler, reinterpret_cast<void*>(this), true);
-            if(m_nPipe == 0)
-            {
-                pmlLog(pml::LOG_ERROR, "pml::restgoose") << "No pipe!";
-            }
-        }
-    }
-    */
 }
 
 void MongooseServer::SetLoopCallback(const std::function<void(std::chrono::milliseconds)>& func)
 {
-    std::lock_guard<std::mutex> lg(m_mutex);
+    std::scoped_lock lg(m_mutex);
     m_loopCallback = func;
 }
 
@@ -1741,7 +1725,7 @@ bool MongooseServer::AddBAUser(const userName& aUser, const password& aPassword)
 {
     if(m_tokenCallback) return false;
 
-    std::lock_guard<std::mutex> lg(m_mutex);
+    std::scoped_lock lg(m_mutex);
 
     if(auto [it, bIns] = m_mUsers.try_emplace(aUser, aPassword); bIns == false)
     {
@@ -1755,7 +1739,7 @@ bool MongooseServer::DeleteBAUser(const userName& aUser)
 {
     if(m_tokenCallback) return false;
 
-    std::lock_guard<std::mutex> lg(m_mutex);
+    std::scoped_lock lg(m_mutex);
     m_mUsers.erase(aUser);
     return true;
 }
