@@ -49,9 +49,9 @@ void HttpClient::Run(const std::function<void(const clientResponse&, unsigned in
 
     ThreadPool::Get().Submit([=, pImpl=m_pImpl]
                              {
-                                pmlLog(pml::LOG_TRACE) << "HttpClient::Run #" << nRunId;
+                                pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient::Run #" << nRunId;
                                 std::this_thread::sleep_for(delay);
-                                pmlLog(pml::LOG_TRACE) << "HttpClient::RunAsync " << nRunId;
+                                pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient::RunAsync " << nRunId;
                                 pImpl->RunAsync(pCallback, nRunId, connectionTimeout, processTimeout);
                             });
 }
