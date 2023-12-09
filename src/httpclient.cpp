@@ -44,7 +44,7 @@ const clientResponse& HttpClient::Run(const std::chrono::milliseconds& connectio
     return m_pImpl->Run(connectionTimeout, processTimeout);
 }
 
-void HttpClient::Run(const std::function<void(const clientResponse&, unsigned int )>& pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout, const std::chrono::milliseconds& delay) const
+void HttpClient::Run(const std::function<void(const clientResponse&, unsigned int, const std::string& )>& pCallback, unsigned int nRunId, const std::string& sUser, const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout, const std::chrono::milliseconds& delay) const
 {
 
     ThreadPool::Get().Submit([=, pImpl=m_pImpl]
@@ -52,7 +52,19 @@ void HttpClient::Run(const std::function<void(const clientResponse&, unsigned in
                                 pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient::Run #" << nRunId;
                                 std::this_thread::sleep_for(delay);
                                 pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient::RunAsync " << nRunId;
-                                pImpl->RunAsync(pCallback, nRunId, connectionTimeout, processTimeout);
+                                pImpl->RunAsync(pCallback, nRunId, sUser, connectionTimeout, processTimeout);
+                            });
+}
+
+void HttpClient::Run(const std::function<void(const clientResponse&, unsigned int)>& pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout, const std::chrono::milliseconds& delay) const
+{
+
+    ThreadPool::Get().Submit([=, pImpl=m_pImpl]
+                             {
+                                pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient::Run #" << nRunId;
+                                std::this_thread::sleep_for(delay);
+                                pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient::RunAsync " << nRunId;
+                                pImpl->RunAsyncOld(pCallback, nRunId, connectionTimeout, processTimeout);
                             });
 }
 

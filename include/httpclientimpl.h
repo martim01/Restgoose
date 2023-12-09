@@ -27,7 +27,9 @@ namespace pml
                 ~HttpClientImpl();
 
                 const clientResponse& Run(const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0));
-                void RunAsync(const std::function<void(const clientResponse&, unsigned int)>& pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0));
+                void RunAsync(const std::function<void(const clientResponse&, unsigned int, const std::string&)>& pCallback, unsigned int nRunId, const std::string& sUserData, const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0));
+
+                void RunAsyncOld(const std::function<void(const clientResponse&, unsigned int)>& pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0));
 
                 void SetUploadProgressCallback(const std::function<void(unsigned long, unsigned long)>& pCallback);
                 void SetDownloadProgressCallback(const std::function<void(unsigned long, unsigned long)>& pCallback);
@@ -103,6 +105,7 @@ namespace pml
                 std::ofstream m_ofs;
                 std::ifstream m_ifs;
                 unsigned int m_nRunId = 0;
+	            std::string m_sUserData;
 
                 std::filesystem::path m_ca;
                 std::filesystem::path m_Cert;
@@ -110,7 +113,8 @@ namespace pml
 
                 std::function<void(unsigned long, unsigned long)> m_pUploadProgressCallback = nullptr;
                 std::function<void(unsigned long, unsigned long)> m_pDownloadProgressCallback = nullptr;
-                std::function<void(const clientResponse&, unsigned int )> m_pAsyncCallback = nullptr;
+                std::function<void(const clientResponse&, unsigned int, const std::string& )> m_pAsyncCallback = nullptr;
+                std::function<void(const clientResponse&, unsigned int)> m_pAsyncCallbackV1 = nullptr;
         };
     }
 }

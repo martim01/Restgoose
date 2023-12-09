@@ -355,9 +355,18 @@ static void evt_handler(mg_connection* pConnection, int nEvent, void* pEventData
     }
 }
 
-void HttpClientImpl::RunAsync(const std::function<void(const clientResponse&, unsigned int)>& pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout)
+void HttpClientImpl::RunAsync(const std::function<void(const clientResponse&, unsigned int, const std::string& )>& pCallback, unsigned int nRunId, const std::string& sUserData, const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout)
 {
     m_pAsyncCallback = pCallback;
+    m_nRunId = nRunId;
+    m_sUserData = sUserData;
+    pmlLog(pml::LOG_TRACE, "pml::restgoose") << "RestGoose:HttpClient::RunAsync: nRunId = " << nRunId << " Endpoint: " << m_point.second;
+    Run(connectionTimeout, processTimeout);
+}
+
+void HttpClientImpl::RunAsyncOld(const std::function<void(const clientResponse&, unsigned int)>& pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout)
+{
+    m_pAsyncCallbackV1 = pCallback;
     m_nRunId = nRunId;
     pmlLog(pml::LOG_TRACE, "pml::restgoose") << "RestGoose:HttpClient::RunAsync: nRunId = " << nRunId << " Endpoint: " << m_point.second;
     Run(connectionTimeout, processTimeout);
@@ -402,7 +411,11 @@ const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& conne
     }
     if(m_pAsyncCallback)
     {
-        m_pAsyncCallback(m_response, m_nRunId);
+        m_pAsyncCallback(m_response, m_nRunId, m_sUserData);
+    }
+    else if(m_pAsyncCallbackV1)
+    {
+        m_pAsyncCallbackV1(m_response, m_nRunId);
     }
     mg_mgr_free(&mgr);
     return m_response;
