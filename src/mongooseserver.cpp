@@ -1240,9 +1240,14 @@ void MongooseServer::HandleAccept(mg_connection* pConnection) const
         }
         tls_opts.srvname.len = m_sHostname.length();
         tls_opts.srvname.ptr = m_sHostname.c_str();
-        tls_opts.cert = m_Cert.string().c_str();
-        tls_opts.certkey = m_Key.string().c_str();
+        
+        std::string sCert = m_Cert.string();
+        std::string sKey = m_Key.string();
+
+        tls_opts.cert = sCert.c_str();
+        tls_opts.certkey = sKey.c_str();
         tls_opts.ciphers = "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256";
+
         mg_tls_init(pConnection, &tls_opts);
         if(pConnection->is_closing == 1)
         {
