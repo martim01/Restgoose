@@ -1264,7 +1264,8 @@ MongooseServer::MongooseServer() :
                 {headerName("Referrer-Policy"), headerValue("no-referrer")},
                 {headerName("Server"), headerValue("unknown")},
                 {headerName("Access-Control-Allow-Origin"), headerValue("*")},
-                {headerName("Access-Control-Allow-Methods"), headerValue("GET, PUT, POST, HEAD, OPTIONS, DELETE")},
+                {headerName("Access-Control-Allow-Credentials"), headerValue("true")},
+                {headerName("Access-Control-Allow-Methods"), headerValue("GET, PUT, PATCH, POST, HEAD, OPTIONS, DELETE")},
                 {headerName("Access-Control-Allow-Headers"), headerValue("Content-Type, Accept, Authorization")},
                 {headerName("Access-Control-Max-Age"), headerValue("3600")}})
 {
@@ -1289,7 +1290,7 @@ bool MongooseServer::Init(const std::filesystem::path& ca, const std::filesystem
 
     if(m_Cert.empty() == false)
     {
-        m_mHeaders.try_emplace(headerName("Strict-Transport-Security"), "max-age=31536000; includeSubDomains");
+       m_mHeaders.try_emplace(headerName("Strict-Transport-Security"), headerValue("max-age=31536010; includeSubDomains"));
     }
 
     m_ApiRoot = apiRoot;
@@ -1576,11 +1577,10 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
 
         if(m_Cert.empty() == false)
         {
-            ssHeaders << "Strict-Transport-Security: max-age=31536000; includeSubDomains\r\n";
+            ssHeaders << "\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains";
         }
 
-        ssHeaders << "\r\n"
-                  << "Content-Length: 0 \r\n"
+        ssHeaders << "\r\nContent-Length: 0 \r\n"
                   << "Access-Control-Allow-Headers: Content-Type, Accept, Authorization\r\n"
                   << "Access-Control-Max-Age: 3600\r\n\r\n";
 
@@ -1595,17 +1595,16 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
                 << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
                   << "Access-Control-Allow-Origin: *\r\n"
                   << "Access-Control-Allow-Methods: OPTIONS";
-        if(m_Cert.empty() == false)
-        {
-            ssHeaders << "Strict-Transport-Security: max-age=31536000; includeSubDomains\r\n";
-        }
-
         for(; itOption != m_mmOptions.upper_bound(theEndpoint); ++itOption)
         {
             ssHeaders << ", " << itOption->second.Get();
         }
-        ssHeaders << "\r\n"
-                  << "Content-Length: 0 \r\n"
+	if(m_Cert.empty() == false)
+        {
+            ssHeaders << "\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains";
+        }
+
+        ssHeaders << "\r\nContent-Length: 0 \r\n"
                   << "Access-Control-Allow-Headers: Content-Type, Accept, Authorization\r\n"
                   << "Access-Control-Max-Age: 3600\r\n\r\n";
 
@@ -1622,12 +1621,13 @@ void MongooseServer::SendAuthenticationRequest(mg_connection* pConnection)
     {
         std::stringstream ssHeaders;
         ssHeaders << "HTTP/1.1 401\r\n"
-                << "WWW-Authenticate: Basic realm=\"User Visible Realm\"\r\n\r\n";
+                << "WWW-Authenticate: Basic realm=\"User Visible Realm\"\r\n";
 
         if(m_Cert.empty() == false)
         {
             ssHeaders << "Strict-Transport-Security: max-age=31536000; includeSubDomains\r\n";
         }
+	ssHeaders << "\r\n";
 
         mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
         pConnection->is_draining = 1;
