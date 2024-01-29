@@ -24,7 +24,7 @@ namespace pml
                 *   @param cert the full path and file name to a TLS certificate if one is being used
                 *   @param key the full path and file name to a TLC key if one is being used
                 *   @param addr the ip address of the interface to run on (pass 0.0.0.0 to listen on all interfaces)
-                *   @param nPort the TCP/IP port number to listen on
+                *   @param nPort the TCP/IP port number to listen on if set to 0 then will use 80 for http and 443 for https
                 *   @param apiRoot the relative URL that is the base of the API tree
                 *   @param bEnableWebsocket set to true to act as a websocket server as well
                 *   @param bSendPings set to true for the server to send websocket pings to the clients
