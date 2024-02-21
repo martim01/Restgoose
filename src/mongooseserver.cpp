@@ -209,7 +209,7 @@ void MongooseServer::EventWebsocketOpen(mg_connection *pConnection, int nEvent, 
 
     //mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pData);
 
-    pmlLog(pml::LOG_TRACE, "Restgoose") << "RestGoose:Server\tEventWebsocketOpen";
+    pmlLog(pml::LOG_TRACE, "pml::restgoose") << "EventWebsocketOpen";
 
 }
 
@@ -243,31 +243,31 @@ bool MongooseServer::AuthenticateWebsocketBasic(subscriber& sub, const Json::Val
             {
                 if(itEndpoint->second(sub.theEndpoint, sub.queryParams, itUser->first, sub.peer))
                 {
-                    pmlLog(pml::LOG_INFO, "Restgoose") << "RestGoose:Server\tWebsocket subscriber: " << sub.peer << " authorized";
+                    pmlLog(pml::LOG_INFO, "pml::restgoose") << "Websocket subscriber: " << sub.peer << " authorized";
 
                     return true;
                 }
                 else
                 {
-                    pmlLog(pml::LOG_WARN, "Restgoose") << "RestGoose:Server\tWebsocket subscriber: " << sub.peer << " not authorized";
+                    pmlLog(pml::LOG_WARN, "pml::restgoose") << "Websocket subscriber: " << sub.peer << " not authorized";
                     return false;
                 }
             }
             else
             {
-                pmlLog(pml::LOG_WARN, "Restgoose") << "RestGoose:Server\tWebsocket subscriber: " << sub.peer << " endpoint: " << sub.theEndpoint << " has not authorization function";
+                pmlLog(pml::LOG_WARN, "pml::restgoose") << "Websocket subscriber: " << sub.peer << " endpoint: " << sub.theEndpoint << " has not authorization function";
                 return false;
             }
         }
         else
         {
-            pmlLog(pml::LOG_WARN, "Restgoose") << "RestGoose:Server\tWebsocket subscriber: " << sub.peer << " User not found or password not correct";
+            pmlLog(pml::LOG_WARN, "pml::restgoose") << "Websocket subscriber: " << sub.peer << " User not found or password not correct";
             return false;
         }
     }
     else
     {
-        pmlLog(pml::LOG_WARN, "Restgoose") << "RestGoose:Server\tWebsocket subscriber: " << sub.peer << " No user or password sent";
+        pmlLog(pml::LOG_WARN, "pml::restgoose") << "Websocket subscriber: " << sub.peer << " No user or password sent";
         return false;
     }
 }
@@ -281,24 +281,24 @@ bool MongooseServer::AuthenticateWebsocketBearer(subscriber& sub, const Json::Va
         {
             if(itEndpoint->second(sub.theEndpoint, sub.queryParams, userName(jsData["bearer"].asString()), sub.peer))
             {
-                pmlLog(pml::LOG_INFO, "Restgoose") << "RestGoose:Server\tWebsocket subscriber: " << sub.peer << " authorized";
+                pmlLog(pml::LOG_INFO, "pml::restgoose") << "Websocket subscriber: " << sub.peer << " authorized";
                 return true;
             }
             else
             {
-                pmlLog(pml::LOG_WARN, "Restgoose") << "RestGoose:Server\tWebsocket subscriber: " << sub.peer << " not authorized";
+                pmlLog(pml::LOG_WARN, "pml::restgoose") << "Websocket subscriber: " << sub.peer << " not authorized";
                 return false;
             }
         }
         else
         {
-            pmlLog(pml::LOG_WARN, "Restgoose") << "RestGoose:Server\tWebsocket subscriber: " << sub.peer << " endpoint: " << sub.theEndpoint << " has not authorization function";
+            pmlLog(pml::LOG_WARN, "pml::restgoose") << "Websocket subscriber: " << sub.peer << " endpoint: " << sub.theEndpoint << " has not authorization function";
             return false;
         }
     }
     else
     {
-        pmlLog(pml::LOG_WARN, "Restgoose") << "RestGoose:Server\tWebsocket subscriber: " << sub.peer << " No bearer token sent";
+        pmlLog(pml::LOG_WARN, "pml::restgoose") << "Websocket subscriber: " << sub.peer << " No bearer token sent";
         return false;
     }
 }
@@ -307,7 +307,7 @@ bool MongooseServer::AuthenticateWebsocketBearer(subscriber& sub, const Json::Va
 
 void MongooseServer::EventWebsocketMessage(mg_connection *pConnection, int nEvent, void* pData)
 {
-    pmlLog(pml::LOG_TRACE, "Restgoose") << "RestGoose::Server\EventWebsocketMessage";
+    pmlLog(pml::LOG_TRACE, "pml::restgoose") << "RestGoose::Server\EventWebsocketMessage";
 
     auto itSubscriber = m_mSubscribers.find(pConnection);
     if(itSubscriber != m_mSubscribers.end())
@@ -334,7 +334,7 @@ void MongooseServer::EventWebsocketMessage(mg_connection *pConnection, int nEven
         }
         catch(const Json::RuntimeError& e)
         {
-            pmlLog(pml::LOG_ERROR, "Restgoose") << "RestGoose:Server\tUnable to convert '" << sMessage << "' to JSON: " << e.what();
+            pmlLog(pml::LOG_ERROR, "pml::restgoose") << "Unable to convert '" << sMessage << "' to JSON: " << e.what();
         }
     }
 
@@ -345,12 +345,12 @@ void MongooseServer::DoWebsocketAuthentication(mg_connection* pConnection, subsc
     sub.bAuthenticated = AuthenticateWebsocket(sub, jsData);
     if(sub.bAuthenticated)
     {
-        pmlLog(pml::LOG_TRACE, "Restgoose") << "RestGoose::Server\tHandleInternalWebsocketMessage: Authenticated";
+        pmlLog(pml::LOG_TRACE, "pml::restgoose") << "RestGoose::Server\tHandleInternalWebsocketMessage: Authenticated";
         AddWebsocketSubscriptions(sub, jsData);
     }
     else
     {
-        pmlLog(pml::LOG_INFO, "Restgoose") << "RestGoose:Server\ttWebsocket subscriber not authenticated: close";
+        pmlLog(pml::LOG_INFO, "pml::restgoose") << "tWebsocket subscriber not authenticated: close";
         m_mSubscribers.erase(pConnection);
         pConnection->is_closing = 1;
     }
@@ -377,7 +377,7 @@ void MongooseServer::HandleInternalWebsocketMessage(mg_connection* pConnection, 
         }
         else
         {
-            pmlLog(pml::LOG_WARN, "Restgoose") << "RestGoose:Server\tWebsocket subscriber: " << sub.peer << " attempted to send data before authenticating. " << " Close the connection";
+            pmlLog(pml::LOG_WARN, "pml::restgoose") << "Websocket subscriber: " << sub.peer << " attempted to send data before authenticating. " << " Close the connection";
             m_mSubscribers.erase(pConnection);
             pConnection->is_closing = 1;
         }
@@ -387,7 +387,7 @@ void MongooseServer::HandleInternalWebsocketMessage(mg_connection* pConnection, 
 
 void MongooseServer::HandleExternalWebsocketMessage(mg_connection* pConnection, subscriber& sub, const Json::Value& jsData)
 {
-    pmlLog(pml::LOG_TRACE, "Restgoose") << "RestGoose::Server\tHandleExternalWebsocketMessage";
+    pmlLog(pml::LOG_TRACE, "pml::restgoose") << "RestGoose::Server\tHandleExternalWebsocketMessage";
     if(sub.bAuthenticated)
     {
         auto itEndpoint = m_mWebsocketMessageEndpoints.find(sub.theEndpoint);
@@ -397,12 +397,12 @@ void MongooseServer::HandleExternalWebsocketMessage(mg_connection* pConnection, 
         }
         else
         {
-            pmlLog(pml::LOG_WARN, "Restgoose") << "RestGoose:Server\t" << sub.peer << " has no message methodpoint!";
+            pmlLog(pml::LOG_WARN, "pml::restgoose") << "" << sub.peer << " has no message methodpoint!";
         }
     }
     else
     {
-        pmlLog(pml::LOG_WARN, "Restgoose") << "RestGoose:Server\tWebsocket subscriber: " << sub.peer << " attempted to send data before authenticating. " <<  " Close the connection";
+        pmlLog(pml::LOG_WARN, "pml::restgoose") << "Websocket subscriber: " << sub.peer << " attempted to send data before authenticating. " <<  " Close the connection";
         m_mSubscribers.erase(pConnection);
         pConnection->is_closing = 1;
     }
@@ -410,7 +410,7 @@ void MongooseServer::HandleExternalWebsocketMessage(mg_connection* pConnection, 
 
 void MongooseServer::AddWebsocketSubscriptions(subscriber& sub, const Json::Value& jsData)
 {
-    pmlLog(pml::LOG_DEBUG, "Restgoose") << "RestGoose:Server\ttWebsocket subscriber: " << sub.peer << " adding subscriptions " << jsData;
+    pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "tWebsocket subscriber: " << sub.peer << " adding subscriptions " << jsData;
 
     if(jsData["endpoints"].isArray())
     {
@@ -423,7 +423,7 @@ void MongooseServer::AddWebsocketSubscriptions(subscriber& sub, const Json::Valu
 
 void MongooseServer::RemoveWebsocketSubscriptions(subscriber& sub, const Json::Value& jsData)
 {
-    pmlLog(pml::LOG_DEBUG, "Restgoose") << "RestGoose:Server\tWebsocket subscriber: " << sub.peer << " removing subscriptions " << jsData;
+    pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "Websocket subscriber: " << sub.peer << " removing subscriptions " << jsData;
 
     if(jsData["endpoints"].isArray())
     {
@@ -453,12 +453,12 @@ void MongooseServer::EventWebsocketCtl(mg_connection *pConnection, int nEvent, v
                 std::string sData;
                 sData.assign(pMessage->data.ptr, pMessage->data.len);
 
-                pmlLog(pml::LOG_DEBUG, "Restgoose") << "RestGoose:Server\tWebsocket ctl: [" << (int)pMessage->flags << "] " << sData;
+                pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "Websocket ctl: [" << (int)pMessage->flags << "] " << sData;
             }
             break;
         case WEBSOCKET_OP_CLOSE:
             {
-                pmlLog(pml::LOG_DEBUG, "Restgoose") << "RestGoose:Server\tWebsocketCtl - close";
+                pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketCtl - close";
                 CloseWebsocket(pConnection);
             }
             break;
@@ -511,7 +511,7 @@ authorised MongooseServer::CheckAuthorizationBasic(mg_http_message* pMessage)
     }
     else
     {
-        pmlLog(pml::LOG_INFO, "Restgoose") << "RestGoose:Server\tCheckAuthorization: user '" << sUser <<" with given password not found";
+        pmlLog(pml::LOG_INFO, "pml::restgoose") << "CheckAuthorization: user '" << sUser <<" with given password not found";
         return std::make_pair(false, userName(""));
     }
 }
@@ -569,12 +569,12 @@ methodpoint MongooseServer::GetMethodPoint(mg_http_message* pMessage)
 
 void MongooseServer::HandleFirstChunk(httpchunks& chunk, mg_connection* pConnection, mg_http_message* pMessage)
 {
-    pmlLog(pml::LOG_INFO, "Restgoose") << "Restgoose:Server\tHandleFirstChunk";
+    pmlLog(pml::LOG_INFO, "pml::restgoose") << "HandleFirstChunk";
 
     auto auth = CheckAuthorization(pMessage);
     if(auth.first == false)
     {
-        pmlLog(pml::LOG_INFO, "Restgoose") << "Restgoose:Server\tHandleFirstChunk: SendAuthentication...";
+        pmlLog(pml::LOG_INFO, "pml::restgoose") << "HandleFirstChunk: SendAuthentication...";
         SendAuthenticationRequest(pConnection);
     }
     else
@@ -609,7 +609,7 @@ void MongooseServer::HandleFirstChunk(httpchunks& chunk, mg_connection* pConnect
             if(chunk.pofs->is_open() == false)
             {
                 chunk.pofs = nullptr;
-                pmlLog(pml::LOG_WARN, "Restgoose") << "RestGoose:Server\tCould not create temp file '" << chunk.vParts.back().filepath << "' for upload";
+                pmlLog(pml::LOG_WARN, "pml::restgoose") << "Could not create temp file '" << chunk.vParts.back().filepath << "' for upload";
             }
         }
 
@@ -622,10 +622,10 @@ void MongooseServer::HandleFirstChunk(httpchunks& chunk, mg_connection* pConnect
             }
             catch(const std::exception& e)
             {
-                pmlLog(pml::LOG_WARN, "Restgoose") << "RestGoose:Server\tCould not decode message length";
+                pmlLog(pml::LOG_WARN, "pml::restgoose") << "Could not decode message length";
             }
         }
-        pmlLog(pml::LOG_DEBUG, "Restgoose") << "RestGoose:Server\tFirst chunk: " << chunk.contentType << "\t" << chunk.nTotalSize << " bytes";
+        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "First chunk: " << chunk.contentType << "\t" << chunk.nTotalSize << " bytes";
     }
 }
 
@@ -712,7 +712,7 @@ void MongooseServer::HandleMultipartChunk(httpchunks& chunk, mg_http_message* pM
 
 void MongooseServer::HandleLastChunk(httpchunks& chunk, mg_connection* pConnection)
 {
-    pmlLog(pml::LOG_DEBUG, "Restgoose") << "RestGoose:Server\tAll chunks received. Now do something with them..." << chunk.nCurrentSize << "/" << chunk.nTotalSize;
+    pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "All chunks received. Now do something with them..." << chunk.nCurrentSize << "/" << chunk.nTotalSize;
     chunk.vBuffer.clear();
     if(chunk.pofs)
     {
@@ -721,7 +721,7 @@ void MongooseServer::HandleLastChunk(httpchunks& chunk, mg_connection* pConnecti
     }
     if(chunk.pCallback == nullptr)
     {
-        pmlLog(pml::LOG_ERROR, "Restgoose") << "RestGoose:Server\tSomeone uploaded a big file to a non allowed endpoint";
+        pmlLog(pml::LOG_ERROR, "pml::restgoose") << "Someone uploaded a big file to a non allowed endpoint";
         //@todo in the end we shouldn't get here.
         //for now remove any files that were uploaded
         for(auto data : chunk.vParts)
@@ -742,7 +742,7 @@ void MongooseServer::HandleLastChunk(httpchunks& chunk, mg_connection* pConnecti
 
 void MongooseServer::MultipartChunkBoundary(httpchunks& chunk, char c)
 {
-    //pmlLog(pml::LOG_DEBUG, "Restgoose") << "RestGoose:Server\tMCB: " << c << "\t" << std::string(chunk.vBuffer.begin(), chunk.vBuffer.end());
+    //pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "MCB: " << c << "\t" << std::string(chunk.vBuffer.begin(), chunk.vBuffer.end());
 
     if(c == chunk.sBoundaryLast[chunk.vBuffer.size()])
     {
@@ -772,13 +772,13 @@ void MongooseServer::MultipartChunkBoundaryFound(httpchunks& chunk, char c)
     {
         if(chunk.vParts.back().filepath.Get().empty() == false && chunk.pofs)
         {
-            pmlLog(pml::LOG_DEBUG, "Restgoose") << "RestGoose:Server\tClose file" << chunk.vParts.back().filepath;
+            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "Close file" << chunk.vParts.back().filepath;
             chunk.pofs->close();
             chunk.pofs = nullptr;
         }
         else
         {
-            pmlLog(pml::LOG_DEBUG, "Restgoose") << "RestGoose:Server\tName=" << chunk.vParts.back().name << "\tData=" << chunk.vParts.back().data;
+            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "Name=" << chunk.vParts.back().name << "\tData=" << chunk.vParts.back().data;
         }
     }
 
@@ -873,7 +873,7 @@ void MongooseServer::MultipartChunkHeader(httpchunks& chunk, char c)
                         if(chunk.pofs->is_open() == false)
                         {
                             chunk.pofs = nullptr;
-                            pmlLog(pml::LOG_WARN, "Restgoose") << "RestGoose:Server\tMultipart upload - Could not open file '" << chunk.vParts.back().data << "'";
+                            pmlLog(pml::LOG_WARN, "pml::restgoose") << "Multipart upload - Could not open file '" << chunk.vParts.back().data << "'";
                         }
 
                     }
@@ -906,7 +906,7 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pDa
     else if(InApiTree(thePoint.second))
     {
 
-        pmlLog(pml::LOG_TRACE, "Restgoose") << "RestGoose:Server\t" << thePoint.second << " in Api tree";
+        pmlLog(pml::LOG_TRACE, "pml::restgoose") << "" << thePoint.second << " in Api tree";
         auto itWsEndpoint = m_mWebsocketAuthenticationEndpoints.find(thePoint.second);
         if(itWsEndpoint != m_mWebsocketAuthenticationEndpoints.end())
         {
@@ -923,7 +923,7 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pDa
     }
     else
     {
-        pmlLog(pml::LOG_TRACE, "Restgoose") << "RestGoose:Server\t" << thePoint.second << " not in Api tree";
+        pmlLog(pml::LOG_TRACE, "pml::restgoose") << "" << thePoint.second << " not in Api tree";
         auto auth = CheckAuthorization(pMessage);
         if(auth.first == false)
         {
@@ -941,7 +941,7 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int nEvent, void* pDa
 
 void MongooseServer::EventHttpWebsocket(mg_connection *pConnection, mg_http_message* pMessage, const endpoint& uri)
 {
-    pmlLog(pml::LOG_TRACE, "Restgoose") << "RestGoose::Server\tEventHttpWebsocket";
+    pmlLog(pml::LOG_TRACE, "pml::restgoose") << "RestGoose::Server\tEventHttpWebsocket";
 
     mg_ws_upgrade(pConnection, pMessage, nullptr);
 
@@ -957,7 +957,7 @@ void MongooseServer::EventHttpWebsocket(mg_connection *pConnection, mg_http_mess
     if(m_mUsers.empty() && m_tokenCallback == nullptr)
     {   //if we have not set up any users then we are not using authentication so we don't need to authenticate the websocket
         itSub->second.bAuthenticated = true;
-        pmlLog(pml::LOG_TRACE, "Restgoose") << "RestGoose::Server\tEventHttpWebsocket: Authenticated";
+        pmlLog(pml::LOG_TRACE, "pml::restgoose") << "RestGoose::Server\tEventHttpWebsocket: Authenticated";
     }
     else if(m_tokenCallback && m_bAuthenticateWSViaQuery)
     {   //we are using bearer token and passing it to the websocket via the query string
@@ -1040,7 +1040,7 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
     {
         case MG_EV_ERROR:
             {
-                pmlLog(pml::LOG_ERROR, "Restgoose") << reinterpret_cast<char*>(pData);
+                pmlLog(pml::LOG_ERROR, "pml::restgoose") << reinterpret_cast<char*>(pData);
             }
             break;
         case MG_EV_OPEN:
@@ -1059,11 +1059,11 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
             EventWebsocketMessage(pConnection, nEvent, pData);
             break;
         case MG_EV_HTTP_MSG:
-            pmlLog(pml::LOG_TRACE, "Restgoose") << "HTTP_MSG: " << pConnection;
+            pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HTTP_MSG: " << pConnection;
             EventHttp(pConnection, nEvent, pData);
             break;
         case MG_EV_HTTP_CHUNK:  //partial message
-            pmlLog(pml::LOG_TRACE, "Restgoose") << "HTTP_CHUNK: " << pConnection;
+            pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HTTP_CHUNK: " << pConnection;
             EventHttpChunk(pConnection, pData);
             break;
         case MG_EV_WRITE:
@@ -1090,12 +1090,12 @@ void MongooseServer::HandleOpen(mg_connection* pConnection)
 {
     if(m_sAcl.empty() == false && mg_check_ip_acl(mg_str(m_sAcl.c_str()), pConnection->rem.ip) != 1)
     {
-        pmlLog(pml::LOG_DEBUG, "Restgoose") << "Restgoose:Server\tHandleOpen: Not allowed due to ACL";
+        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "HandleOpen: Not allowed due to ACL";
         pConnection->is_closing = 1;
     }
     else if(GetNumberOfConnections(m_mgr) > m_nMaxConnections)
     {
-        pmlLog(pml::LOG_DEBUG, "Restgoose") << "Restgoose:Server\tHandleOpen: REACHED MAXIMUM";
+        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "HandleOpen: REACHED MAXIMUM";
         pConnection->is_closing = 1;
     }
 }
@@ -1104,7 +1104,7 @@ void MongooseServer::HandleAccept(mg_connection* pConnection)
 {
     if(mg_url_is_ssl(m_sServerName.c_str()))
     {
-        pmlLog(pml::LOG_DEBUG, "Restgoose") << "Restgoose:Server\tAccept connection: Turn on TLS";
+        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "Accept connection: Turn on TLS";
         struct mg_tls_opts tls_opts;
         tls_opts.ca = NULL;
         tls_opts.srvname.len = 0;
@@ -1116,7 +1116,7 @@ void MongooseServer::HandleAccept(mg_connection* pConnection)
         mg_tls_init(pConnection, &tls_opts);
         if(pConnection->is_closing == 1)
         {
-            pmlLog(pml::LOG_ERROR, "Restgoose") << "Restgoose:Server\tCould not implement TLS";
+            pmlLog(pml::LOG_ERROR, "pml::restgoose") << "Could not implement TLS";
         }
     }
 }
@@ -1163,7 +1163,7 @@ bool MongooseServer::Init(const fileLocation& cert, const fileLocation& key, con
     m_bWebsocket = bEnableWebsocket;
     m_bSendPings = bSendPings;
 
-    pmlLog(pml::LOG_TRACE, "Restgoose") << "Restgoose:Server\tWebsockets=" << m_bWebsocket;
+    pmlLog(pml::LOG_TRACE, "pml::restgoose") << "Websockets=" << m_bWebsocket;
 
     s_ServerOpts.root_dir = ".";
 // @todo    s_ServerOpts.extra_headers="X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown";
@@ -1217,9 +1217,9 @@ void MongooseServer::Loop()
         m_nPipe = mg_mkpipe(&m_mgr, pipe_handler, reinterpret_cast<void*>(this), true);
         if(m_nPipe == 0)
         {
-            pmlLog(pml::LOG_TRACE, "Restgoose") << "No pipe!";
+            pmlLog(pml::LOG_TRACE, "pml::restgoose") << "No pipe!";
         }
-        pmlLog(pml::LOG_DEBUG, "Restgoose") << "RestGoose:Server\tStarted: " << m_sServerName;
+        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "Started: " << m_sServerName;
 
         auto now = std::chrono::high_resolution_clock::now();
         while (m_bLoop)
@@ -1247,7 +1247,7 @@ void MongooseServer::Loop()
     }
     else
     {
-        pmlLog(pml::LOG_ERROR, "Restgoose") << "RestGoose:Server\tCould not start webserver";
+        pmlLog(pml::LOG_ERROR, "pml::restgoose") << "Could not start webserver";
     }
 
 }
@@ -1334,8 +1334,8 @@ void MongooseServer::DoReplyText(mg_connection* pConnection, const response& the
         sReply = theResponse.data.Get();
     }
 
-    pmlLog(pml::LOG_DEBUG, "Restgoose") << "RestGoose:Server\tDoReply " << theResponse.nHttpCode;
-    pmlLog(pml::LOG_DEBUG, "Restgoose") << "RestGoose:Server\tDoReply " << sReply;
+    pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "DoReply " << theResponse.nHttpCode;
+    pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "DoReply " << sReply;
 
     stringstream ssHeaders;
     ssHeaders << "HTTP/1.1 " << theResponse.nHttpCode << " \r\n"
@@ -1355,8 +1355,8 @@ void MongooseServer::DoReplyText(mg_connection* pConnection, const response& the
 
 void MongooseServer::DoReplyFile(mg_connection* pConnection, const response& theResponse)
 {
-    pmlLog(pml::LOG_DEBUG, "Restgoose") << "RestGoose:Server\tDoReplyFile " << theResponse.nHttpCode;
-    pmlLog(pml::LOG_DEBUG, "Restgoose") << "RestGoose:Server\tDoReplyFile " << theResponse.data;
+    pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "DoReplyFile " << theResponse.nHttpCode;
+    pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "DoReplyFile " << theResponse.data;
 
     auto itIfs = m_mFileDownloads.insert(std::make_pair(pConnection, std::make_unique<std::ifstream>())).first;
     itIfs->second->open(theResponse.data.Get(), std::ifstream::ate | std::ifstream::binary);
@@ -1471,7 +1471,7 @@ void MongooseServer::SendWSQueue()
             std::stringstream ssMessage;
             ssMessage << m_qWsMessages.front().second;
 
-            pmlLog(pml::LOG_TRACE, "Restgoose") << "SendWSQueue: " << ssMessage.str();
+            pmlLog(pml::LOG_TRACE, "pml::restgoose") << "SendWSQueue: " << ssMessage.str();
 
             //turn message into array
             char *cstr = new char[ssMessage.str().length() + 1];
@@ -1508,7 +1508,7 @@ void MongooseServer::SendWSQueue()
                         }
                         else
                         {
-                            pmlLog(pml::LOG_TRACE, "Restgoose") << "RestGoose:Server\t" << itSubscriber->second.theEndpoint << " not yet authenticated...";
+                            pmlLog(pml::LOG_TRACE, "pml::restgoose") << "" << itSubscriber->second.theEndpoint << " not yet authenticated...";
                         }
                     }
                 }
@@ -1522,7 +1522,7 @@ void MongooseServer::SendWSQueue()
 
 void MongooseServer::SendWebsocketMessage(const std::set<endpoint>& setEndpoints, const Json::Value& jsMessage)
 {
-    pmlLog(pml::LOG_TRACE, "Restgoose") << "RestGoose:Server\tSendWebsocketMessage";
+    pmlLog(pml::LOG_TRACE, "pml::restgoose") << "SendWebsocketMessage";
     m_mutex.lock();
     m_qWsMessages.push(wsMessage(setEndpoints, jsMessage));
     m_mutex.unlock();
@@ -1660,7 +1660,7 @@ void MongooseServer::SendAndCheckPings(const std::chrono::milliseconds& elapsed)
                             //check PONG timeout
                         if(!itSub->second.bPonged)    //not replied within the last second
                         {
-                            pmlLog(pml::LOG_WARN, "Restgoose") << "Websocket from " << itSub->second.peer << " has not responded to PING. Close";
+                            pmlLog(pml::LOG_WARN, "pml::restgoose") << "Websocket from " << itSub->second.peer << " has not responded to PING. Close";
                             pConnection->is_closing = true;
                             //call the close callback
                             auto itCallback = m_mWebsocketCloseEndpoints.find(itSub->second.theEndpoint);
