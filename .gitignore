@@ -37,3 +37,4 @@ build/
 #cmake generated version.cpp
 src/version.cpp
 include/dllexport.h
+*.map

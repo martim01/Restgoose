@@ -18,13 +18,13 @@ ThreadPool::ThreadPool() :
 
 size_t ThreadPool::CreateWorkers(size_t nMinThreads, size_t nMaxThreads)
 {
-    pmlLog(pml::LOG_TRACE) << "ThreadPool - hardware concurreny = " << std::thread::hardware_concurrency();
+    pmlLog(pml::LOG_TRACE, "Restgoose") << "ThreadPool - hardware concurreny = " << std::thread::hardware_concurrency();
     auto nThreads = std::max(nMinThreads, std::min(nMaxThreads, (size_t)std::thread::hardware_concurrency()));
     if(nThreads > m_vThreads.size())
     {
         return AddWorkers(nThreads-m_vThreads.size());
     }
-    pmlLog(pml::LOG_TRACE) << "Threadpool::CreateWorkers - now has " << m_vThreads.size() << " workers";
+    pmlLog(pml::LOG_TRACE, "Restgoose") << "Threadpool::CreateWorkers - now has " << m_vThreads.size() << " workers";
     return m_vThreads.size();
 }
 
@@ -36,12 +36,12 @@ size_t ThreadPool::AddWorkers(size_t nWorkers)
         {
             m_vThreads.push_back(std::thread(&ThreadPool::WorkerThread, this));
         }
-        pmlLog(pml::LOG_TRACE) << "Threadpool::AddWorkers - now has " << m_vThreads.size() << " workers";
+        pmlLog(pml::LOG_TRACE, "Restgoose") << "Threadpool::AddWorkers - now has " << m_vThreads.size() << " workers";
         return m_vThreads.size();
     }
     catch(std::exception& e)
     {
-        pmlLog(pml::LOG_WARN) << "Threadpool::AddWorkers - failed to create all workers " << e.what() << " now has " << m_vThreads.size() << " workers";
+        pmlLog(pml::LOG_WARN, "Restgoose") << "Threadpool::AddWorkers - failed to create all workers " << e.what() << " now has " << m_vThreads.size() << " workers";
         return m_vThreads.size();
     }
 }
@@ -53,7 +53,7 @@ ThreadPool::~ThreadPool()
 
 void ThreadPool::Stop()
 {
-    pmlLog(pml::LOG_TRACE) << "ThreadPool - Stop";
+    pmlLog(pml::LOG_TRACE, "Restgoose") << "ThreadPool - Stop";
     m_bDone = true;
     m_work_queue.exit();
     for(auto& th : m_vThreads)
@@ -61,7 +61,7 @@ void ThreadPool::Stop()
         th.join();
     }
     m_vThreads.clear();
-    pmlLog(pml::LOG_TRACE) << "ThreadPool - Stopped";
+    pmlLog(pml::LOG_TRACE, "Restgoose") << "ThreadPool - Stopped";
 }
 
 void ThreadPool::WorkerThread()
@@ -69,10 +69,10 @@ void ThreadPool::WorkerThread()
     while(!m_bDone)
     {
         std::function<void()> task;
-        pmlLog(pml::LOG_TRACE) << "ThreadPool - wait_and_pop";
+        pmlLog(pml::LOG_TRACE, "Restgoose") << "ThreadPool - wait_and_pop";
         if(m_work_queue.wait_and_pop(task))
         {
-            pmlLog(pml::LOG_TRACE) << "ThreadPool - task()";
+            pmlLog(pml::LOG_TRACE, "Restgoose") << "ThreadPool - task()";
             task();
         }
     }

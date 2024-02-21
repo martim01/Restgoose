@@ -34,6 +34,11 @@ class NamedType
             return m_value == other.Get();
         }
 
+        bool operator!=(T const& other)
+        {
+            return m_value != other.Get();
+        }
+
         T& operator+=(T const& other)
         {
             m_value += other.Get();
@@ -48,6 +53,10 @@ class NamedType
         friend bool operator==(const NamedType<T, Parameter>& A, const NamedType<T, Parameter>& B)
         {
             return A.Get() == B.Get();
+        }
+        friend bool operator!=(const NamedType<T, Parameter>& A, const NamedType<T, Parameter>& B)
+        {
+            return A.Get() != B.Get();
         }
         friend bool operator<(const NamedType<T, Parameter>& A, const NamedType<T, Parameter>& B)
         {
