@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 project(restgoose LANGUAGES CXX C VERSION 3.2.0)
+
+message(STATUS "----pml/restgoose ----")
+
 set(CMAKE_INSTALL_PREFIX "/usr/local")
+
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -16,44 +20,43 @@ SET(MONGOOSE_CHECKOUT "7.10" CACHE STRING "Mongoose release 7.10")
 
 message(STATUS, ${CMAKE_SOURCE_DIR})
 
-if(NOT DEFINED BUILD_LOG)
-        SET(BUILD_LOG ON)
-endif()
-
 #check openssl installed
 find_package(OpenSSL REQUIRED)
 
 #Get JsonCpp
-find_path(RG_TEMP_DIR NAMES "amalgamate.py" PATHS ${DIR_JSON} NO_CACHE)
-if((NOT RG_TEMP_DIR) OR (NOT EXISTS ${RG_TEMP_DIR}))
-	message("jsoncpp not found - clone from GitHub")
-	execute_process(COMMAND git clone https://github.com/open-source-parsers/jsoncpp ${DIR_JSON})
+if(NOT DEFINED BUILD_JSONCPP)
+	SET(BUILD_JSONCPP ON)
+	find_path(RG_TEMP_DIR NAMES "amalgamate.py" PATHS ${DIR_JSON} NO_CACHE)
+	if((NOT RG_TEMP_DIR) OR (NOT EXISTS ${RG_TEMP_DIR}))
+		message("jsoncpp not found - clone from GitHub")
+		execute_process(COMMAND git clone https://github.com/open-source-parsers/jsoncpp ${DIR_JSON})
 
-	find_path(RG_TEMP_DIR2 NAMES "amalgamate.py" PATHS ${DIR_JSON} NO_CACHE)
-	if((NOT RG_TEMP_DIR2) OR (NOT EXISTS ${RG_TEMP_DIR2}))
-		message(FATAL_ERROR "Failed to clone jsoncpp")
+		find_path(RG_TEMP_DIR2 NAMES "amalgamate.py" PATHS ${DIR_JSON} NO_CACHE)
+		if((NOT RG_TEMP_DIR2) OR (NOT EXISTS ${RG_TEMP_DIR2}))
+			message(FATAL_ERROR "Failed to clone jsoncpp")
+		endif()
+		unset(RG_TEMP_DIR2)
+	else()
+		message(STATUS "jsoncpp found - update to latest version")
+		execute_process(COMMAND git -C ${DIR_JSON} pull --no-rebase)
 	endif()
-	unset(RG_TEMP_DIR2)
-else()
-	message(STATUS "jsoncpp found - update to latest version")
-    execute_process(COMMAND git -C ${DIR_JSON} pull --no-rebase)
-endif()
-unset(RG_TEMP_DIR)
+	unset(RG_TEMP_DIR)
 
 
-#Amalgamate JsonCpp
-find_path(RG_TEMP_DIR3 NAMES "jsoncpp.cpp" PATHS ${DIR_JSON}/dist NO_CACHE)
-if((NOT RG_TEMP_DIR3) OR (NOT EXISTS ${RG_TEMP_DIR3}))
-	message("amalgamate jsoncpp")
-	execute_process(COMMAND python3 amalgamate.py WORKING_DIRECTORY ${DIR_JSON})
-endif()
-unset(RG_TEMP_DIR3)
+	#Amalgamate JsonCpp
+	find_path(RG_TEMP_DIR3 NAMES "jsoncpp.cpp" PATHS ${DIR_JSON}/dist NO_CACHE)
+	if((NOT RG_TEMP_DIR3) OR (NOT EXISTS ${RG_TEMP_DIR3}))
+		message("amalgamate jsoncpp")
+		execute_process(COMMAND python3 amalgamate.py WORKING_DIRECTORY ${DIR_JSON})
+	endif()
+	unset(RG_TEMP_DIR3)
 
-find_path(RG_TEMP_DIR4 NAMES "jsoncpp.cpp" PATHS ${DIR_JSON}/dist NO_CACHE)
-if((NOT RG_TEMP_DIR4) OR (NOT EXISTS ${RG_TEMP_DIR4}))
-	message(FATAL_ERROR "Failed to amalgamate jsoncpp")
+	find_path(RG_TEMP_DIR4 NAMES "jsoncpp.cpp" PATHS ${DIR_JSON}/dist NO_CACHE)
+	if((NOT RG_TEMP_DIR4) OR (NOT EXISTS ${RG_TEMP_DIR4}))
+		message(FATAL_ERROR "Failed to amalgamate jsoncpp")
+	endif()
+	unset(RG_TEMP_DIR4)
 endif()
-unset(RG_TEMP_DIR4)
 
 #Get Mongoose
 find_path(RG_TEMP_DIR5 NAMES "mongoose.c" PATHS ${DIR_MONGOOSE} NO_CACHE)
@@ -86,7 +89,8 @@ unset(RG_TEMP_DIR5)
 unset(RG_TEMP_DIR6)
 
 #Get log
-if(${BUILD_LOG})
+if(NOT DEFINED BUILD_LOG)
+	SET(BUILD_LOG ON)
 	find_path(RG_TEMP_DIR7 NAMES "CMakeLists.txt" PATHS ${DIR_LOG} NO_CACHE)
 	if((NOT RG_TEMP_DIR7) OR (NOT EXISTS ${RG_TEMP_DIR7}))
 		message(STATUS "log not found - clone from GitHub")
