@@ -98,6 +98,8 @@ namespace pml
                 **/
                 void Cancel();
 
+                void UseProxy(const std::string& proxy);
+
                 bool SetBasicAuthentication(const userName& user, const password& pass);
                 bool SetBearerAuthentication(const std::string& sToken);
 
