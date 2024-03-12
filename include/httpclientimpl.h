@@ -35,8 +35,9 @@ namespace pml
 
 
                 void HandleConnectEvent(mg_connection* pConnection);
-                void HandleConnectEventDirect(mg_connection* pConnection, bool bViaProxy);
-                void HandleConnectEventToProxy(mg_connection* pConnection);
+                void HandleConnectEventDirect(mg_connection* pConnection);
+               void HandleConnectEventToProxy(mg_connection* pConnection);
+                void HandleReadEvent(mg_connection* pConnection);
                 void HandleWroteEvent(mg_connection* pConnection, int nBytes);
                 void HandleMessageEvent(mg_http_message* pReply);
                 void HandleChunkEvent(mg_connection* pConnection, mg_http_message* pReply);
