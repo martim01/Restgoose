@@ -170,13 +170,17 @@ void HttpClientImpl::HandleConnectEventToProxy(mg_connection* pConnection)
         mg_tls_init(pConnection, &opts);
     }
 
+    //if we've alreday got the http:// bit don't repeat it
+    std::string sEndpoint;
+    if(m_point.second.Get().substr(0, sProto.length()) == sProto)
+    {
+        sProto = "";
+        sEndpoint = m_point.second.Get().substr(sProto.length());
+    }
+
     m_bConnectedViaProxy = true;
 
-    auto vSplit = SplitString(m_point.second.Get(), '/');
-    if(vSplit.size() < 2)
-    {
-        vSplit.push_back("/");
-    }
+    auto vSplit = SplitString(sEndpoint, '/');
 
     //send the connection headers
     std::stringstream ss;
