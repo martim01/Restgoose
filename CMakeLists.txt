@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
-project(restgoose LANGUAGES CXX C VERSION 3.2.0)
+project(restgoose LANGUAGES CXX C VERSION 3.3.0)
 
 message(STATUS "----pml/restgoose ----")
 

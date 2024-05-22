@@ -77,7 +77,7 @@ void Server::SendWebsocketMessage(const std::set<endpoint>& setEndpoints, const 
     m_pImpl->SendWebsocketMessage(setEndpoints, jsMessage);
 }
 
-void Server::SetAuthorizationTypeBearer(const std::function<bool(const methodpoint&, const std::string&)>& callback, const std::function<response()>& callbackHandleNotAuthorized, bool bAuthenticateWebsocketsViaQuery)
+void Server::SetAuthorizationTypeBearer(const std::function<bool(const methodpoint&, const std::string&)>& callback, const std::function<response(const endpoint& uri, bool)>& callbackHandleNotAuthorized, bool bAuthenticateWebsocketsViaQuery)
 {
     m_pImpl->SetAuthorizationTypeBearer(callback, callbackHandleNotAuthorized, bAuthenticateWebsocketsViaQuery);
 }

@@ -637,7 +637,8 @@ void MongooseServer::HandleFirstChunk(httpchunks& chunk, mg_connection* pConnect
     if(bAuthenticated == false)
     {
         pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HandleFirstChunk: SendAuthentication...";
-        SendAuthenticationRequest(pConnection);
+        auto thePoint = GetMethodPoint(pMessage);
+        SendAuthenticationRequest(pConnection, thePoint, false);
     }
     else
     {
@@ -706,6 +707,8 @@ void MongooseServer::WorkoutBoundary(httpchunks& chunk) const
 void MongooseServer::EventHttpChunk(mg_connection *pConnection, void* pData)
 {
     auto pMessage = reinterpret_cast<mg_http_message*>(pData);
+
+    
 
     //Mongoose now fires a Chunk event whether the message is chunked encoded or not. So double check here
     auto chunked = mg_http_get_header(pMessage, "Transfer-Encoding");
@@ -986,7 +989,7 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int, void* pData)
         auto [bAuth, user] = CheckAuthorization(pMessage);
         if(bAuth == false)
         {
-            SendAuthenticationRequest(pConnection);
+            SendAuthenticationRequest(pConnection, thePoint, false);
             return;
         }
         //none found so sne a "not found" error
@@ -1037,7 +1040,7 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
     auto [bAuth, user] = CheckAuthorization(pMessage);
     if(bAuth == false)
     {
-        SendAuthenticationRequest(pConnection);
+        SendAuthenticationRequest(pConnection, thePoint, true);
     }
     else
     {
@@ -1099,7 +1102,7 @@ void MongooseServer::EventHttpApiMultipart(mg_connection *pConnection, mg_http_m
     auto [bAuth, user]= CheckAuthorization(pMessage);
     if(bAuth == false)
     {
-        SendAuthenticationRequest(pConnection);
+        SendAuthenticationRequest(pConnection, thePoint, true);
     }
     else
     {
@@ -1606,7 +1609,7 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
 }
 
 
-void MongooseServer::SendAuthenticationRequest(mg_connection* pConnection)
+void MongooseServer::SendAuthenticationRequest(mg_connection* pConnection, const methodpoint& thePoint, bool bApi)
 {
      if(m_tokenCallback == nullptr)
     {
@@ -1618,14 +1621,15 @@ void MongooseServer::SendAuthenticationRequest(mg_connection* pConnection)
         {
             ssHeaders << "Strict-Transport-Security: max-age=31536000; includeSubDomains\r\n";
         }
-	ssHeaders << "\r\n";
+	    ssHeaders << "\r\n";
 
         mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
         pConnection->is_draining = 1;
     }
     else if(m_tokenCallbackHandleNotAuthorized)
     {
-        DoReply(pConnection, m_tokenCallbackHandleNotAuthorized());
+
+        DoReply(pConnection, m_tokenCallbackHandleNotAuthorized(thePoint.second, bApi));
     }
     else
     {
@@ -1788,7 +1792,7 @@ void MongooseServer::AddNotFoundCallback(const std::function<response(const http
     m_callbackNotFound = func;
 }
 
-void MongooseServer::SetAuthorizationTypeBearer(const std::function<bool(const methodpoint&, const std::string&)>& callback, const std::function<response()>& callbackHandleNotAuthorized, bool bAuthenticateWebsocketsViaQuery)
+void MongooseServer::SetAuthorizationTypeBearer(const std::function<bool(const methodpoint&, const std::string&)>& callback, const std::function<response(const endpoint&, bool)>& callbackHandleNotAuthorized, bool bAuthenticateWebsocketsViaQuery)
 {
     if(callback)
     {

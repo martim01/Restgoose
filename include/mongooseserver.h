@@ -54,7 +54,7 @@ namespace pml
 
                 void SetInterface(const ipAddress& addr, unsigned short nPort);
 
-                void SetAuthorizationTypeBearer(const std::function<bool(const methodpoint&, const std::string&)>& callback, const std::function<response()>&  callbackHandleNotAuthorized,bool bAuthenticateWebsocketsViaQuery);
+                void SetAuthorizationTypeBearer(const std::function<bool(const methodpoint&, const std::string&)>& callback, const std::function<response(const endpoint&, bool)>&  callbackHandleNotAuthorized,bool bAuthenticateWebsocketsViaQuery);
                 void SetAuthorizationTypeBasic(const userName& aUser, const password& aPassword);
                 void SetAuthorizationTypeNone();
                 void SetUnprotectedEndpoints(const std::set<methodpoint>& setUnprotected);
@@ -191,7 +191,7 @@ namespace pml
                 void DoReplyText(mg_connection* pConnection, const response& theResponse) const;
                 void DoReplyFile(mg_connection* pConnection, const response& theResponse);
                 void DoReplyThreaded(mg_connection* pConnection, const query& theQuery, const std::vector<partData>& theData, const methodpoint& thePoint, const userName& theUser);
-                void SendAuthenticationRequest(mg_connection* pConnection);
+                void SendAuthenticationRequest(mg_connection* pConnection, const methodpoint& thePoint, bool bApi);
 
                 void SendOptions(mg_connection* pConnection, const endpoint& thEndpoint);
 
@@ -272,7 +272,7 @@ namespace pml
                 std::multimap<endpoint, httpMethod, end_less> m_mmOptions;
 
                 std::function<bool(const methodpoint&, const std::string&)> m_tokenCallback = nullptr;
-                std::function<response()> m_tokenCallbackHandleNotAuthorized = nullptr;
+                std::function<response(const endpoint&, bool)> m_tokenCallbackHandleNotAuthorized = nullptr;
 
                 std::map<mg_connection*, subscriber > m_mSubscribers;
 
