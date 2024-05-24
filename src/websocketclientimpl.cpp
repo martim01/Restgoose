@@ -155,7 +155,7 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
             HandleInitialConnection(pConnection);
             break;
         case MG_EV_ERROR:
-            pmlLog(pml::LOG_INFO, "pml::restgoose") << "RestGoose:WebsocketClient\tWebsocket error: " << (char*)pEventData;
+            pmlLog(pml::LOG_INFO, "pml::restgoose") << "RestGoose:WebsocketClient\tWebsocket error: " << std::string((char*)pEventData);
             MarkConnectionConnected(pConnection, false);
             break;
         case MG_EV_WS_OPEN:
@@ -164,7 +164,6 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
             break;
         case MG_EV_WS_MSG:
             {
-                pmlLog(pml::LOG_TRACE, "pml::restgoose") << "RestGoose:WebsocketClient\tMessage";
                 mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
                 //CheckPong(pConnection, pMessage);
 
