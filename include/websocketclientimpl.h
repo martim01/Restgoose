@@ -38,7 +38,7 @@ namespace pml
                 void RemoveCallbacks();
 
             private:
-                WebSocketClientImpl(std::function<bool(const endpoint& theEndpoint, bool)> pConnectCallback, std::function<bool(const endpoint& theEndpoint, const std::string&)> pMessageCallback, unsigned int nTimeout=250, bool bPingPong = true);
+                WebSocketClientImpl(const std::function<bool(const endpoint& theEndpoint, bool)>& pConnectCallback, const std::function<bool(const endpoint& theEndpoint, const std::string&)>& pMessageCallback, unsigned int nTimeout=250, bool bPingPong = true);
 
                 void Loop();
 
@@ -60,8 +60,8 @@ namespace pml
                 std::function<bool(const endpoint& theEndpoint, const std::string&)> m_pMessageCallback;
                 unsigned int m_nTimeout;
 
-                std::unique_ptr<std::thread> m_pThread;
-                std::atomic<bool> m_bRun;
+                std::unique_ptr<std::thread> m_pThread{nullptr};
+                std::atomic<bool> m_bRun{true};
 
                 std::mutex m_mutex;
 
@@ -77,7 +77,7 @@ namespace pml
 
                 std::map<endpoint, connection> m_mConnection;
 
-                int m_nPipe;
+                int m_nPipe{1};
                 bool m_bPingPong;
         };
     }

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
-project(restgoose LANGUAGES CXX C VERSION 3.3.0)
+project(restgoose LANGUAGES CXX C VERSION 3.4.0)
 
 message(STATUS "----pml/restgoose ----")
 
@@ -16,7 +16,7 @@ SET(DIR_BASE $ENV{HOME} CACHE STRING "base location for libraries")
 SET(DIR_JSON ${DIR_BASE}/jsoncpp CACHE STRING "location of jsoncpp")
 SET(DIR_MONGOOSE ${DIR_BASE}/mongoose CACHE STRING "location of mongoose")
 SET(DIR_LOG ${DIR_BASE}/log CACHE STRING "location of pml log")
-SET(MONGOOSE_CHECKOUT "7.10" CACHE STRING "Mongoose release 7.10")
+SET(MONGOOSE_CHECKOUT "7.14" CACHE STRING "Mongoose release 7.14")
 
 message(STATUS, ${CMAKE_SOURCE_DIR})
 

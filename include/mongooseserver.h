@@ -234,7 +234,6 @@ namespace pml
                 void HandleAccept(mg_connection* pConnection) const;
                 void HandleOpen(mg_connection* pConnection);
 
-                void EventHttpChunk(mg_connection *pConnection, void* pData);
 
                 methodpoint GetMethodPoint(mg_http_message* pMessage) const;
 
@@ -301,46 +300,18 @@ namespace pml
 
                 std::string m_sAcl;
 
-                struct httpchunks
-                {
-                    httpchunks()=default;
-                    ~httpchunks();
-                    size_t nTotalSize = 0;
-                    size_t nCurrentSize =0;
-                    headerValue contentType;
-                    methodpoint thePoint;
-                    query theQuery;
-                    endpointCallback pCallback = {nullptr, false};
-
-                    userName theUser;
-                    //multipart stuff
-                    enum enumPlace{BOUNDARY, HEADER};
-                    enumPlace ePlace = BOUNDARY;
-
-                    std::vector<char> vBuffer;
-                    std::string sBoundary;
-                    std::string sBoundaryLast;
-                    std::vector<partData> vParts;
-
-                    std::shared_ptr<std::ofstream> pofs = nullptr;
-                };
-
-                void HandleFirstChunk(httpchunks& chunk, mg_connection* pConnection, mg_http_message* pMessage);
-                void HandleLastChunk(httpchunks& chunk, mg_connection* pConnection);
-                void HandleMultipartChunk(httpchunks& chunk, mg_http_message* pMessage);
-                void HandleGenericChunk(httpchunks& chunk, mg_http_message* pMessage) const;
-                void WorkoutBoundary(httpchunks& chunk) const;
-                void MultipartChunkBoundary(httpchunks& chunk, char c) const;
-                void MultipartChunkHeader(httpchunks& chunk, char c) const;
-                void MultipartChunkBoundaryFound(httpchunks& chunk, char c) const;
-                void MultipartChunkLastBoundaryFound(httpchunks& chunk, char c) const;
-                void MultipartChunkBoundarySearch(httpchunks& chunk, char c) const;
-
-                std::map<mg_connection*, httpchunks> m_mChunks;
-
                 std::map<mg_connection*, std::unique_ptr<std::ifstream> > m_mFileDownloads;
 
-                std::map<headerName, headerValue> m_mHeaders;
+                std::map<headerName, headerValue> m_mHeaders{{headerName("X-Frame-Options"), headerValue("sameorigin")},
+                                                             {headerName("Cache-Control"), headerValue("no-cache")},
+                                                             {headerName("X-Content-Type-Options"), headerValue("nosniff")},
+                                                             {headerName("Referrer-Policy"), headerValue("no-referrer")},
+                                                             {headerName("Server"), headerValue("unknown")},
+                                                             {headerName("Access-Control-Allow-Origin"), headerValue("*")},
+                                                             {headerName("Access-Control-Allow-Credentials"), headerValue("true")},
+                                                             {headerName("Access-Control-Allow-Methods"), headerValue("GET, PUT, PATCH, POST, HEAD, OPTIONS, DELETE")},
+                                                             {headerName("Access-Control-Allow-Headers"), headerValue("Content-Type, Accept, Authorization")},
+                                                             {headerName("Access-Control-Max-Age"), headerValue("3600")}};
 
                 std::string m_sHostname;
         };

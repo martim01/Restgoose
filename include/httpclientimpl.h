@@ -77,7 +77,7 @@ namespace pml
                 void GetContentHeaders(mg_http_message* pReply);
                 void GetResponseCode(mg_http_message* pReply);
 
-                void DoLoop(mg_mgr& mgr);
+                void DoLoop(mg_mgr& mgr) const;
 
                 void HandleSimpleWroteEvent(mg_connection* pConnection);
                 void HandleMultipartWroteEvent(mg_connection* pConnection);

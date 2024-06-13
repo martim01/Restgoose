@@ -6,30 +6,21 @@
 using namespace pml::restgoose;
 
 
-static void callback(struct mg_connection* pConnection, int nEvent, void* pEventData, void* pFnData)
+static void callback(struct mg_connection* pConnection, int nEvent, void* pEventData)
 {
-    reinterpret_cast<WebSocketClientImpl*>(pFnData)->Callback(pConnection, nEvent, pEventData);
+    reinterpret_cast<WebSocketClientImpl*>(pConnection->fn_data)->Callback(pConnection, nEvent, pEventData);
 }
 
-static void pipe_handler(mg_connection *pConnection, int nEvent, void* pData, void* fn_data)
-{
-    if(nEvent == MG_EV_READ)
-    {
-        WebSocketClientImpl* pThread = reinterpret_cast<WebSocketClientImpl*>(fn_data);
-        pThread->SendMessages();
-    }
-}
 
-WebSocketClientImpl::WebSocketClientImpl(std::function<bool(const endpoint& theEndpoint, bool)> pConnectCallback, std::function<bool(const endpoint& theEndpoint, const std::string&)> pMessageCallback, unsigned int nTimeout, bool bPingPong) :
+WebSocketClientImpl::WebSocketClientImpl(const std::function<bool(const endpoint& theEndpoint, bool)>& pConnectCallback, 
+                                         const std::function<bool(const endpoint& theEndpoint, const std::string&)>& pMessageCallback, unsigned int nTimeout, bool bPingPong) :
     m_pConnectCallback(pConnectCallback),
     m_pMessageCallback(pMessageCallback),
-    m_nTimeout(nTimeout),
-    m_pThread(nullptr),
-    m_bRun(true)
+    m_nTimeout(nTimeout)
 {
     mg_mgr_init(&m_mgr);        // Initialise event manager
+    mg_wakeup_init(&m_mgr);
 
-    m_nPipe = mg_mkpipe(&m_mgr, pipe_handler, reinterpret_cast<void*>(this), true);
 }
 
 WebSocketClientImpl::~WebSocketClientImpl()
@@ -119,13 +110,13 @@ void WebSocketClientImpl::CheckConnections()
 
 void WebSocketClientImpl::SendMessages()
 {
-    std::lock_guard<std::mutex> lg(m_mutex);
-    for(auto& pairConnection : m_mConnection)
+    std::scoped_lock lg(m_mutex);
+    for(auto& [theEndpoint, theConnection] : m_mConnection)
     {
-        while(pairConnection.second.q.empty() == false)
+        while(theConnection.q.empty() == false)
         {
-            mg_ws_send(pairConnection.second.pConnection, pairConnection.second.q.front().c_str(), pairConnection.second.q.front().size(), WEBSOCKET_OP_TEXT);
-            pairConnection.second.q.pop();
+            mg_ws_send(theConnection.pConnection, theConnection.q.front().c_str(), theConnection.q.front().size(), WEBSOCKET_OP_TEXT);
+            theConnection.q.pop();
         }
     }
 }
@@ -149,8 +140,6 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
         case MG_EV_HTTP_MSG:
             pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "RestGoose:WebsocketClient\tWebsocket http message!";
             break;
-        case MG_EV_HTTP_CHUNK:
-            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "RestGoose:WebsocketClient\tWebsocket http chunk!";
         case MG_EV_CONNECT:
             HandleInitialConnection(pConnection);
             break;
@@ -164,12 +153,11 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
             break;
         case MG_EV_WS_MSG:
             {
-                mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
-                //CheckPong(pConnection, pMessage);
+                auto pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
 
                 if(m_pMessageCallback && m_bRun)
                 {
-                    std::string sMessage(pMessage->data.ptr, pMessage->data.len);
+                    std::string sMessage(pMessage->data.buf, pMessage->data.len);
                     if(m_pMessageCallback(FindUrl(pConnection), sMessage) == false)
                     {
                         CloseConnection(pConnection, true);
@@ -180,8 +168,8 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
         case MG_EV_WS_CTL:
             if(m_pConnectCallback)
             {
-                mg_ws_message* pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
-                std::string sMessage(pMessage->data.ptr, pMessage->data.len);
+                auto * pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
+                std::string sMessage(pMessage->data.buf, pMessage->data.len);
 
                 if((pMessage->flags & 15) == WEBSOCKET_OP_CLOSE)
                 {
@@ -203,21 +191,24 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
                 EraseConnection(pConnection);
             }
             break;
+        case MG_EV_WAKEUP:
+            SendMessages();
+            break;
     }
 }
 
 void WebSocketClientImpl::HandleInitialConnection(mg_connection* pConnection)
 {
-    for(auto& pairConnection : m_mConnection)
+    for(const auto& [theEndpoint, theConnection] : m_mConnection)
     {
-        if(pairConnection.second.pConnection == pConnection)
+        if(theConnection.pConnection == pConnection)
         {
-            mg_str host = mg_url_host(pairConnection.first.Get().c_str());
-            if(mg_url_is_ssl(pairConnection.first.Get().c_str()))
+            mg_str host = mg_url_host(theEndpoint.Get().c_str());
+            if(mg_url_is_ssl(theEndpoint.Get().c_str()))
             {
                 pmlLog(pml::LOG_TRACE, "pml::restgoose") << "WebsocketClient\tConnection with tls";
                 mg_tls_opts opts{};
-                opts.srvname = host;
+                opts.name = host;
                 mg_tls_init(pConnection, &opts);
             }
             break;
@@ -229,11 +220,11 @@ void WebSocketClientImpl::CheckPong(mg_connection* pConnection, mg_ws_message* p
 {
     if((pMessage->flags & WEBSOCKET_OP_PONG) != 0)
     {
-        for(auto& pairConnection : m_mConnection)
+        for(auto& [theEndpoint, theConnection] : m_mConnection)
         {
-            if(pairConnection.second.pConnection == pConnection)
+            if(theConnection.pConnection == pConnection)
             {
-                pairConnection.second.bPonged  = true;
+                theConnection.bPonged  = true;
                 break;
             }
         }
@@ -256,15 +247,13 @@ void WebSocketClientImpl::Stop()
 bool WebSocketClientImpl::SendMessage(const endpoint& theEndpoint, const std::string& sMessage)
 {
     m_mutex.lock();
-    auto itConnection = m_mConnection.find(theEndpoint);
-    if(itConnection != m_mConnection.end())
+    if(auto itConnection = m_mConnection.find(theEndpoint); itConnection != m_mConnection.end())
     {
         itConnection->second.q.push(sMessage);
         m_mutex.unlock();
         if(m_nPipe != 0)
         {
-            send(m_nPipe, "hi", 2, 0);
-            //mg_mgr_wakeup(m_pPipe, nullptr, 0);
+            mg_wakeup(&m_mgr, m_nPipe, nullptr, 0);
         }
         return true;
     }
@@ -275,14 +264,14 @@ bool WebSocketClientImpl::SendMessage(const endpoint& theEndpoint, const std::st
 
 bool WebSocketClientImpl::Connect(const endpoint& theEndpoint)
 {
-    std::lock_guard<std::mutex> lg(m_mutex);
+    std::lock_guard lg(m_mutex);
     if(m_mConnection.find(theEndpoint) == m_mConnection.end())
     {
         pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "RestGoose:WebsocketClient\t" << "Try to connect to " << theEndpoint;
         auto pConnection = mg_ws_connect(&m_mgr, theEndpoint.Get().c_str(), callback, reinterpret_cast<void*>(this), nullptr);
         if(pConnection)
         {
-            m_mConnection.insert(std::make_pair(theEndpoint, connection(pConnection)));
+            m_mConnection.try_emplace(theEndpoint, connection(pConnection));
             return true;
         }
     }
@@ -303,11 +292,11 @@ void WebSocketClientImpl::CloseConnection(mg_connection* pConnection, bool bTell
     pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebSocketClientImpl::CloseConnection called by client";
     pConnection->is_closing = 1;    //let mongoose know to get rid of the connection
 
-    for(auto pairConnection : m_mConnection)
+    for(const auto& [theEndpoint, theConnection] : m_mConnection)
     {
-        if(pairConnection.second.pConnection == pConnection)
+        if(theConnection.pConnection == pConnection)
         {
-            m_mConnection.erase(pairConnection.first);
+            m_mConnection.erase(theEndpoint);
             break;
         }
     }
@@ -315,8 +304,7 @@ void WebSocketClientImpl::CloseConnection(mg_connection* pConnection, bool bTell
 
 void WebSocketClientImpl::CloseConnection(const endpoint& theEndpoint)
 {
-    auto itConnection = m_mConnection.find(theEndpoint);
-    if(itConnection != m_mConnection.end())
+    if(auto itConnection = m_mConnection.find(theEndpoint); itConnection != m_mConnection.end())
     {
         mg_ws_send(itConnection->second.pConnection, nullptr, 0, WEBSOCKET_OP_CLOSE);
         itConnection->second.pConnection->is_draining = 1; //send everything then close
@@ -327,11 +315,11 @@ void WebSocketClientImpl::CloseConnection(const endpoint& theEndpoint)
 
 endpoint WebSocketClientImpl::FindUrl(mg_connection* pConnection)
 {
-    for(auto pairConnection : m_mConnection)
+    for(const auto& [theEndpoint, theConnection] : m_mConnection)
     {
-        if(pairConnection.second.pConnection == pConnection)
+        if(theConnection.pConnection == pConnection)
         {
-            return pairConnection.first;
+            return theEndpoint;
         }
     }
     return endpoint("");
@@ -339,20 +327,20 @@ endpoint WebSocketClientImpl::FindUrl(mg_connection* pConnection)
 
 void WebSocketClientImpl::MarkConnectionConnected(mg_connection* pConnection, bool bConnected)
 {
-    for(auto& pairConnection : m_mConnection)
+    for(auto& [theEndpoint, theConnection] : m_mConnection)
     {
-        if(pairConnection.second.pConnection == pConnection)
+        if(theConnection.pConnection == pConnection)
         {
-            pairConnection.second.bConnected = bConnected;
+            theConnection.bConnected = bConnected;
             if(bConnected)
             {
-                pairConnection.second.tp = std::chrono::system_clock::now();    //mark first time connected for future ping/ponging
+                theConnection.tp = std::chrono::system_clock::now();    //mark first time connected for future ping/ponging
             }
 
             if(m_pConnectCallback && m_bRun)
             {
                 pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "RestGoose:WebsocketClient\tMarkConnectionConnected  " << bConnected;
-                bool bKeep = m_pConnectCallback(pairConnection.first, bConnected);
+                bool bKeep = m_pConnectCallback(theEndpoint, bConnected);
                 if(bConnected && bKeep == false)
                 {
                     CloseConnection(pConnection, true);
@@ -376,11 +364,11 @@ void WebSocketClientImpl::RemoveCallbacks()
 
 void WebSocketClientImpl::EraseConnection(mg_connection* pConnection)
 {
-    for(const auto& pairConnection : m_mConnection)
+    for(const auto& [theEndpoint, theConnection] : m_mConnection)
     {
-        if(pairConnection.second.pConnection == pConnection)
+        if(theConnection.pConnection == pConnection)
         {
-            m_mConnection.erase(pairConnection.first);
+            m_mConnection.erase(theEndpoint);
             break;
         }
     }
