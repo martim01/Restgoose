@@ -110,6 +110,7 @@ namespace pml
                 /** @brief Cancels a running procedure
                 **/
                 void Cancel() const;
+				void UseProxy(const std::string& proxy);
 
                 bool SetBasicAuthentication(const userName& user, const password& pass) const;
                 bool SetBearerAuthentication(const std::string& sToken) const;

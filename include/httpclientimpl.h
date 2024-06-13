@@ -38,6 +38,9 @@ namespace pml
 
 
                 void HandleConnectEvent(mg_connection* pConnection);
+                void HandleConnectEventDirect(mg_connection* pConnection);
+               void HandleConnectEventToProxy(mg_connection* pConnection);
+                void HandleReadEvent(mg_connection* pConnection);
                 void HandleWroteEvent(mg_connection* pConnection, int nBytes);
                 void HandleMessageEvent(mg_http_message* pReply);
                 void HandleChunkEvent(mg_connection* pConnection, mg_http_message* pReply);
@@ -45,6 +48,8 @@ namespace pml
 
                 bool SetBasicAuthentication(const userName& user, const password& pass);
                 bool SetBearerAuthentication(const std::string& sToken);
+
+                void UseProxy(const endpoint& proxy);
 
             private:
 
@@ -115,6 +120,8 @@ namespace pml
                 std::function<void(unsigned long, unsigned long)> m_pDownloadProgressCallback = nullptr;
                 std::function<void(const clientResponse&, unsigned int, const std::string& )> m_pAsyncCallback = nullptr;
                 std::function<void(const clientResponse&, unsigned int)> m_pAsyncCallbackV1 = nullptr;
+				endpoint m_proxy;
+                bool m_bConnectedViaProxy{false};
         };
     }
 }

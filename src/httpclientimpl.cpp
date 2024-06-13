@@ -75,7 +75,9 @@ HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target,
 void HttpClientImpl::HandleConnectEvent(mg_connection* pConnection)
 {
 
-    m_eStatus = HttpClientImpl::CONNECTED;
+void HttpClientImpl::HandleConnectEventDirect(mg_connection* pConnection)
+{
+    pmlLog(pml::LOG_TRACE, "pml::restgoose") << "Direct Connection";
 
     //if https then do so
     std::string sProto("http://");
@@ -123,9 +125,135 @@ void HttpClientImpl::HandleConnectEvent(mg_connection* pConnection)
 
     pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient:SendHeader: " << str;
     mg_send(pConnection, str.c_str(), str.length());
-
 }
 
+void HttpClientImpl::HandleConnectEventToProxy(mg_connection* pConnection)
+{
+    pmlLog(pml::LOG_TRACE, "pml::restgoose") << "Connected to Proxy";
+    //if https then do so
+    std::string sProto("http://");
+    auto host = mg_url_host(m_point.second.Get().c_str());
+    auto port = mg_url_port(m_point.second.Get().c_str());
+
+    if(mg_url_is_ssl(m_point.second.Get().c_str()))
+    {
+        sProto = "https://";
+
+        pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient\tConnection is https";
+        mg_tls_opts opts{};
+        opts.srvname = host;
+
+        if(m_ca.Get().empty() == false)
+        {
+            opts.ca = m_ca.Get().c_str();
+        }
+        if(m_Cert.Get().empty() == false && m_Key.Get().empty() == false)
+        {
+            opts.cert = m_Cert.Get().c_str();
+            opts.certkey = m_Key.Get().c_str();
+        }
+        mg_tls_init(pConnection, &opts);
+    }
+
+    //if we've alreday got the http:// bit don't repeat it
+    std::string sEndpoint;
+    if(m_point.second.Get().substr(0, sProto.length()) == sProto)
+    {
+        sProto = "";
+        sEndpoint = m_point.second.Get().substr(sProto.length());
+    }
+
+    m_bConnectedViaProxy = true;
+
+    auto vSplit = SplitString(sEndpoint, '/');
+
+    //send the connection headers
+    std::stringstream ss;
+    ss << m_point.first.Get() << " " << sProto << m_point.second.Get() << " HTTP/1.1" << CRLF
+       << "Host: " << vSplit[0] << CRLF;
+
+    auto nLength = WorkoutDataSize();
+    if(nLength != 0 && m_contentType.Get().empty() == false)
+    {
+        ss << "Content-Type: " << m_contentType.Get() << CRLF;
+        ss << "Content-Length: " << nLength << CRLF;
+    }
+    ss << "Accept: */*" << CRLF;
+
+       //<< "Expect: 100-continue\r\n"
+    for(auto pairHeader : m_mHeaders)
+    {
+        ss << pairHeader.first.Get() << ": " << pairHeader.second.Get() << CRLF;
+    }
+    ss << CRLF;
+    auto str = ss.str();
+
+    pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient:SendHeader: " << str;
+    mg_send(pConnection, str.c_str(), str.length());
+
+        /*
+
+
+
+
+
+    auto vSplit = SplitString(std::string(host.ptr, host.len), '/');
+
+    //send the connection headers
+    std::stringstream ss;
+    ss << "CONNECT " << vSplit[0] << ":" << (port != 0 ? port : 443) << " HTTP/1.1" + CRLF
+       << "Host: " << vSplit[0] << ":" << (port != 0 ? port : 443) << CRLF+CRLF;
+    auto str = ss.str();
+
+    pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient:Connect Via Proxy: " << str;
+    mg_send(pConnection, str.c_str(), str.length());
+*/
+}
+
+void HttpClientImpl::HandleReadEvent(mg_connection* pConnection)
+{
+    if(m_proxy.Get().empty() == false && m_bConnectedViaProxy == false)
+    {
+        mg_http_message hm;
+        auto n = mg_http_parse((char*)pConnection->recv.buf, pConnection->recv.len, &hm);
+        if(n > 0)
+        {
+            auto host = mg_url_host(m_point.second.Get().c_str());
+            m_bConnectedViaProxy = true;
+
+            pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient:Connected Via Proxy: " << std::string(hm.uri.ptr, hm.uri.len);
+
+            mg_iobuf_del(&pConnection->recv, 0, n);
+
+            auto vSplit = SplitString(m_point.second.Get(), '/');
+            if(vSplit.size() < 2)
+            {
+                vSplit.push_back("/");
+            }
+
+            //send the connection headers
+            std::stringstream ss;
+            ss << m_point.first.Get() << " /" << vSplit[1] << " HTTP/1.1" << CRLF
+               << "Host: " << vSplit[0] << CRLF;
+            if(m_contentType.Get().empty() == false)
+            {
+                ss << "Content-Type: " << m_contentType.Get() << CRLF;
+            }
+            ss << "Content-Length: " << WorkoutDataSize() << CRLF;
+               //<< "Expect: 100-continue\r\n"
+            for(auto pairHeader : m_mHeaders)
+            {
+                ss << pairHeader.first.Get() << ": " << pairHeader.second.Get() << CRLF;
+            }
+            ss << CRLF;
+            auto str = ss.str();
+
+            pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient:SendHeader: " << str;
+            mg_send(pConnection, str.c_str(), str.length());
+        }
+
+    }
+}
 
 void HttpClientImpl::GetContentHeaders(mg_http_message* pReply)
 {
@@ -333,6 +461,10 @@ static void evt_handler(mg_connection* pConnection, int nEvent, void* pEventData
     {
         pMessage->HandleConnectEvent(pConnection);
     }
+    else if(nEvent == MG_EV_READ)
+    {
+        pMessage->HandleReadEvent(pConnection);
+    }
     else if(nEvent == MG_EV_WRITE)
     {
         pMessage->HandleWroteEvent(pConnection, *(reinterpret_cast<int*>(pEventData)));
@@ -379,19 +511,29 @@ const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& conne
 
     m_connectionTimeout = connectionTimeout;
     m_processTimeout = processTimeout;
+    m_bConnectedViaProxy = false;
 
     pmlLog(pml::LOG_TRACE, "pml::restgoose") << "RestGoose:HttpClient::Run - connect to " << m_point.second;
     mg_mgr mgr;
     mg_mgr_init(&mgr);
-    auto pConnection = mg_http_connect(&mgr, m_point.second.Get().c_str(), evt_handler, (void*)this);
+
+    auto theEndpoint =  m_proxy.Get().empty() ? m_point.second.Get().c_str() : m_proxy.Get().c_str();
+    auto pConnection = mg_http_connect(&mgr, theEndpoint, evt_handler, (void*)this);
     if(pConnection == nullptr)
     {
-        pmlLog(pml::LOG_TRACE, "pml::restgoose") << "RestGoose:HttpClient\tCould not create connection";
+        pmlLog(pml::LOG_ERROR, "pml::restgoose") << "RestGoose:HttpClient\tCould not create connection";
         m_response.nHttpCode = clientResponse::enumError::ERROR_SETUP;
     }
     else
     {
-        pmlLog(pml::LOG_TRACE, "pml::restgoose") << "RestGoose:HttpClient::Run - connected to " << m_point.second;
+        if(m_proxy.Get().empty())
+        {
+            pmlLog(pml::LOG_TRACE, "pml::restgoose") << "RestGoose:HttpClient::Run - connecting " << m_point.second;
+        }
+        else
+        {
+            pmlLog(pml::LOG_TRACE, "pml::restgoose") << "RestGoose:HttpClient::Run - connecting " << m_point.second << " via proxy " << m_proxy;
+        }
         DoLoop(mgr);
         if(m_eStatus == HttpClientImpl::REDIRECTING)
         {
@@ -774,4 +916,9 @@ bool HttpClientImpl::SetClientCertificate(const std::filesystem::path& cert, con
         return true;
     }
     return false;
+}
+
+void HttpClientImpl::UseProxy(const endpoint& proxy)
+{
+    m_proxy = proxy;
 }

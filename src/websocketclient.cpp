@@ -4,8 +4,8 @@
 
 using namespace pml::restgoose;
 
-WebSocketClient::WebSocketClient(std::function<bool(const endpoint&, bool)> pConnectCallback, std::function<bool(const endpoint&, const std::string&)> pMessageCallback, unsigned int nTimeout) :
-    m_pImpl(std::unique_ptr<WebSocketClientImpl>(new WebSocketClientImpl(pConnectCallback, pMessageCallback, nTimeout)))
+WebSocketClient::WebSocketClient(std::function<bool(const endpoint&, bool)> pConnectCallback, std::function<bool(const endpoint&, const std::string&)> pMessageCallback, unsigned int nTimeout, bool bPingPong) :
+    m_pImpl(std::unique_ptr<WebSocketClientImpl>(new WebSocketClientImpl(pConnectCallback, pMessageCallback, nTimeout, bPingPong)))
 {
 
 }
@@ -43,4 +43,9 @@ bool WebSocketClient::Connect(const endpoint& theEndpoint)
 void WebSocketClient::CloseConnection(const endpoint& theEndpoint)
 {
     m_pImpl->CloseConnection(theEndpoint);
+}
+
+void WebSocketClient::RemoveCallbacks()
+{
+    m_pImpl->RemoveCallbacks();
 }

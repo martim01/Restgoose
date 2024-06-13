@@ -20,7 +20,7 @@ static void pipe_handler(mg_connection *pConnection, int nEvent, void* pData, vo
     }
 }
 
-WebSocketClientImpl::WebSocketClientImpl(std::function<bool(const endpoint& theEndpoint, bool)> pConnectCallback, std::function<bool(const endpoint& theEndpoint, const std::string&)> pMessageCallback, unsigned int nTimeout) :
+WebSocketClientImpl::WebSocketClientImpl(std::function<bool(const endpoint& theEndpoint, bool)> pConnectCallback, std::function<bool(const endpoint& theEndpoint, const std::string&)> pMessageCallback, unsigned int nTimeout, bool bPingPong) :
     m_pConnectCallback(pConnectCallback),
     m_pMessageCallback(pMessageCallback),
     m_nTimeout(nTimeout),
@@ -87,7 +87,7 @@ void WebSocketClientImpl::CheckConnections()
             ++itConnection;
             m_mConnection.erase(itErase);
         }
-        else if(itConnection->second.bConnected && elapsed > 2000)
+        else if(m_bPingPong&& itConnection->second.bConnected && elapsed > 2000)
         {
             itConnection->second.tp = std::chrono::system_clock::now();
             if(itConnection->second.bPonged == false)    //not replied within the last second
@@ -366,6 +366,13 @@ void WebSocketClientImpl::MarkConnectionConnected(mg_connection* pConnection, bo
         }
     }
 }
+
+void WebSocketClientImpl::RemoveCallbacks()
+{
+    m_pConnectCallback = nullptr;
+    m_pMessageCallback = nullptr;
+}
+
 
 void WebSocketClientImpl::EraseConnection(mg_connection* pConnection)
 {
