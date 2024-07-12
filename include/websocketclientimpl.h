@@ -54,6 +54,8 @@ namespace pml
                 endpoint FindUrl(mg_connection* pConnection);
                 void EraseConnection(mg_connection* pConnection);
 
+                bool DoConnect();
+
                 mg_mgr m_mgr;
 
                 std::function<bool(const endpoint& theEndpoint, bool)> m_pConnectCallback;
@@ -76,6 +78,8 @@ namespace pml
                 };
 
                 std::map<endpoint, connection> m_mConnection;
+
+                std::queue<endpoint> m_qConnection;
 
                 int m_nPipe{1};
                 bool m_bPingPong;

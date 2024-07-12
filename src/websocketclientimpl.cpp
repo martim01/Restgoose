@@ -52,7 +52,7 @@ void WebSocketClientImpl::Loop()
             CheckConnections();
         }
     }
-    pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "websocketclient loop exited";
+    pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\tloop exited";
 }
 
 void WebSocketClientImpl::CheckConnections()
@@ -66,7 +66,7 @@ void WebSocketClientImpl::CheckConnections()
 
         if(itConnection->second.bConnected == false && elapsed > 3000)
         {
-            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "RestGoose:WebsocketClient\tWebsocket connection timeout ";
+            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\tWebsocket connection timeout ";
             if(m_pConnectCallback)
             {
                 m_pConnectCallback(itConnection->first, false);
@@ -83,7 +83,7 @@ void WebSocketClientImpl::CheckConnections()
             itConnection->second.tp = std::chrono::system_clock::now();
             if(itConnection->second.bPonged == false)    //not replied within the last second
             {
-                pmlLog(pml::LOG_WARN, "pml::restgoose") << "Websocket has not responded to PING. Close " << itConnection->second.bPonged;
+                pmlLog(pml::LOG_WARN, "pml::restgoose") << "WebsocketClient\tWebsocket has not responded to PING. Close " << itConnection->second.bPonged;
                 itConnection->second.pConnection->is_closing = 1;
 
                 if(m_pConnectCallback)
@@ -129,26 +129,26 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
     {
 
         case MG_EV_OPEN:
-            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "RestGoose:WebsocketClient\tWebsocket connection created";
+            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\tWebsocket connection created";
             break;
         case MG_EV_RESOLVE:
-            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "RestGoose:WebsocketClient\tWebsocket hostname resolved";
+            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\tWebsocket hostname resolved";
             break;
         case MG_EV_ACCEPT:
-            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "RestGoose:WebsocketClient\tWebsocket connection accepted";
+            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\tWebsocket connection accepted";
             break;
         case MG_EV_HTTP_MSG:
-            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "RestGoose:WebsocketClient\tWebsocket http message!";
+            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\tWebsocket http message!";
             break;
         case MG_EV_CONNECT:
             HandleInitialConnection(pConnection);
             break;
         case MG_EV_ERROR:
-            pmlLog(pml::LOG_INFO, "pml::restgoose") << "RestGoose:WebsocketClient\tWebsocket error: " << std::string((char*)pEventData);
+            pmlLog(pml::LOG_INFO, "pml::restgoose") << "WebsocketClient\tWebsocket error: " << std::string((char*)pEventData);
             MarkConnectionConnected(pConnection, false);
             break;
         case MG_EV_WS_OPEN:
-            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "RestGoose:WebsocketClient\tWebsocket connected " << GetNumberOfConnections(m_mgr);
+            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\tWebsocket connected " << GetNumberOfConnections(m_mgr);
             MarkConnectionConnected(pConnection, true);
             break;
         case MG_EV_WS_MSG:
@@ -173,7 +173,7 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
 
                 if((pMessage->flags & 15) == WEBSOCKET_OP_CLOSE)
                 {
-                    pmlLog(pml::LOG_WARN, "pml::restgoose") << "Websocket closed by server";
+                    pmlLog(pml::LOG_WARN, "pml::restgoose") << "WebsocketClient\tWebsocket closed by server";
                     m_pConnectCallback(FindUrl(pConnection), false);
                     EraseConnection(pConnection);
                 }
@@ -184,7 +184,7 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
             }
             break;
         case MG_EV_CLOSE:
-            pmlLog(pml::LOG_WARN, "pml::restgoose") << "Websocket receieved a close event";
+            pmlLog(pml::LOG_WARN, "pml::restgoose") << "WebsocketClient\tWebsocket receieved a close event";
             if(m_pConnectCallback)
             {
                 m_pConnectCallback(FindUrl(pConnection), false);
@@ -233,14 +233,14 @@ void WebSocketClientImpl::CheckPong(mg_connection* pConnection, mg_ws_message* p
 
 void WebSocketClientImpl::Stop()
 {
-    pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebSocketClientImpl Stop";
+    pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\tStop";
     m_bRun = false;
     if(m_pThread)
     {
-        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebSocketClientImpl Wait on thread";
+        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\tWait on thread";
         m_pThread->join();
         m_pThread = nullptr;
-        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebSocketClientImpl finished";
+        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\tfinished";
     }
 }
 
@@ -261,23 +261,41 @@ bool WebSocketClientImpl::SendMessage(const endpoint& theEndpoint, const std::st
     return false;
 }
 
-
-bool WebSocketClientImpl::Connect(const endpoint& theEndpoint)
+bool WebSocketClientImpl::DoConnect()
 {
-    std::lock_guard lg(m_mutex);
-    if(m_mConnection.find(theEndpoint) == m_mConnection.end())
+    if(m_qConnection.empty() == false)
     {
-        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "RestGoose:WebsocketClient\t" << "Try to connect to " << theEndpoint;
+        auto theEndpoint = m_qConnection.front();
+        
+        m_qConnection.pop();
+
+        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\t" << "Try to connect to " << theEndpoint;
         auto pConnection = mg_ws_connect(&m_mgr, theEndpoint.Get().c_str(), callback, reinterpret_cast<void*>(this), nullptr);
         if(pConnection)
         {
             m_mConnection.try_emplace(theEndpoint, connection(pConnection));
             return true;
         }
+        return false;
+    }
+    return true;
+}
+
+bool WebSocketClientImpl::Connect(const endpoint& theEndpoint)
+{
+    std::lock_guard lg(m_mutex);
+    if(m_mConnection.find(theEndpoint) == m_mConnection.end())
+    {
+        m_qConnection.push(theEndpoint);
+        if(m_qConnection.size() == 1)
+        {
+            return DoConnect();
+        }
     }
     else
     {
-        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "RestGoose:WebsocketClient\t" << "Already connected to " << theEndpoint;
+        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\t" << "Already connected to " << theEndpoint;
+        return true;
     }
     return false;
 }
@@ -289,7 +307,7 @@ void WebSocketClientImpl::CloseConnection(mg_connection* pConnection, bool bTell
     {
         mg_ws_send(pConnection, nullptr, 0, WEBSOCKET_OP_CLOSE);
     }
-    pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebSocketClientImpl::CloseConnection called by client";
+    pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\tCloseConnection called by client";
     pConnection->is_closing = 1;    //let mongoose know to get rid of the connection
 
     for(const auto& [theEndpoint, theConnection] : m_mConnection)
@@ -339,7 +357,7 @@ void WebSocketClientImpl::MarkConnectionConnected(mg_connection* pConnection, bo
 
             if(m_pConnectCallback && m_bRun)
             {
-                pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "RestGoose:WebsocketClient\tMarkConnectionConnected  " << bConnected;
+                pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\tMarkConnectionConnected  " << bConnected;
                 bool bKeep = m_pConnectCallback(theEndpoint, bConnected);
                 if(bConnected && bKeep == false)
                 {
@@ -353,6 +371,9 @@ void WebSocketClientImpl::MarkConnectionConnected(mg_connection* pConnection, bo
             break;
         }
     }
+
+    DoConnect();
+    
 }
 
 void WebSocketClientImpl::RemoveCallbacks()
