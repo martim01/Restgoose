@@ -18,11 +18,11 @@ namespace pml
             public:
 
                 /** @brief Constructor
-                *   @param pConnectCallback a function that is called when the client connection to the server changes. It is passed the relative url of the connection and a boolean which is true on connection and false on disconnection. It should return true to keep the connection alive and false to close it
+                *   @param pConnectCallback a function that is called when the client connection to the server changes. It is passed the relative url of the connection a boolean which is true on connection and false on disconnection and a possible error code. It should return true to keep the connection alive and false to close it
                 *   @param pMessageCallback a function that is called whenever the server sends a message to the client. It is passed the relative url of the connection and a string containing the websocket message. It should return true to keep the connection alive and false to close it
                 *   @param timeout the amount of time to wait for the connection
                 **/
-                WebSocketClient(std::function<bool(const endpoint&, bool)> pConnectCallback, std::function<bool(const endpoint&, const std::string&)> pMessageCallback, unsigned int nTimeout=250, bool bPingPong = false);
+                WebSocketClient(std::function<bool(const endpoint&, bool, int)> pConnectCallback, std::function<bool(const endpoint&, const std::string&)> pMessageCallback, unsigned int nTimeout=250, bool bPingPong = false);
                 ~WebSocketClient();
 
                 /** @brief Starts the websocket client if it is not already running

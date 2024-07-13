@@ -38,18 +38,22 @@ namespace pml
                 void RemoveCallbacks();
 
             private:
-                WebSocketClientImpl(const std::function<bool(const endpoint& theEndpoint, bool)>& pConnectCallback, const std::function<bool(const endpoint& theEndpoint, const std::string&)>& pMessageCallback, unsigned int nTimeout=250, bool bPingPong = true);
+                enum enumError {NONE=0, INIT_FAIL=-1, TIMEOUT=-2, PING=-3};
+
+                WebSocketClientImpl(const std::function<bool(const endpoint& theEndpoint, bool, int)>& pConnectCallback, const std::function<bool(const endpoint& theEndpoint, const std::string&)>& pMessageCallback, unsigned int nTimeout=250, bool bPingPong = true);
 
                 void Loop();
 
-                void HandleInitialConnection(mg_connection* pConnection);
-                void MarkConnectionConnected(mg_connection* pConnection, bool bConnected = true);
+                void HandleInitialConnection(mg_connection* pConnection) const;
+                void MarkConnectionConnected(mg_connection* pConnection, bool bConnected = true, int code=0);
 
                 void CloseConnection(mg_connection* pConnection, bool bTellServer);
 
                 void CheckPong(mg_connection* pConnection, mg_ws_message* pMessage);
 
                 void CheckConnections();
+
+                void CloseEvent(mg_connection* pConnection);
 
                 endpoint FindUrl(mg_connection* pConnection);
                 void EraseConnection(mg_connection* pConnection);
@@ -58,7 +62,7 @@ namespace pml
 
                 mg_mgr m_mgr;
 
-                std::function<bool(const endpoint& theEndpoint, bool)> m_pConnectCallback;
+                std::function<bool(const endpoint& theEndpoint, bool, int)> m_pConnectCallback;
                 std::function<bool(const endpoint& theEndpoint, const std::string&)> m_pMessageCallback;
                 unsigned int m_nTimeout;
 
@@ -78,6 +82,8 @@ namespace pml
                 };
 
                 std::map<endpoint, connection> m_mConnection;
+
+                std::map<unsigned long, int> m_mConnectionError;
 
                 std::queue<endpoint> m_qConnection;
 
