@@ -54,6 +54,7 @@ namespace pml
                 void CheckConnections();
 
                 void CloseEvent(mg_connection* pConnection);
+                void CtlEvent(mg_connection* pConnection, void* pEventData);
 
                 endpoint FindUrl(mg_connection* pConnection);
                 void EraseConnection(mg_connection* pConnection);
@@ -84,6 +85,7 @@ namespace pml
                 std::map<endpoint, connection> m_mConnection;
 
                 std::map<unsigned long, int> m_mConnectionError;
+                std::mutex m_mutexConnection;
 
                 std::queue<endpoint> m_qConnection;
 
