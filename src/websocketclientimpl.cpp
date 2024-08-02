@@ -306,6 +306,11 @@ bool WebSocketClientImpl::SendMessage(const endpoint& theEndpoint, const std::st
 
 bool WebSocketClientImpl::DoConnect()
 {
+    if(m_nQueued == 0)
+    {
+        return true;
+    }
+
     std::scoped_lock lg(m_mutexConnection);
 
     if(m_qConnection.empty() == false)
@@ -313,13 +318,13 @@ bool WebSocketClientImpl::DoConnect()
         auto theEndpoint = m_qConnection.front();
         
         m_qConnection.pop();
+        --m_nQueued;
 
         pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\t" << "Try to connect to " << theEndpoint;
 
         
         if(auto pConnection = mg_ws_connect(&m_mgr, theEndpoint.Get().c_str(), callback, reinterpret_cast<void*>(this), nullptr); pConnection)
         {
-        //    std::scoped_lock lg(m_mutexConnection);
             pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\t" << " Connection created " << pConnection->id << " to " << theEndpoint;
             m_mConnection.try_emplace(theEndpoint, pConnection);
             return true;
@@ -339,11 +344,11 @@ bool WebSocketClientImpl::DoConnect()
 
 bool WebSocketClientImpl::Connect(const endpoint& theEndpoint)
 {
-    std::lock_guard lg(m_mutex);
+    std::scoped_lock lg(m_mutexConnection);
     if(m_mConnection.find(theEndpoint) == m_mConnection.end())
     {
-        std::scoped_lock lg(m_mutexConnection);
         m_qConnection.push(theEndpoint);
+        ++m_nQueued;
     }
     else
     {
@@ -384,7 +389,7 @@ void WebSocketClientImpl::CloseConnection(const endpoint& theEndpoint)
 }
 
 
-endpoint WebSocketClientImpl::FindUrl(mg_connection* pConnection)
+endpoint WebSocketClientImpl::FindUrl(mg_connection* pConnection) const
 {
     for(const auto& [theEndpoint, theConnection] : m_mConnection)
     {

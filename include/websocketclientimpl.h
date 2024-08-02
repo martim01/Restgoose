@@ -56,7 +56,7 @@ namespace pml
                 void CloseEvent(mg_connection* pConnection);
                 void CtlEvent(mg_connection* pConnection, void* pEventData);
 
-                endpoint FindUrl(mg_connection* pConnection);
+                endpoint FindUrl(mg_connection* pConnection) const;
                 void EraseConnection(mg_connection* pConnection);
 
                 bool DoConnect();
@@ -88,6 +88,7 @@ namespace pml
                 std::mutex m_mutexConnection;
 
                 std::queue<endpoint> m_qConnection;
+                std::atomic_uint64_t m_nQueued{0};
 
                 int m_nPipe{1};
                 bool m_bPingPong;
