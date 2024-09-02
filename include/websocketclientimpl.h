@@ -79,11 +79,18 @@ namespace pml
                     mg_connection* pConnection;
                     bool bConnected = false;
                     bool bPonged = true;
+                    bool bToClose = false;
                     std::chrono::time_point<std::chrono::system_clock> tp = std::chrono::system_clock::now();
                     std::queue<std::string> q;
                 };
 
+                bool CheckToClose(std::map<endpoint, connection>::iterator& itConnection);
+                bool CheckTimeout(std::map<endpoint, connection>::iterator& itConnection, const std::chrono::milliseconds& elapsed);
+                bool CheckPingPong(std::map<endpoint, connection>::iterator& itConnection, const std::chrono::milliseconds& elapsed);
+
+
                 std::map<endpoint, connection> m_mConnection;
+
 
                 std::map<unsigned long, int> m_mConnectionError;
                 std::mutex m_mutexConnection;
