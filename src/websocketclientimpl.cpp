@@ -63,50 +63,76 @@ void WebSocketClientImpl::CheckConnections()
 
     for(auto itConnection = m_mConnection.begin(); itConnection != m_mConnection.end(); )
     {
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now-itConnection->second.tp).count();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now-itConnection->second.tp);
 
-        if(itConnection->second.bConnected == false && elapsed > 3000)
-        {
-            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\tWebsocket connection timeout ";
-            if(m_pConnectCallback)
-            {
-                m_pConnectCallback(itConnection->first, false, enumError::TIMEOUT);
-            }
-
-            itConnection->second.pConnection->is_closing = 1;
-
-            auto itErase = itConnection;
-            ++itConnection;
-            m_mConnection.erase(itErase);
-        }
-        else if(m_bPingPong&& itConnection->second.bConnected && elapsed > 2000)
-        {
-            itConnection->second.tp = std::chrono::system_clock::now();
-            if(itConnection->second.bPonged == false)    //not replied within the last second
-            {
-                pmlLog(pml::LOG_WARN, "pml::restgoose") << "WebsocketClient\tWebsocket has not responded to PING. Close " << itConnection->second.bPonged;
-                itConnection->second.pConnection->is_closing = 1;
-
-                if(m_pConnectCallback)
-                {
-                    m_pConnectCallback(itConnection->first, false, enumError::PING);
-                }
-                auto itErase = itConnection;
-                ++itConnection;
-                m_mConnection.erase(itErase);
-            }
-            else
-            {
-                mg_ws_send(itConnection->second.pConnection, "hi", 2, WEBSOCKET_OP_PING);
-                itConnection->second.bPonged = false;
-                ++itConnection;
-            }
-        }
-        else
+        if(!CheckToClose(itConnection) && !CheckTimeout(itConnection, elapsed) && !CheckPingPong(itConnection, elapsed))
         {
             ++itConnection;
         }
     }
+}
+
+bool WebSocketClientImpl::CheckToClose(std::map<endpoint, connection>::iterator& itConnection)
+{
+    auto bHandled = false;
+    if(itConnection->second.bConnected == true && itConnection->second.bToClose == true)
+    {
+        mg_ws_send(itConnection->second.pConnection, nullptr, 0, WEBSOCKET_OP_CLOSE);
+        itConnection->second.pConnection->is_closing = 1;
+        itConnection = m_mConnection.erase(itConnection);
+        bHandled = true;
+    }
+    return bHandled;
+
+}
+
+bool WebSocketClientImpl::CheckTimeout(std::map<endpoint, connection>::iterator& itConnection, const std::chrono::milliseconds& elapsed)
+{
+    auto bHandled = false;
+
+    if(itConnection->second.bConnected == false && elapsed.count() > 3000)
+    {
+        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\tWebsocket connection timeout ";
+        if(m_pConnectCallback)
+        {
+            m_pConnectCallback(itConnection->first, false, enumError::TIMEOUT);
+        }
+
+        itConnection->second.pConnection->is_closing = 1;
+        itConnection = m_mConnection.erase(itConnection);
+        bHandled = true;
+    }
+    return bHandled;
+}
+
+bool WebSocketClientImpl::CheckPingPong(std::map<endpoint, connection>::iterator& itConnection, const std::chrono::milliseconds& elapsed)
+{
+    auto bHandled = false;
+
+    if(m_bPingPong&& itConnection->second.bConnected && elapsed.count() > 4000)
+    {
+        itConnection->second.tp = std::chrono::system_clock::now();
+        if(itConnection->second.bPonged == false)    //not replied within the last 4 seconds
+        {
+            pmlLog(pml::LOG_WARN, "pml::restgoose") << "WebsocketClient\tWebsocket has not responded to PING. Close " << itConnection->second.bPonged;
+            itConnection->second.pConnection->is_closing = 1;
+
+            if(m_pConnectCallback)
+            {
+                m_pConnectCallback(itConnection->first, false, enumError::PING);
+            }
+            itConnection = m_mConnection.erase(itConnection);
+
+            bHandled = true;
+        }
+        else
+        {
+            mg_ws_send(itConnection->second.pConnection, "hi", 2, WEBSOCKET_OP_PING);
+            itConnection->second.bPonged = false;
+        }
+    }
+
+    return bHandled;
 }
 
 void WebSocketClientImpl::SendMessages()
