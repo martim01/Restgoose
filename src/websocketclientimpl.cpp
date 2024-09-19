@@ -3,6 +3,7 @@
 #include "log.h"
 #include "mongooseserver.h"
 #include "threadpool.h"
+#include "utils.h"
 using namespace pml::restgoose;
 
 
@@ -79,7 +80,8 @@ bool WebSocketClientImpl::CheckToClose(std::map<endpoint, connection>::iterator&
     {
         mg_ws_send(itConnection->second.pConnection, nullptr, 0, WEBSOCKET_OP_CLOSE);
         itConnection->second.pConnection->is_closing = 1;
-        itConnection = m_mConnection.erase(itConnection);
+        //itConnection = m_mConnection.erase(itConnection);
+		++itConnection; //we let the close event erase the connection
         bHandled = true;
     }
     return bHandled;
@@ -346,13 +348,15 @@ bool WebSocketClientImpl::DoConnect()
         m_qConnection.pop();
         --m_nQueued;
 
-        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\t" << "Try to connect to " << theEndpoint;
+		auto vSplit = SplitString(theEndpoint.Get(), '?', 2);
+		
+        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\t" << "Try to connect to " << vSplit[0];
 
         
         if(auto pConnection = mg_ws_connect(&m_mgr, theEndpoint.Get().c_str(), callback, reinterpret_cast<void*>(this), nullptr); pConnection)
         {
             pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient\t" << " Connection created " << pConnection->id << " to " << theEndpoint;
-            m_mConnection.try_emplace(theEndpoint, pConnection);
+            m_mConnection.try_emplace(endpoint(vSplit[0]), pConnection);
             return true;
         }
         else
@@ -410,7 +414,7 @@ void WebSocketClientImpl::CloseConnection(const endpoint& theEndpoint)
     {
         mg_ws_send(itConnection->second.pConnection, nullptr, 0, WEBSOCKET_OP_CLOSE);
         itConnection->second.pConnection->is_draining = 1; //send everything then close
-        m_mConnection.erase(itConnection);
+        //m_mConnection.erase(itConnection);
     }
 }
 
