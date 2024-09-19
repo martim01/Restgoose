@@ -3,6 +3,7 @@
 #include "log.h"
 #include "mongooseserver.h"
 #include "threadpool.h"
+#include "utils.h"
 using namespace pml::restgoose;
 
 
@@ -87,9 +88,19 @@ bool WebSocketClientImpl::CheckToClose(std::map<endpoint, connection>::iterator&
     auto bHandled = false;
     if(itConnection->second.bConnected == true && itConnection->second.bToClose == true)
     {
+        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient: close connection to " << itConnection->first;
         mg_ws_send(itConnection->second.pConnection, nullptr, 0, WEBSOCKET_OP_CLOSE);
+
         itConnection->second.pConnection->is_closing = 1;
+        /**
+        if(m_pConnectCallback)
+        {
+            m_pConnectCallback(itConnection->first, false, 0);
+        }
+
         itConnection = m_mConnection.erase(itConnection);
+        **/
+        ++itConnection; //we let the close event erase the connection
         bHandled = true;
     }
     return bHandled;
@@ -355,13 +366,15 @@ bool WebSocketClientImpl::DoConnect()
         m_qConnection.pop();
         --m_nQueued;
 
-        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient: " << "Try to connect to " << theEndpoint;
+        auto vSplit = SplitString(theEndpoint.Get(), '?', 2);
+
+        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient: " << "Try to connect to " << vSplit[0];
 
         auto pConnection = mg_ws_connect(&m_mgr, theEndpoint.Get().c_str(), callback, reinterpret_cast<void*>(this), nullptr);
         if(pConnection)
         {
-            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient: " << " Connection created " << pConnection->id << " to " << theEndpoint;
-            m_mConnection.insert({theEndpoint, connection(pConnection)});
+            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient: " << " Connection created " << pConnection->id << " to " << vSplit[0];
+            m_mConnection.insert({endpoint(vSplit[0]), connection(pConnection)});
             return true;
         }
         else
@@ -420,7 +433,12 @@ void WebSocketClientImpl::CloseConnection(const endpoint& theEndpoint)
     auto itConnection = m_mConnection.find(theEndpoint);
     if(itConnection != m_mConnection.end())
     {
+        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "WebsocketClient: CloseConnection " << theEndpoint << " queued";
         itConnection->second.bToClose = true;
+    }
+    else
+    {
+        pmlLog(pml::LOG_WARN, "pml::restgoose") << "WebsocketClient: CloseConnection " << theEndpoint << " not found";
     }
 }
 
