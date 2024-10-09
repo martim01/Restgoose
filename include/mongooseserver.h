@@ -21,6 +21,8 @@ extern "C" {
 #include <condition_variable>
 #include "safequeue.h"
 #include <filesystem>
+#include "concurrentqueue.h"
+
 
 extern RG_EXPORT bool operator<(const methodpoint& e1, const methodpoint& e2);
 extern size_t GetNumberOfConnections(mg_mgr& mgr);
@@ -275,7 +277,7 @@ namespace pml
 
                 std::map<mg_connection*, subscriber > m_mSubscribers;
 
-                std::queue<wsMessage> m_qWsMessages;
+                moodycamel::ConcurrentQueue<wsMessage> m_qWsMessages;
 
                 std::map<mg_connection*, thread_safe_queue<response>> m_mConnectionQueue;
 

@@ -1257,13 +1257,15 @@ void MongooseServer::SendAuthenticationRequest(mg_connection* pConnection, const
 
 void MongooseServer::SendWSQueue()
 {
-    std::scoped_lock lg(m_mutex);
+    //std::scoped_lock lg(m_mutex);
 
     if(m_pConnection)
     {
-        while(m_qWsMessages.empty() == false)
+        wsMessage message;
+        
+        while(m_qWsMessages.try_dequeue(message))
         {
-            auto sMessage = ConvertFromJson(m_qWsMessages.front().second);
+            auto sMessage = ConvertFromJson(message.second);
 
             pmlLog(pml::LOG_TRACE, "pml::restgoose") << "SendWSQueue: " << sMessage;
 
@@ -1281,7 +1283,7 @@ void MongooseServer::SendWSQueue()
                     {
                         if(itSubscriber->second.bAuthenticated) //authenticated
                         {
-                            for(const auto& anEndpoint : m_qWsMessages.front().first)
+                            for(const auto& anEndpoint : message.first)
                             {
                                 if(WebsocketSubscribedToEndpoint(itSubscriber->second, anEndpoint))
                                 {
@@ -1298,7 +1300,6 @@ void MongooseServer::SendWSQueue()
                 }
             }
             delete[] cstr;
-            m_qWsMessages.pop();
         }
     }
 }
@@ -1322,11 +1323,7 @@ bool MongooseServer::WebsocketSubscribedToEndpoint(const subscriber& sub, const 
 
 void MongooseServer::SendWebsocketMessage(const std::set<endpoint>& setEndpoints, const Json::Value& jsMessage)
 {
-    pmlLog(pml::LOG_TRACE, "pml::restgoose") << "SendWebsocketMessage";
-    {
-        std::scoped_lock lg(m_mutex);
-        m_qWsMessages.emplace(setEndpoints, jsMessage);
-    }
+    m_qWsMessages.try_enqueue({setEndpoints, jsMessage});
 }
 
 void MongooseServer::SetLoopCallback(const std::function<void(std::chrono::milliseconds)>& func)
