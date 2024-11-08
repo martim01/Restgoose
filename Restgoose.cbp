@@ -7,7 +7,7 @@
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="Debug">
-				<Option output="../lib/Restgoosed1.2.dll" prefix_auto="0" extension_auto="0" />
+				<Option output="../lib/Restgoosed1.3.dll" prefix_auto="0" extension_auto="0" />
 				<Option working_dir="bin/Debug" />
 				<Option object_output="obj/Debug/" />
 				<Option type="3" />
@@ -19,7 +19,7 @@
 				</Compiler>
 				<Linker>
 					<Add library="user32" />
-					<Add library="pml_logd1.1" />
+					<Add library="pml_logd1.3" />
 					<Add library="ws2_32" />
 					<Add library="libssl-1_1" />
 					<Add library="libcrypto-1_1" />
@@ -27,7 +27,7 @@
 			</Target>
 			<Target title="Release">
 				<Option platforms="Windows;" />
-				<Option output="../lib/Restgoose1.2.dll" prefix_auto="0" extension_auto="0" />
+				<Option output="../lib/Restgoose1.3.dll" prefix_auto="0" extension_auto="0" />
 				<Option working_dir="bin/Release" />
 				<Option object_output="obj/Release/" />
 				<Option type="3" />
@@ -44,7 +44,7 @@
 					<Add option="-s" />
 					<Add option="-Wl,--enable-auto-import,-Map=restgoose.map" />
 					<Add library="user32" />
-					<Add library="pml_log1.1" />
+					<Add library="pml_log1.3" />
 					<Add library="ws2_32" />
 					<Add library="libssl-1_1" />
 					<Add library="libcrypto-1_1" />
