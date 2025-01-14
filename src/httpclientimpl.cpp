@@ -275,14 +275,14 @@ void HttpClientImpl::GetContentHeaders(mg_http_message* pReply)
     auto nMax = sizeof(pReply->headers) / sizeof(pReply->headers[0]);
     for (size_t i = 0; i < nMax && pReply->headers[i].name.len > 0; i++)
     {
-        m_response.mHeaders.insert({headerName(std::string(pReply->headers[i].name.ptr, pReply->headers[i].name.len)),
+        m_response.mmHeaders.insert({headerName(std::string(pReply->headers[i].name.ptr, pReply->headers[i].name.len)),
                                     headerValue(std::string(pReply->headers[i].value.ptr, pReply->headers[i].value.len))});
     }
 
-    auto itType = m_response.mHeaders.find(headerName("Content-Type"));
-    auto itLen = m_response.mHeaders.find(headerName("Content-Length"));
+    auto itType = m_response.mmHeaders.find(headerName("Content-Type"));
+    auto itLen = m_response.mmHeaders.find(headerName("Content-Length"));
 
-    if(itType != m_response.mHeaders.end())
+    if(itType != m_response.mmHeaders.end())
     {
         m_response.contentType = itType->second;
 
@@ -319,7 +319,7 @@ void HttpClientImpl::GetContentHeaders(mg_http_message* pReply)
         }
 
     }
-    if(itLen != m_response.mHeaders.end())
+    if(itLen != m_response.mmHeaders.end())
     {
         try
         {
