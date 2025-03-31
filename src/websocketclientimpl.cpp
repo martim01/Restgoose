@@ -1,17 +1,20 @@
 #include "websocketclientimpl.h"
+
 #include "mongoose.h"
+
 #include "log.h"
+
 #include "mongooseserver.h"
 #include "threadpool.h"
 #include "utils.h"
-using namespace pml::restgoose;
-
 
 static void callback(struct mg_connection* pConnection, int nEvent, void* pEventData)
 {
-    reinterpret_cast<WebSocketClientImpl*>(pConnection->fn_data)->Callback(pConnection, nEvent, pEventData);
+    reinterpret_cast<pml::restgoose::WebSocketClientImpl*>(pConnection->fn_data)->Callback(pConnection, nEvent, pEventData);
 }
 
+namespace pml::restgoose
+{
 
 WebSocketClientImpl::WebSocketClientImpl(const std::function<bool(const endpoint& theEndpoint, bool, int)>& pConnectCallback, 
                                          const std::function<bool(const endpoint& theEndpoint, const std::string&)>& pMessageCallback, unsigned int nTimeout, bool bPingPong) :
@@ -489,3 +492,4 @@ void WebSocketClientImpl::EraseConnection(mg_connection* pConnection)
     }
 }
 
+}

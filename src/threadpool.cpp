@@ -1,7 +1,9 @@
 #include "threadpool.h"
+
 #include "log.h"
 
-using namespace pml::restgoose;
+namespace pml::restgoose
+{
 
 ThreadPool& ThreadPool::Get()
 {
@@ -75,4 +77,6 @@ void ThreadPool::WorkerThread()
             task();
         }
     }
+}
+
 }

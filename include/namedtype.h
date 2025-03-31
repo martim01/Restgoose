@@ -1,7 +1,9 @@
 #ifndef PML_NAMEDTYPE_H
 #define PML_NAMEDTYPE_H
-#include <string>
+
 #include <ostream>
+#include <string>
+
 
 template <typename T, typename Parameter>
 class NamedType

@@ -1,9 +1,11 @@
 #include "httpclient.h"
-#include "httpclientimpl.h"
-#include "threadpool.h"
-#include "log.h"
 
-using namespace pml::restgoose;
+#include "httpclientimpl.h"
+#include "log.h"
+#include "threadpool.h"
+
+
+namespace pml::restgoose{
 
 
 
@@ -147,4 +149,6 @@ bool HttpClient::SetExpectedResponse(const clientResponse::enumResponse eRespons
 void HttpClient::UseProxy(const std::string& proxy)
 {
     m_pImpl->UseProxy(endpoint(proxy));
+}
+
 }

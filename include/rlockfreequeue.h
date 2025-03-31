@@ -1,8 +1,9 @@
-#ifndef __RESTGOOSE_LOCK_FREE_QUEUE
-#define __RESTGOOSE_LOCK_FREE_QUEUE
+#ifndef PML_RESTGOOSE_LOCK_FREE_QUEUE
+#define PML_RESTGOOSE_LOCK_FREE_QUEUE
 
-#include <memory>
 #include <atomic>
+#include <memory>
+
 
 namespace pml::restgoose
 {

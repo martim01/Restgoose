@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PML_RESTGOOSE_EXPORT_H
+#define PML_RESTGOOSE_EXPORT_H
 
 #ifdef _WIN32
     #ifdef RESTGOOSE_DLL
@@ -8,4 +9,6 @@
     #endif //
 #else
     #define RG_EXPORT
+#endif
+
 #endif

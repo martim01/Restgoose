@@ -1,9 +1,12 @@
 #include "RestGoose.h"
-#include "mongooseserver.h"
+
 #include <iostream>
 
-using namespace pml::restgoose;
+#include "mongooseserver.h"
 
+
+namespace pml::restgoose
+{
 
 Server::Server() : m_pImpl(std::unique_ptr<MongooseServer>(new MongooseServer()))
 {
@@ -185,4 +188,6 @@ void Server::RemoveHeaders(const std::set<headerName>& setHeaders)
 void Server::SetHeaders(const std::map<headerName, headerValue>& mHeaders)
 {
     m_pImpl->SetHeaders(mHeaders);
+}
+
 }

@@ -1,55 +1,88 @@
-#pragma once
-#include <thread>
-#include <vector>
-#include <mutex>
+#ifndef PML_RESTGOOSE_THREADPOOL
+#define PML_RESTGOOSE_THREADPOOL
+
 #include <atomic>
+#include <condition_variable>
 #include <functional>
 #include <mutex>
-#include <condition_variable>
 #include <queue>
-//#include "response.h"
+#include <thread>
+#include <vector>
+
+#include "dllexport.h"
 #include "log.h"
 #include "threadsafequeue.h"
-#include "dllexport.h"
 
-namespace pml
+
+namespace pml::restgoose
 {
-    namespace restgoose
+    class RG_EXPORT ThreadPool
     {
-        class RG_EXPORT ThreadPool
-        {
-            public:
-                static ThreadPool& Get();
+        public:
+            /**
+             * @brief Get the static ThreadPool singleton
+             * 
+             * @return ThreadPool& 
+             */
+            static ThreadPool& Get();
 
-                template<typename FunctionType> void Submit(FunctionType f)
-                {
-                    m_work_queue.push(std::function<void()>(f));
+            /**
+             * @brief Queue a function for the thread pool to run
+             * 
+             * @tparam FunctionType 
+             * @param[in] f 
+             */
+            template<typename FunctionType> void Submit(FunctionType f)
+            {
+                m_work_queue.push(std::function<void()>(f));
+            }
 
-                    //m_condition.notify_one();
+            /**
+             * @brief Queue a function for the thread pool to run
+             * 
+             * @tparam Callable 
+             * @tparam Args 
+             * @param[in] func 
+             * @param[in] args 
+             */
+            template<typename Callable, typename... Args> void Submit(Callable&& func, Args&&... args)
+            {
+                Submit([=]{func(args...);});
+            }
 
-                }
-                template<typename Callable, typename... Args> void Submit(Callable&& func, Args&&... args)
-                {
-                    Submit([=]{func(args...);});
-                }
+            /**
+             * @brief Create a worker threads
+             * 
+             * @param[in] nMinThreads the minimum number of threads there should be
+             * @param[in] nMaxThreads the maximum number of threads there should be
+             * @return size_t the number of threads there now are
+             */
+            size_t CreateWorkers(size_t nMinThreads, size_t nMaxThreads);
 
-                size_t CreateWorkers(size_t nMinThreads, size_t nMaxThreads);
-                size_t AddWorkers(size_t nWorkers);
+            /**
+             * @brief Add worker threads
+             * 
+             * @param[in] nWorkers the number of threads to add
+             * @return size_t the number of threads there now are
+             */
+            size_t AddWorkers(size_t nWorkers);
 
-                void Stop();
+            /**
+             * @brief Stop the threadpool
+             * 
+             */
+            void Stop();
 
-            private:
-                ThreadPool();
-                ~ThreadPool();
+        private:
+            ThreadPool();
+            ~ThreadPool();
 
-                void WorkerThread();
+            void WorkerThread();
 
-                std::atomic_bool m_bDone = ATOMIC_VAR_INIT(false);
-                threadsafe_queue<std::function<void()>> m_work_queue;
-                std::vector<std::thread> m_vThreads;
-        };
+            std::atomic_bool m_bDone = ATOMIC_VAR_INIT(false);
+            threadsafe_queue<std::function<void()>> m_work_queue;
+            std::vector<std::thread> m_vThreads;
     };
-};
+}
 
-
-
+#endif

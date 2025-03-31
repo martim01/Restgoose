@@ -1,31 +1,33 @@
 #include "mongooseserver.h"
-#include <iostream>
-#include <thread>
-#include <initializer_list>
-#include "json/json.h"
-#include <sstream>
-#include <fstream>
-#include <chrono>
-#include <iomanip>
-#include <map>
-#include "log.h"
-#include <chrono>
-#include "utils.h"
+
 #include <algorithm>
+#include <chrono>
+#include <fstream>
+#include <initializer_list>
+#include <iomanip>
+#include <iostream>
 #include <limits>
+#include <map>
+#include <sstream>
+#include <thread>
+
+#include "json/json.h"
+#include "log.h"
 #include "threadpool.h"
-#include "safequeue.h"
+#include "utils.h"
+
+
 
 
 using namespace std::placeholders;
-using namespace pml::restgoose;
+namespace pml::restgoose
+{
 
 const std::string DISPOSITION = "Content-Disposition: ";
 const std::string NAME = " name=";
 const std::string FILENAME = " filename=";
 
 static struct mg_http_serve_opts s_ServerOpts;
-
 
 bool end_less::operator() (endpoint e1, endpoint e2) const
 {
@@ -34,7 +36,9 @@ bool end_less::operator() (endpoint e1, endpoint e2) const
                                         });
 }
 
-size_t GetNumberOfConnections(mg_mgr& mgr)
+
+
+size_t GetNumberOfConnections(const mg_mgr& mgr)
 {
     size_t nCount = 0;
     if(mg_connection* pTmp = mgr.conns; pTmp)
@@ -1543,4 +1547,6 @@ void MongooseServer::SetStaticDirectory(std::string_view sDir)
 {
     pmlLog(pml::LOG_INFO, "pml::restgoose") << "MongooseServer::SetStaticDirectory " << sDir;
      m_sStaticRootDir = sDir;
+}
+
 }

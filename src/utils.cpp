@@ -1,13 +1,17 @@
-#include <sstream>
-#include <iostream>
-#include <iomanip>
-#include <string.h>
 #include "utils.h"
-#include <algorithm>
-#include <string>
-#include <filesystem>
 
-using namespace pml::restgoose;
+#include <cstring>
+#include <algorithm>
+#include <filesystem>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+#include <string>
+
+
+
+namespace pml::restgoose
+{
 
 std::filesystem::path CreateTmpFileName(const std::filesystem::path& path)
 {
@@ -88,12 +92,6 @@ std::string CreatePath(std::string sPath)
     return sPath;
 }
 
-
-
-
-
-
-
 std::string& ltrim(std::string& s)
 {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int,int>(std::isspace))));
@@ -115,4 +113,5 @@ std::string ConvertFromJson(const Json::Value& jsValue)
     builder["commentStyle"] = "None";
     builder["indentation"] = "";
     return Json::writeString(builder, jsValue);
+}
 }

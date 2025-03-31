@@ -1,15 +1,20 @@
 #include "httpclientimpl.h"
+
+#include <chrono>
+#include <iostream>
 #include <thread>
+
 #include "log.h"
 #include "mongoose.h"
-#include <iostream>
-#include <chrono>
-#include "utils.h"
 #include "threadpool.h"
+#include "utils.h"
 
 
-using namespace pml::restgoose;
 using namespace std::placeholders;
+
+namespace pml::restgoose
+{
+
 
 static const std::string BOUNDARY = "--------44E4975E-3D60";
 static const std::string CRLF = "\r\n";
@@ -919,4 +924,6 @@ bool HttpClientImpl::SetClientCertificate(const std::filesystem::path& cert, con
 void HttpClientImpl::UseProxy(const endpoint& proxy)
 {
     m_proxy = proxy;
+}
+
 }
