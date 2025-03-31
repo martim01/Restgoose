@@ -16,14 +16,14 @@ namespace pml::restgoose
 {
 
 
-static const std::string BOUNDARY = "--------44E4975E-3D60";
-static const std::string CRLF = "\r\n";
-static const std::string BOUNDARY_DIVIDER = "--"+BOUNDARY+CRLF;
-static const std::string BOUNDARY_LAST = "--"+BOUNDARY+"--"+CRLF;
-static const std::string CONTENT_DISPOSITION = "Content-Disposition: form-data; name=\"";
-static const std::string CLOSE_QUOTE = "\"";
-static const std::string FILENAME = "; filename=\"";
-static const headerValue MULTIPART = headerValue("multipart/form-data; boundary="+BOUNDARY);
+const std::string kBoundary = "--------44E4975E-3D60";
+const std::string kCrLf = "\r\n";
+const std::string kBoundaryDivider = "--"+kBoundary+kCrLf;
+const std::string kBoundaryLast = "--"+kBoundary+"--"+kCrLf;
+const std::string kContentDisposition = "Content-Disposition: form-data; name=\"";
+const std::string kCloseQuote = "\"";
+const std::string kFilename = "; filename=\"";
+const headerValue kMultipart = headerValue("multipart/form-data; boundary="+kBoundary);
 
 
 
@@ -68,7 +68,7 @@ HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target,
 
 HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target, const std::vector<partData>& vData, const std::map<headerName, headerValue>& mExtraHeaders, clientResponse::enumResponse eResponse) :
     m_point(method, target),
-    m_contentType(MULTIPART),
+    m_contentType(kMultipart),
     m_vPostData(vData),
     m_mHeaders(mExtraHeaders),
     m_eResponse(eResponse)
@@ -78,7 +78,7 @@ HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target,
 
 void HttpClientImpl::HandleConnectEvent(mg_connection* pConnection)
 {
-    m_eStatus = HttpClientImpl::CONNECTED;
+    m_eStatus = HttpClientImpl::kConnected;
     if(m_proxy.Get().empty())
     {
         HandleConnectEventDirect(pConnection);
@@ -122,19 +122,19 @@ void HttpClientImpl::HandleConnectEventDirect(mg_connection* pConnection)
 
     //send the connection headers
     std::stringstream ss;
-    ss << m_point.first.Get() << " " << sEndpoint << " HTTP/1.1" << CRLF
-       << "Host: " << std::string(host.buf, host.len) << CRLF;
+    ss << m_point.first.Get() << " " << sEndpoint << " HTTP/1.1" << kCrLf
+       << "Host: " << std::string(host.buf, host.len) << kCrLf;
     if(m_contentType.Get().empty() == false)
     {
-        ss << "Content-Type: " << m_contentType.Get() << CRLF;
+        ss << "Content-Type: " << m_contentType.Get() << kCrLf;
     }
-    ss << "Content-Length: " << WorkoutDataSize() << CRLF;
+    ss << "Content-Length: " << WorkoutDataSize() << kCrLf;
        //<< "Expect: 100-continue\r\n"
     for(const auto& [name, value] : m_mHeaders)
     {
-        ss << name.Get() << ": " << value.Get() << CRLF;
+        ss << name.Get() << ": " << value.Get() << kCrLf;
     }
-    ss << CRLF;
+    ss << kCrLf;
     auto str = ss.str();
 
     pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient:SendHeader: " << str;
@@ -183,22 +183,22 @@ void HttpClientImpl::HandleConnectEventToProxy(mg_connection* pConnection)
 
     //send the connection headers
     std::stringstream ss;
-    ss << m_point.first.Get() << " " << sProto << m_point.second.Get() << " HTTP/1.1" << CRLF
-       << "Host: " << vSplit[0] << CRLF;
+    ss << m_point.first.Get() << " " << sProto << m_point.second.Get() << " HTTP/1.1" << kCrLf
+       << "Host: " << vSplit[0] << kCrLf;
 
     if(auto nLength = WorkoutDataSize(); nLength != 0 && m_contentType.Get().empty() == false)
     {
-        ss << "Content-Type: " << m_contentType.Get() << CRLF;
-        ss << "Content-Length: " << nLength << CRLF;
+        ss << "Content-Type: " << m_contentType.Get() << kCrLf;
+        ss << "Content-Length: " << nLength << kCrLf;
     }
-    ss << "Accept: */*" << CRLF;
+    ss << "Accept: */*" << kCrLf;
 
        //<< "Expect: 100-continue\r\n"
     for(const auto& [name, value] : m_mHeaders)
     {
-        ss << name.Get() << ": " << value.Get() << CRLF;
+        ss << name.Get() << ": " << value.Get() << kCrLf;
     }
-    ss << CRLF;
+    ss << kCrLf;
     auto str = ss.str();
 
     pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient:SendHeader: " << str;
@@ -228,19 +228,19 @@ void HttpClientImpl::HandleReadEvent(mg_connection* pConnection)
 
             //send the connection headers
             std::stringstream ss;
-            ss << m_point.first.Get() << " /" << vSplit[1] << " HTTP/1.1" << CRLF
-               << "Host: " << vSplit[0] << CRLF;
+            ss << m_point.first.Get() << " /" << vSplit[1] << " HTTP/1.1" << kCrLf
+               << "Host: " << vSplit[0] << kCrLf;
             if(m_contentType.Get().empty() == false)
             {
-                ss << "Content-Type: " << m_contentType.Get() << CRLF;
+                ss << "Content-Type: " << m_contentType.Get() << kCrLf;
             }
-            ss << "Content-Length: " << WorkoutDataSize() << CRLF;
+            ss << "Content-Length: " << WorkoutDataSize() << kCrLf;
                //<< "Expect: 100-continue\r\n"
             for(const auto& [name, value] : m_mHeaders)
             {
-                ss << name.Get() << ": " << value.Get() << CRLF;
+                ss << name.Get() << ": " << value.Get() << kCrLf;
             }
-            ss << CRLF;
+            ss << kCrLf;
             auto str = ss.str();
 
             pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient:SendHeader: " << str;
@@ -278,10 +278,10 @@ void HttpClientImpl::GetContentHeaders(mg_http_message* pReply)
         //@todo we need to work out how to decide if binary or text...
         switch(m_eResponse)
         {
-            case clientResponse::enumResponse::FILE:
+            case clientResponse::enumResponse::kFile:
                 m_response.bBinary = true;
                 break;
-            case clientResponse::enumResponse::TEXT:
+            case clientResponse::enumResponse::kText:
                 m_response.bBinary = false;
                 break;
             default:
@@ -328,13 +328,13 @@ void HttpClientImpl::GetResponseCode(mg_http_message* pReply)
     }
     catch(const std::invalid_argument& e)
     {
-        m_response.nHttpCode = clientResponse::enumError::ERROR_REPLY;
-        m_eStatus = HttpClientImpl::COMPLETE;
+        m_response.nHttpCode = clientResponse::enumError::kErrorReply;
+        m_eStatus = HttpClientImpl::kComplete;
     }
     catch(const std::out_of_range& e)
     {
-        m_response.nHttpCode = clientResponse::enumError::ERROR_REPLY;
-        m_eStatus = HttpClientImpl::COMPLETE;
+        m_response.nHttpCode = clientResponse::enumError::kErrorReply;
+        m_eStatus = HttpClientImpl::kComplete;
     }
 }
 
@@ -354,7 +354,7 @@ void HttpClientImpl::HandleMessageEvent(mg_http_message* pReply)
         {
             m_response.data.Get().assign(var->buf, var->len);
         }
-        m_eStatus = HttpClientImpl::REDIRECTING;
+        m_eStatus = HttpClientImpl::kRedirecting;
     }
     else
     {
@@ -375,7 +375,7 @@ void HttpClientImpl::HandleMessageEvent(mg_http_message* pReply)
         {
             pmlLog(pml::LOG_TRACE, "pml::restgoose") << "RestGoose:HttpClient\tSent binary data but could not open a file to write it to";
         }
-        m_eStatus = HttpClientImpl::COMPLETE;
+        m_eStatus = HttpClientImpl::kComplete;
     }
 
 }
@@ -437,7 +437,7 @@ void HttpClientImpl::HandleChunkEvent(mg_connection* pConnection, mg_http_messag
 
 void HttpClientImpl::SetupRedirect()
 {
-    m_eStatus = HttpClientImpl::CONNECTING;
+    m_eStatus = HttpClientImpl::kConnecting;
     if(m_response.data.Get().find("://") != std::string::npos)
     {
         m_point.second = endpoint(m_response.data.Get());
@@ -450,9 +450,9 @@ void HttpClientImpl::SetupRedirect()
 
 void HttpClientImpl::HandleErrorEvent(const char* error)
 {
-    m_response.nHttpCode = clientResponse::enumError::ERROR_CONNECTION;
+    m_response.nHttpCode = clientResponse::enumError::kErrorConnection;
     m_response.data.Get() = error;
-    m_eStatus = HttpClientImpl::COMPLETE;
+    m_eStatus = HttpClientImpl::kComplete;
 
     pmlLog(pml::LOG_TRACE, "pml::restgoose") << "RestGoose:HttpClient\tError event: " << m_response.data.Get();
 }
@@ -525,7 +525,7 @@ const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& conne
     if(auto pConnection = mg_http_connect(&mgr, theEndpoint, evt_handler, (void*)this); pConnection == nullptr)
     {
         pmlLog(pml::LOG_ERROR, "pml::restgoose") << "RestGoose:HttpClient\tCould not create connection";
-        m_response.nHttpCode = clientResponse::enumError::ERROR_SETUP;
+        m_response.nHttpCode = clientResponse::enumError::kErrorSetup;
     }
     else
     {
@@ -538,12 +538,12 @@ const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& conne
             pmlLog(pml::LOG_TRACE, "pml::restgoose") << "RestGoose:HttpClient::Run - connecting " << m_point.second << " via proxy " << m_proxy;
         }
         DoLoop(mgr);
-        if(m_eStatus == HttpClientImpl::REDIRECTING)
+        if(m_eStatus == HttpClientImpl::kRedirecting)
         {
             SetupRedirect();
             return Run();
         }
-        else if(m_eStatus == HttpClientImpl::COMPLETE)
+        else if(m_eStatus == HttpClientImpl::kComplete)
         {
             pmlLog(pml::LOG_TRACE, "pml::restgoose") << "RestGoose:HttpClient\tComplete";
         }
@@ -551,7 +551,7 @@ const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& conne
         {
             pmlLog(pml::LOG_TRACE, "pml::restgoose") << "RestGoose:HttpClient\tTimed out";
             //timed out
-            m_response.nHttpCode = clientResponse::enumError::ERROR_TIME;
+            m_response.nHttpCode = clientResponse::enumError::kErrorTime;
         }
     }
     if(m_pAsyncCallback)
@@ -569,14 +569,14 @@ const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& conne
 void HttpClientImpl::DoLoop(mg_mgr& mgr) const
 {
     auto start = std::chrono::system_clock::now();
-    while(m_eStatus != HttpClientImpl::REDIRECTING && m_eStatus != HttpClientImpl::COMPLETE)
+    while(m_eStatus != HttpClientImpl::kRedirecting && m_eStatus != HttpClientImpl::kComplete)
     {
         mg_mgr_poll(&mgr, 500);
 
         auto now = std::chrono::system_clock::now();
 
-        if((m_eStatus == CONNECTING && std::chrono::duration_cast<std::chrono::milliseconds>(now-start) > m_connectionTimeout) ||
-           (m_eStatus != CONNECTING && m_processTimeout.count() != 0 && std::chrono::duration_cast<std::chrono::milliseconds>(now-start) > m_processTimeout))
+        if((m_eStatus == kConnecting && std::chrono::duration_cast<std::chrono::milliseconds>(now-start) > m_connectionTimeout) ||
+           (m_eStatus != kConnecting && m_processTimeout.count() != 0 && std::chrono::duration_cast<std::chrono::milliseconds>(now-start) > m_processTimeout))
         {
             pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClientImpl\tTimeout";
             break;
@@ -590,8 +590,8 @@ unsigned long HttpClientImpl::WorkoutFileSize(const std::filesystem::path& filen
     m_ifs.open(filename.string(), std::ifstream::ate | std::ifstream::binary);
     if(m_ifs.is_open() == false)
     {
-        m_response.nHttpCode = clientResponse::enumError::ERROR_FILE_READ;
-        m_eStatus = COMPLETE;
+        m_response.nHttpCode = clientResponse::enumError::kErrorFileRead;
+        m_eStatus = kComplete;
     }
     else
     {
@@ -624,29 +624,29 @@ unsigned long HttpClientImpl::WorkoutDataSize()
         {
             if(part.filepath.string().empty())
             {
-                part.sHeader = BOUNDARY_DIVIDER;
-                part.sHeader += CONTENT_DISPOSITION+part.name.Get()+CLOSE_QUOTE+CRLF;
-                part.sHeader += CRLF;
+                part.sHeader = kBoundaryDivider;
+                part.sHeader += kContentDisposition+part.name.Get()+kCloseQuote+kCrLf;
+                part.sHeader += kCrLf;
 
                 m_nContentLength += part.sHeader.length();
                 m_nContentLength += part.data.Get().length();
-                m_nContentLength += CRLF.length();
+                m_nContentLength += kCrLf.length();
             }
             else
             {
-                part.sHeader = BOUNDARY_DIVIDER;
-                part.sHeader += CONTENT_DISPOSITION+part.name.Get()+CLOSE_QUOTE+FILENAME+part.data.Get()+CLOSE_QUOTE+CRLF;
+                part.sHeader = kBoundaryDivider;
+                part.sHeader += kContentDisposition+part.name.Get()+kCloseQuote+kFilename+part.data.Get()+kCloseQuote+kCrLf;
                 part.sHeader += "Content-Type: application/octet-stream\r\n";
                 part.sHeader += "Content-Transfer-Encoding: binary\r\n";
-                part.sHeader += CRLF;
+                part.sHeader += kCrLf;
 
                 m_nContentLength += part.sHeader.length();
                 m_nContentLength += WorkoutFileSize(part.filepath);
-                m_nContentLength += CRLF.length();
+                m_nContentLength += kCrLf.length();
             }
         }
         //last boundary
-        m_nContentLength += BOUNDARY_LAST.length();
+        m_nContentLength += kBoundaryLast.length();
 
     }
     return m_nContentLength;
@@ -655,7 +655,7 @@ unsigned long HttpClientImpl::WorkoutDataSize()
 
 void HttpClientImpl::HandleWroteEvent(mg_connection* pConnection, int nBytes)
 {
-    if(m_eStatus != CONNECTED)
+    if(m_eStatus != kConnected)
     {
         m_nBytesSent += nBytes;
     }
@@ -682,16 +682,16 @@ void HttpClientImpl::HandleSimpleWroteEvent(mg_connection* pConnection)
 {
     if(m_vPostData.back().filepath.string().empty())    //no filepath so sending the text
     {
-        if(m_eStatus == CONNECTED)
+        if(m_eStatus == kConnected)
         {
             mg_send(pConnection, m_vPostData.back().data.Get().c_str(), m_vPostData.back().data.Get().length());
-            m_eStatus = SENDING;
+            m_eStatus = kSending;
         }
     }
     else
     {
-        SendFile(pConnection, m_vPostData.back().filepath, (m_eStatus == CONNECTED));
-        m_eStatus = SENDING;
+        SendFile(pConnection, m_vPostData.back().filepath, (m_eStatus == kConnected));
+        m_eStatus = kSending;
     }
 }
 
@@ -703,8 +703,8 @@ bool HttpClientImpl::SendFile(mg_connection* pConnection, const std::filesystem:
         if(m_ifs.is_open() == false)
         {
             pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient: Unable to open file " << filepath << " to upload.";
-            m_response.nHttpCode = clientResponse::enumError::ERROR_FILE_READ;
-            m_eStatus = COMPLETE;
+            m_response.nHttpCode = clientResponse::enumError::kErrorFileRead;
+            m_eStatus = kComplete;
         }
     }
     if(m_ifs.is_open())
@@ -723,8 +723,8 @@ bool HttpClientImpl::SendFile(mg_connection* pConnection, const std::filesystem:
         else if(m_ifs.bad())
         {
             pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient: Unable to read file " << filepath << " to upload.";
-            m_response.nHttpCode = clientResponse::enumError::ERROR_FILE_READ;
-            m_eStatus = COMPLETE;
+            m_response.nHttpCode = clientResponse::enumError::kErrorFileRead;
+            m_eStatus = kComplete;
         }
     }
     return false;
@@ -744,10 +744,10 @@ void HttpClientImpl::HandleMultipartWroteEvent(mg_connection* pConnection)
 {
 
     //if connected then deal with first part
-    if(m_eStatus == CONNECTED)
+    if(m_eStatus == kConnected)
     {
         m_nPostPart = 0;
-        m_eStatus = SENDING;
+        m_eStatus = kSending;
     }
     if(m_nPostPart < m_vPostData.size())
     {
@@ -758,13 +758,13 @@ void HttpClientImpl::HandleMultipartWroteEvent(mg_connection* pConnection)
             if(m_vPostData[m_nPostPart].filepath.string().empty())
             {
                 mg_send(pConnection, m_vPostData[m_nPostPart].data.Get().c_str(), m_vPostData[m_nPostPart].data.Get().length());
-                mg_send(pConnection, CRLF.c_str(), CRLF.length());
+                mg_send(pConnection, kCrLf.c_str(), kCrLf.length());
 
                 ++m_nPostPart;
             }
             else if(SendFile(pConnection, m_vPostData[m_nPostPart].filepath, true) == true)
             {   //opened and sent in one fell swoop
-                mg_send(pConnection, CRLF.c_str(), CRLF.length());
+                mg_send(pConnection, kCrLf.c_str(), kCrLf.length());
                 ++m_nPostPart;
             }
         }
@@ -773,13 +773,13 @@ void HttpClientImpl::HandleMultipartWroteEvent(mg_connection* pConnection)
 
             if(SendFile(pConnection, m_vPostData[m_nPostPart].filepath, false) == true)
             {   //all sent
-                mg_send(pConnection, CRLF.c_str(), CRLF.length());
+                mg_send(pConnection, kCrLf.c_str(), kCrLf.length());
                 ++m_nPostPart;
             }
         }
         if(m_nPostPart == m_vPostData.size())
         {
-            mg_send(pConnection, BOUNDARY_LAST.c_str(), BOUNDARY_LAST.length());
+            mg_send(pConnection, kBoundaryLast.c_str(), kBoundaryLast.length());
         }
     }
 }
@@ -789,8 +789,8 @@ HttpClientImpl::~HttpClientImpl()=default;
 
 void HttpClientImpl::Cancel()
 {
-    m_eStatus = COMPLETE;
-    m_response.nHttpCode = clientResponse::enumError::USER_CANCELLED;
+    m_eStatus = kComplete;
+    m_response.nHttpCode = clientResponse::enumError::kUserCancelled;
 }
 
 

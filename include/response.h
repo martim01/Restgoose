@@ -37,12 +37,12 @@ using query = std::map<queryKey, queryValue, query_less>;
 
 namespace pml::restgoose
 {
-    extern RG_EXPORT const httpMethod GET;
-    extern RG_EXPORT const httpMethod POST;
-    extern RG_EXPORT const httpMethod PUT;
-    extern RG_EXPORT const httpMethod PATCH;
-    extern RG_EXPORT const httpMethod HTTP_DELETE;
-    extern RG_EXPORT const httpMethod OPTIONS;
+    extern RG_EXPORT const httpMethod kGet;
+    extern RG_EXPORT const httpMethod kPost;
+    extern RG_EXPORT const httpMethod kPut;
+    extern RG_EXPORT const httpMethod kPatch;
+    extern RG_EXPORT const httpMethod kDelete;
+    extern RG_EXPORT const httpMethod kOptions;
 
     struct RG_EXPORT partData
     {
@@ -92,8 +92,8 @@ namespace pml::restgoose
         textData data;
         std::map<headerName, headerValue> mHeaders;
 
-        enum enumResponse {TEXT, FILE, AUTO};
-        enum enumError {ERROR_SETUP, ERROR_TIME, ERROR_CONNECTION, ERROR_REPLY, ERROR_FILE_READ, ERROR_FILE_WRITE, USER_CANCELLED};
+        enum enumResponse {kText, kFile, kAuto};
+        enum enumError {kErrorSetup, kErrorTime, kErrorConnection, kErrorReply, kErrorFileRead, kErrorFileWrite, kUserCancelled};
 
     };
 }

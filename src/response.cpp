@@ -14,12 +14,12 @@ bool query_less::operator() (queryKey e1, queryKey e2) const
 
 namespace pml::restgoose
 {
-const httpMethod GET    = httpMethod("GET");
-const httpMethod POST   = httpMethod("POST");
-const httpMethod PUT    = httpMethod("PUT");
-const httpMethod PATCH  = httpMethod("PATCH");
-const httpMethod HTTP_DELETE = httpMethod("DELETE");
-const httpMethod OPTIONS = httpMethod("OPTIONS");
+const httpMethod kGet    = httpMethod("GET");
+const httpMethod kPost   = httpMethod("POST");
+const httpMethod kPut    = httpMethod("PUT");
+const httpMethod kPatch  = httpMethod("PATCH");
+const httpMethod kDelete = httpMethod("DELETE");
+const httpMethod kOptions = httpMethod("OPTIONS");
 
 
 response::response(unsigned short nCode, const std::string& sReason) : nHttpCode(nCode), jsonData(Json::objectValue), contentType("application/json"), bFile(false)

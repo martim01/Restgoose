@@ -27,7 +27,7 @@ namespace pml::restgoose
             *   @param[in] mExtraHeaders map of extra headers to send.
             *   @param[in] eResponse one of clientResponse::enumResponse::TEXT, FILE or AUTO, decides whether the response data should be saved to a file or stored in the clientResponse data variable. If set to AUTO then the content-type header is looked at.
             **/
-            HttpClient(const httpMethod& method, const endpoint& target, const std::map<headerName, headerValue>& mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO);
+            HttpClient(const httpMethod& method, const endpoint& target, const std::map<headerName, headerValue>& mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::kAuto);
 
             /** @brief Constructor - creates an HttpClient object that sends JSON formatted data to the server
             *   @param[in] method the HTTP action - one of POST, PUT, PATCH
@@ -36,7 +36,7 @@ namespace pml::restgoose
             *   @param[in] mExtraHeaders map of extra headers to send.
             *   @param[in] eResponse one of clientResponse::enumResponse::TEXT, FILE or AUTO, decides whether the response data should be saved to a file or stored in the clientResponse data variable. If set to AUTO then the content-type header is looked at.
             **/
-            HttpClient(const httpMethod& method, const endpoint& target, const Json::Value& jsData, const std::map<headerName, headerValue>& mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO);
+            HttpClient(const httpMethod& method, const endpoint& target, const Json::Value& jsData, const std::map<headerName, headerValue>& mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::kAuto);
 
             /** @brief Constructor - creates an HttpClient object that sends arbitrary formatted data to the server
             *   @param[in] method the HTTP action - one of POST, PUT, PATCh
@@ -46,7 +46,7 @@ namespace pml::restgoose
             *   @param[in] mExtraHeaders map of extra headers to send.
             *   @param[in] eResponse one of clientResponse::enumResponse::TEXT, FILE or AUTO, decides whether the response data should be saved to a file or stored in the clientResponse data variable. If set to AUTO then the content-type header is looked at.
             **/
-            HttpClient(const httpMethod& method, const endpoint& target, const textData& data, const headerValue& contentType = headerValue("text/plain"), const std::map<headerName, headerValue>& mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO);
+            HttpClient(const httpMethod& method, const endpoint& target, const textData& data, const headerValue& contentType = headerValue("text/plain"), const std::map<headerName, headerValue>& mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::kAuto);
 
             /** @brief Constructor - creates an HttpClient object that will upload a file to the server
             *   @param[in] method the HTTP action - one of POST, PUT, PATCH
@@ -57,7 +57,7 @@ namespace pml::restgoose
             *   @param[in] mExtraHeaders map of extra headers to send.
             *   @param[in] eResponse one of clientResponse::enumResponse::TEXT, FILE or AUTO, decides whether the response data should be saved to a file or stored in the clientResponse data variable. If set to AUTO then the content-type header is looked at.
             **/
-            HttpClient(const httpMethod& method, const endpoint& target, const textData& filename, const std::filesystem::path& filepath, const headerValue& contentType = headerValue("application/octet-stream"), const std::map<headerName, headerValue>& mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO);
+            HttpClient(const httpMethod& method, const endpoint& target, const textData& filename, const std::filesystem::path& filepath, const headerValue& contentType = headerValue("application/octet-stream"), const std::map<headerName, headerValue>& mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::kAuto);
 
             /** @brief Constructor - creates an HttpClient object that sends multipart/form data to the server
             *   @param[in] method the HTTP action - one of POST, PUT, PATCH
@@ -67,7 +67,7 @@ namespace pml::restgoose
             *   @param[in] mExtraHeaders map of extra headers to send.
             *   @param[in] eResponse one of clientResponse::enumResponse::TEXT, FILE or AUTO, decides whether the response data should be saved to a file or stored in the clientResponse data variable. If set to AUTO then the content-type header is looked at.
             **/
-            HttpClient(const httpMethod& method, const endpoint& target, const std::vector<partData>& vData, const std::map<headerName, headerValue>& mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::AUTO); //multipart
+            HttpClient(const httpMethod& method, const endpoint& target, const std::vector<partData>& vData, const std::map<headerName, headerValue>& mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::kAuto); //multipart
             ~HttpClient();
 
             /** @brief The function that attempts to connect to the server, send any data and retrieve any response. This is a synchronous function
