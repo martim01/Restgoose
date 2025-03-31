@@ -17,6 +17,34 @@
 #include "utils.h"
 
 
+bool caseInsLess(std::string_view s1, std::string_view s2)
+{
+    return std::lexicographical_compare(s1.begin(), s1.end(), s2.begin(), s2.end(), [](unsigned char a, unsigned char b){ return toupper(a) < toupper(b); });
+}
+
+
+
+static void mgpmlLog(char ch, void*)
+{
+    static pml::LogStream ls;
+    ls.SetLevel(pml::LOG_DEBUG);
+    if(ch != '\n')
+    {
+        ls << ch;
+    }
+    else
+    {
+        ls << std::endl;
+    }
+}
+
+
+
+bool operator<(const methodpoint& e1, const methodpoint& e2)
+{
+    return (e1.first.Get() < e2.first.Get() || (e1.first.Get() == e2.first.Get() && caseInsLess(e1.second.Get(), e2.second.Get())));
+}
+
 
 
 using namespace std::placeholders;
@@ -126,31 +154,6 @@ partData CreatePartData(const mg_http_part& mgpart, const headerValue& )
         part.data = textData(std::string(mgpart.body.buf, mgpart.body.buf+mgpart.body.len));
     }
     return part;
-}
-
-bool caseInsLess(std::string_view s1, std::string_view s2)
-{
-    return std::lexicographical_compare(s1.begin(), s1.end(), s2.begin(), s2.end(), [](unsigned char a, unsigned char b){ return toupper(a) < toupper(b); });
-}
-
-
-bool RG_EXPORT operator<(const methodpoint& e1, const methodpoint& e2)
-{
-    return (e1.first.Get() < e2.first.Get() || (e1.first.Get() == e2.first.Get() && caseInsLess(e1.second.Get(), e2.second.Get())));
-}
-
-static void mgpmlLog(char ch, void*)
-{
-    static pml::LogStream ls;
-    ls.SetLevel(pml::LOG_DEBUG);
-    if(ch != '\n')
-    {
-        ls << ch;
-    }
-    else
-    {
-        ls << std::endl;
-    }
 }
 
 
