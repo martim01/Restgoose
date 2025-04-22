@@ -129,7 +129,9 @@ add_library(restgoose SHARED ${SOURCES})
 target_include_directories(restgoose PUBLIC ${CMAKE_BINARY_DIR}/include)
 set_target_properties(restgoose PROPERTIES DEBUG_POSTFIX "d")
 
-list(APPEND flags "-fPIC" "-Wall" "-fpermissive"  "-std=c++17")
+set(CMAKE_CXX_STANDARD 17)
+
+list(APPEND flags "-fPIC" "-Wall" "-fpermissive")
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
    message(STATUS "Debug build")
