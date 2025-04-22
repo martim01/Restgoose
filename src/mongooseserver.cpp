@@ -26,8 +26,8 @@ bool caseInsLess(std::string_view s1, std::string_view s2)
 
 static void mgpmlLog(char ch, void*)
 {
-    static pml::LogStream ls;
-    ls.SetLevel(pml::LOG_DEBUG);
+    static pml::log::Stream ls;
+    ls.SetLevel(pml::log::Level::kDebug);
     if(ch != '\n')
     {
         ls << ch;
@@ -1026,12 +1026,12 @@ void MongooseServer::Stop()
 
 bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress& )>& funcAuthentication, const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage, const std::function<void(const endpoint&, const ipAddress&)>& funcClose)
 {
-    pml::LogStream lg(pml::LOG_INFO, "pml::restgoose");
+    pml::log::Stream lg(pml::log::Level::kInfo, "pml::restgoose");
     lg << "AddWebsocketEndpoint <" << theEndpoint.Get() << "> ";
 
     if(!m_bWebsocket)
     {
-        lg.SetLevel(pml::LOG_WARN);
+        lg.SetLevel(pml::log::Level::kWarning);
         lg << "failed as websockets not enabled";
         return false;
     }
@@ -1044,18 +1044,18 @@ bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, const std
 
 bool MongooseServer::AddEndpoint(const methodpoint& theMethodPoint, const std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName& )>& func, bool bUseThread)
 {
-    pml::LogStream lg(pml::LOG_INFO, "pml::restgoose");
+    pml::log::Stream lg(pml::log::Level::kInfo, "pml::restgoose");
     lg << "AddEndpoint <" << theMethodPoint.first.Get() << ", " << theMethodPoint.second.Get() << "> ";
     if(m_mEndpoints.find(theMethodPoint) != m_mEndpoints.end())
     {
-        lg(pml::LOG_TRACE) << "failed as methodpoint already exists";
+        lg(pml::log::Level::kTrace) << "failed as methodpoint already exists";
         return false;
     }
 
     m_mEndpoints.try_emplace(theMethodPoint, func, bUseThread);
     
     m_mmOptions.insert(std::make_pair(theMethodPoint.second, theMethodPoint.first));
-    lg.SetLevel(pml::LOG_DEBUG);
+    lg.SetLevel(pml::log::Level::kDebug);
     lg << "success";
     return true;
 }
