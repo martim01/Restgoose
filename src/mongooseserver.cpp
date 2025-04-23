@@ -24,6 +24,7 @@ bool caseInsLess(std::string_view s1, std::string_view s2)
 
 
 
+
 static void mgpmlLog(char ch, void*)
 {
     static pml::log::Stream ls;
@@ -104,6 +105,24 @@ headerValue GetHeader(struct mg_http_message* pMessage, const headerName& name)
         value = headerValue(std::string(pStr->buf, pStr->len));
     }
     return value;
+}
+
+std::string LoadTLS(const std::filesystem::path& path)
+{
+    std::ifstream ifFile;
+
+    //attempt to open the file
+    ifFile.open(path,std::ios::in);
+    if(!ifFile.is_open())
+    {
+        pml::log::log(pml::log::Level::kWarning, "TLS") << "Could not open " << path;
+        return std::string();
+    }
+
+    std::stringstream isstr;
+    isstr << ifFile.rdbuf();
+    ifFile.close();
+    return isstr.str();
 }
 
 std::vector<partData> CreatePartData(const mg_str& str, const headerValue& contentType)
@@ -872,26 +891,27 @@ void MongooseServer::HandleAccept(mg_connection* pConnection) const
     {
         pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "Accept connection: Turn on TLS";
         struct mg_tls_opts tls_opts;
-        if(m_Ca.empty())
+        if(m_sCa.empty())
         {
+            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "TLS No CA";
             tls_opts.ca.buf = nullptr;
             tls_opts.ca.len = 0;
 
         }
         else
         {
-            tls_opts.ca = mg_str(m_Ca.string().c_str());
+            pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "TLS We have a CA";
+            tls_opts.ca = mg_str(m_sCa.c_str());
         }
+        pmlLog(pml::LOG_DEBUG, "pml::restgoose") << "TLS Hostname: " << m_sHostname;
+
         tls_opts.name = mg_str(m_sHostname.c_str());
         
-        std::string sCert = m_Cert.string();
-        std::string sKey = m_Key.string();
+        tls_opts.skip_verification = 0;
+        tls_opts.cert = mg_str(m_sCert.c_str());
+        tls_opts.key = mg_str(m_sKey.c_str());
 
-        tls_opts.cert = mg_str(sCert.c_str());
-        tls_opts.key = mg_str(sKey.c_str());
-        /*tls_opts.ciphers = "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256";
-        */
-
+        
         mg_tls_init(pConnection, &tls_opts);
         if(pConnection->is_closing == 1)
         {
@@ -905,7 +925,7 @@ MongooseServer::MongooseServer()
 {
   
     mg_log_set(2);  //info and worse
-    mg_log_set_fn(mgpmlLog, nullptr);
+    //mg_log_set_fn(mgpmlLog, nullptr);
 }
 
 MongooseServer::~MongooseServer()
@@ -916,11 +936,12 @@ MongooseServer::~MongooseServer()
 
 bool MongooseServer::Init(const std::filesystem::path& ca, const std::filesystem::path& cert, const std::filesystem::path& key, const ipAddress& addr, unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
 {
-    m_Key = key;
-    m_Cert = cert;
-    m_Ca = ca;
+    m_sKey = LoadTLS(key);
+    m_sCert = LoadTLS(cert);
+    m_sCa = LoadTLS(ca);
+    
 
-    if(m_Cert.empty() == false)
+    if(m_sCert.empty() == false)
     {
        m_mHeaders.try_emplace(headerName("Strict-Transport-Security"), headerValue("max-age=31536010; includeSubDomains"));
     }
@@ -951,7 +972,7 @@ bool MongooseServer::Init(const std::filesystem::path& ca, const std::filesystem
 
 void MongooseServer::SetInterface(const ipAddress& addr, unsigned short nPort)
 {
-    m_sServerName = (m_Cert.empty() ? "http://" : "https://");
+    m_sServerName = (m_sCert.empty() ? "http://" : "https://");
     m_sServerName += addr.Get();
     m_sServerName += (nPort == 0 ? "" : ":"+std::to_string(nPort));
 
@@ -1193,7 +1214,7 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
                   << "Access-Control-Allow-Origin: *\r\n"
                   << "Access-Control-Allow-Methods: OPTIONS";
 
-        if(m_Cert.empty() == false)
+        if(m_sCert.empty() == false)
         {
             ssHeaders << "\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains";
         }
@@ -1217,7 +1238,7 @@ void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& the
         {
             ssHeaders << ", " << itOption->second.Get();
         }
-	if(m_Cert.empty() == false)
+	if(m_sCert.empty() == false)
         {
             ssHeaders << "\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains";
         }
@@ -1241,7 +1262,7 @@ void MongooseServer::SendAuthenticationRequest(mg_connection* pConnection, const
         ssHeaders << "HTTP/1.1 401\r\n"
                 << "WWW-Authenticate: Basic realm=\"User Visible Realm\"\r\n";
 
-        if(m_Cert.empty() == false)
+        if(m_sCert.empty() == false)
         {
             ssHeaders << "Strict-Transport-Security: max-age=31536000; includeSubDomains\r\n";
         }

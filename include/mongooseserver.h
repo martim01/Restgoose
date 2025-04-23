@@ -253,9 +253,9 @@ namespace pml::restgoose
             std::string m_sIniPath;
             std::string m_sServerName;
 
-            std::filesystem::path m_Cert;
-            std::filesystem::path m_Key;
-            std::filesystem::path m_Ca;
+            std::string m_sCert;
+            std::string m_sKey;
+            std::string m_sCa;
 
             std::string m_sStaticRootDir;
             endpoint m_ApiRoot;

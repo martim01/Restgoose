@@ -136,11 +136,11 @@ list(APPEND flags "-fPIC" "-Wall" "-fpermissive")
 if(CMAKE_BUILD_TYPE MATCHES Debug)
    message(STATUS "Debug build")
    list(APPEND flags "-g")
-   target_compile_definitions(restgoose PUBLIC DEBUG DLL_EXPORTS _MSL_STDINT_H MG_ENABLE_OPENSSL)
+   target_compile_definitions(restgoose PUBLIC DEBUG DLL_EXPORTS _MSL_STDINT_H MG_TLS=MG_TLS_OPENSSL)
 else()
    message(STATUS "Release build")
    list(APPEND flags "-O3" "-s")
-   target_compile_definitions(restgoose PUBLIC NDEBUG DLL_EXPORTS _MSL_STDINT_H MG_ENABLE_OPENSSL)
+   target_compile_definitions(restgoose PUBLIC NDEBUG DLL_EXPORTS _MSL_STDINT_H MG_TLS=MG_TLS_OPENSSL)
 
 endif()
 
