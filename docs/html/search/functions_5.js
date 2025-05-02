@@ -1,0 +1,4 @@
+var searchData=
+[
+  ['init_0',['init',['../classpml_1_1restgoose_1_1Server.html#a17412c44f2147d64c22340dccf2b6aa3',1,'pml::restgoose::Server::Init(const std::filesystem::path &amp;ca, const std::filesystem::path &amp;cert, const std::filesystem::path &amp;key, const ipAddress &amp;addr, unsigned short nPort, const endpoint &amp;apiRoot, bool bEnableWebsocket, bool bSendPings=false)'],['../classpml_1_1restgoose_1_1Server.html#a76c8f884ad0cfbdd36a064d8fce8d7a4',1,'pml::restgoose::Server::Init(const std::filesystem::path &amp;cert, const std::filesystem::path &amp;key, const ipAddress &amp;addr, unsigned short nPort, const endpoint &amp;apiRoot, bool bEnableWebsocket, bool bSendPings=false)'],['../classpml_1_1restgoose_1_1Server.html#a172f5f57f9a90adb3cc8c001d2311774',1,'pml::restgoose::Server::Init(const ipAddress &amp;addr, unsigned short nPort, const endpoint &amp;apiRoot, bool bEnableWebsocket, bool bSendPings=false)']]]
+];

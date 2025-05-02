@@ -228,6 +228,7 @@ namespace pml::restgoose
             void AddHeaders(const std::map<headerName, headerValue>& mHeaders);
 
             /** @brief Removes headers from the list of those to be sent by the server
+            * 
             *   @param[in] setHeaders a set of headerNames to be removed
             *   @note Content-Type and Content-Length are always sent and cannot be removed
             **/

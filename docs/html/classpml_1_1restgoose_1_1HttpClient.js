@@ -1,0 +1,27 @@
+var classpml_1_1restgoose_1_1HttpClient =
+[
+    [ "HttpClient", "classpml_1_1restgoose_1_1HttpClient.html#a6a75c251f59205c422fc83054970a7c6", null ],
+    [ "HttpClient", "classpml_1_1restgoose_1_1HttpClient.html#acbd5c2a9a1e6a6fb6885871be8c508c6", null ],
+    [ "HttpClient", "classpml_1_1restgoose_1_1HttpClient.html#a1dba66b55ae2706733b8403e39c222c2", null ],
+    [ "HttpClient", "classpml_1_1restgoose_1_1HttpClient.html#aeb0336bb722be8822cd66b0858f93c9f", null ],
+    [ "HttpClient", "classpml_1_1restgoose_1_1HttpClient.html#a58d368472bb3fe0b04454e595b50b601", null ],
+    [ "AddHeaders", "classpml_1_1restgoose_1_1HttpClient.html#a5fbe8032c3cffa43bf79d92d363c200d", null ],
+    [ "Cancel", "classpml_1_1restgoose_1_1HttpClient.html#a775a5f45e339a661e0303d9ad2b8dbb5", null ],
+    [ "Run", "classpml_1_1restgoose_1_1HttpClient.html#a8cfc2f3684a1f3144b2b21b8f111d48e", null ],
+    [ "Run", "classpml_1_1restgoose_1_1HttpClient.html#a81f15a584e062a0a3d878a9e7cc97306", null ],
+    [ "Run", "classpml_1_1restgoose_1_1HttpClient.html#a3cbe6ab7a6db4b0d03ce443105117aa6", null ],
+    [ "SetBasicAuthentication", "classpml_1_1restgoose_1_1HttpClient.html#a1e6062051f9d0e1f74ba96617d241292", null ],
+    [ "SetBearerAuthentication", "classpml_1_1restgoose_1_1HttpClient.html#a9906706a3a767131b6f0a54363b8e5d1", null ],
+    [ "SetCertificateAuthority", "classpml_1_1restgoose_1_1HttpClient.html#a429ce7c1bfd2b882448776a1675c03c1", null ],
+    [ "SetClientCertificate", "classpml_1_1restgoose_1_1HttpClient.html#afe99f7b4348e52972faeba7c5a70a165", null ],
+    [ "SetData", "classpml_1_1restgoose_1_1HttpClient.html#aac64e5d4b2d3e9709de766db14d12d22", null ],
+    [ "SetData", "classpml_1_1restgoose_1_1HttpClient.html#a7aa20d184fba981fe79e378eabd7c250", null ],
+    [ "SetDownloadProgressCallback", "classpml_1_1restgoose_1_1HttpClient.html#af631133be8a00e35ac1a09b1cf64f683", null ],
+    [ "SetEndpoint", "classpml_1_1restgoose_1_1HttpClient.html#a712480b865b942dfbe72b412e4f489e8", null ],
+    [ "SetExpectedResponse", "classpml_1_1restgoose_1_1HttpClient.html#a131bd9848e5154efddfa8fcdce766027", null ],
+    [ "SetFile", "classpml_1_1restgoose_1_1HttpClient.html#a551d5ffa31057fc885b0f5dd1561e345", null ],
+    [ "SetMethod", "classpml_1_1restgoose_1_1HttpClient.html#a2d92bde9e242b605c51ddd39d53c7dda", null ],
+    [ "SetPartData", "classpml_1_1restgoose_1_1HttpClient.html#a769fb2159fc0a25222d0d7523fe29d36", null ],
+    [ "SetUploadProgressCallback", "classpml_1_1restgoose_1_1HttpClient.html#a0dff210e334b070569f9e8d214e1029f", null ],
+    [ "UseProxy", "classpml_1_1restgoose_1_1HttpClient.html#a54b1d1cfeeacf0b28cdabca7fd2a78a0", null ]
+];
