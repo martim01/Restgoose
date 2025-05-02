@@ -94,7 +94,7 @@ namespace pml::restgoose
             *   @param theMethodPoint a pair definining the HTTP method and methodpoint address
             *   @param func std::function that defines the callback function
             *   @param bUseThread if false then the callback will be called in the server thread
-            *   @return <i>bool</i> true on success
+            *   @return bool true on success
             **/
             bool AddEndpoint(const methodpoint& theMethodPoint, const std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)>& func, bool bUseThread=false);
 
@@ -104,7 +104,7 @@ namespace pml::restgoose
 
             /** Removes a callback handler for an methodpoint
             *   @param theMethodPoint a pair definining the HTTP method and methodpoint address
-            *   @return <i>bool</i> true on success
+            *   @return bool true on success
             **/
             bool DeleteEndpoint(const methodpoint& theMethodPoint);
 

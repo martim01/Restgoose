@@ -27,7 +27,7 @@ namespace pml::restgoose
             ~WebSocketClient();
 
             /** @brief Starts the websocket client if it is not already running
-            *   @return <i>bool</i> returns true if the websocket can be started and false if it was already running
+            *   @return bool returns true if the websocket can be started and false if it was already running
             **/
             bool Run();
 
@@ -37,21 +37,21 @@ namespace pml::restgoose
 
             /** @brief Attempts to initiate a connection to the given endpoint
             *   @param[in] theEndpoint the absolute url to connect to
-            *   @return <i>bool</i> return true on successful intitiation (not connection) and false if the connection already exists or could not be intialised
+            *   @return bool return true on successful intitiation (not connection) and false if the connection already exists or could not be intialised
             **/
             bool Connect(const endpoint& theEndpoint);
 
             /** @brief Attempts to send a message to the given endpoint
             *   @param[in] theEndpoint the absolute url to send the message to
             *   @param[in] sMessage the message to send
-            *   @return <i>bool</i> returns true if the endpoint has an active connection and false if not
+            *   @return bool returns true if the endpoint has an active connection and false if not
             **/
             bool Send(const endpoint& theEndpoint, const std::string& sMessage);
 
             /** @brief Attempts to send a message to the given endpoint
             *   @param[in] theEndpoint the absolute url to send the message to
             *   @param[in] jsMessage the message to send
-            *   @return <i>bool</i> returns true if the endpoint has an active connection and false if not
+            *   @return bool returns true if the endpoint has an active connection and false if not
             **/
            bool Send(const endpoint& theEndpoint, const Json::Value& jsMessage);
 

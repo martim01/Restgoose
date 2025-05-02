@@ -29,7 +29,7 @@ namespace pml::restgoose
             *   @param[in] apiRoot the relative URL that is the base of the API tree
             *   @param[in] bEnableWebsocket set to true to act as a websocket server as well
             *   @param[in] bSendPings set to true for the server to send websocket pings to the clients
-            *   @return <i>bool</i> true if the server has been successufully intialised
+            *   @return bool true if the server has been successufully intialised
             **/
             bool Init(const std::filesystem::path& ca, const std::filesystem::path& cert, const std::filesystem::path& key, const ipAddress& addr, unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings=false);
 
@@ -41,7 +41,7 @@ namespace pml::restgoose
             *   @param[in] apiRoot the relative URL that is the base of the API tree
             *   @param[in] bEnableWebsocket set to true to act as a websocket server as well
             *   @param[in] bSendPings set to true for the server to send websocket pings to the clients
-            *   @return <i>bool</i> true if the server has been successufully intialised
+            *   @return bool true if the server has been successufully intialised
             **/
             bool Init(const std::filesystem::path& cert, const std::filesystem::path& key, const ipAddress& addr, unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings=false);
 
@@ -50,7 +50,7 @@ namespace pml::restgoose
             *   @param[in] nPort the TCP/IP port number to listen on
             *   @param[in] apiRoot the relative URL that is the base of the API tree
             *   @param[in] bEnableWebsocket set to true to act as a websocket server as well
-            *   @return <i>bool</i> true if the server has been successufully intialised
+            *   @return bool true if the server has been successufully intialised
             **/
             bool Init(const ipAddress& addr, unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings=false);
 
@@ -90,13 +90,13 @@ namespace pml::restgoose
             /** @brief Adds a basic authentication user/password pair to the server
             *   @param[in] aUser the username
             *   @param[in] aPassword the password
-            *   @return <i>bool</i> will return false if the authorization type is not set to basic or the user already exists
+            *   @return bool will return false if the authorization type is not set to basic or the user already exists
             **/
             bool AddBAUser(const userName& aUser, const password& aPassword);
 
             /** @brief Deletes a user from basic authentication
             *   @param[in] aUser the username
-            *   @return <i>bool</i> will return false if the authorization type is not set to basic
+            *   @return bool will return false if the authorization type is not set to basic
             **/
             bool DeleteBAUser(const userName& aUser);
 
@@ -107,7 +107,7 @@ namespace pml::restgoose
             *   @param[in] funcMessage a function that is called everytime the client sends a websocket message to the server. The function is passed the methodpoint address and the message passed (as Json).
                 The function should return true to allow the connection to continue and false to close it
             *  @param[in] funcClose a function that is called when the client closes the websocket connection. The function is passed the methodpoint address and the client ip address
-            *  @return <i>bool</i> true if the websocket methodpoint was added
+            *  @return bool true if the websocket methodpoint was added
                 **/
             bool AddWebsocketEndpoint(const endpoint& theEndpoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress&)>& funcAuthentication, const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage, const std::function<void(const endpoint&, const ipAddress&)>& funcClose);
 
@@ -143,13 +143,13 @@ namespace pml::restgoose
             *   @param[in] func std::function that defines the callback function.The function is passed the query data, std::vector<partData> (for a PUT,PATCH or POST) the methodpoint and the userName if any.
             *   @param[in] bUseThread if false then the callback will be called in the server thread
             The function should return a response which will be sent back to the client
-            *   @return <i>bool</i> true on success
+            *   @return bool true on success
             **/
             bool AddEndpoint(const httpMethod& method, const endpoint& theEndpoint, const std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)>& func, bool bUseThread = false);
 
             /** Removes a callback handler for an methodpoint
             *   @param[in] theEndpoint a pair definining the HTTP method and methodpoint address
-            *   @return <i>bool</i> true on success
+            *   @return bool true on success
             **/
             bool DeleteEndpoint(const httpMethod& method, const endpoint& theEndpoint);
 
@@ -165,7 +165,7 @@ namespace pml::restgoose
             void SendWebsocketMessage(const std::set<endpoint>& setEndpoints, const Json::Value& jsMessage);
 
             /** @brief Gets a set containing all the defined Restful methodpoints
-            *   @return <i>set<methodpoint> the methodpoints
+            *   @return set<methodpoint> the methodpoints
             **/
             std::set<methodpoint> GetEndpoints();
 
@@ -175,12 +175,12 @@ namespace pml::restgoose
             void SetStaticDirectory(const std::string& sDir);
 
             /** @brief Gets the directory that has been set to serve html web pages from
-            *   @return <i>string</i> the full path
+            *   @return string the full path
             **/
             const std::string& GetStaticDirectory() const;
 
             /** @brief Gets the port number that the server is listening on
-            *   @return <i>unsigned long</i> the port
+            *   @return unsigned long the port
             **/
             unsigned long GetPort() const;
 
@@ -202,7 +202,7 @@ namespace pml::restgoose
 
 
             /** @brief Get the response value passed in the Signal routine
-            *   @return <i>response</i> the data sent from the signalling thread
+            *   @return response the data sent from the signalling thread
             **/
             const response& GetSignalResponse() const;
 

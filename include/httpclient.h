@@ -73,7 +73,7 @@ namespace pml::restgoose
             /** @brief The function that attempts to connect to the server, send any data and retrieve any response. This is a synchronous function
             *   @param[in] connectionTimeout the amount of time to wait for a connection to the server to be accepted before giving up
             *   @param[in] processTimeout the amount of time to wait for the whole connect, send, receive procedure to take place. If set to 0 then the timeout is ignored
-            *   @return <i>clientResponse</i> a clientResponse object containing the HTTP repsonse code and any data sent from the server
+            *   @return clientResponse a clientResponse object containing the HTTP repsonse code and any data sent from the server
             **/
             const clientResponse& Run(const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0)) const;
 
@@ -84,7 +84,7 @@ namespace pml::restgoose
             *   @param[in] connectionTimeout the amount of time to wait for a connection to the server to be accepted before giving up
             *   @param[in] processTimeout the amount of time to wait for the whole connect, send, receive procedure to take place. If set to 0 then the timeout is ignored
             *   @param[in] delay the amount of time to wait before running the function. This wait time may be longer depending on thread allocation.
-            *   @return <i>clientResponse</i> a clientResponse object containing the HTTP repsonse code and any data sent from the server
+            *   @return clientResponse a clientResponse object containing the HTTP repsonse code and any data sent from the server
             **/
             void Run(const std::function<void(const clientResponse&, unsigned int, const std::string& )>& pCallback, unsigned int nRunId, const std::string& sUserData, const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0), const std::chrono::milliseconds& delay = std::chrono::milliseconds(0)) const;
 
@@ -95,7 +95,7 @@ namespace pml::restgoose
             *   @param[in] connectionTimeout the amount of time to wait for a connection to the server to be accepted before giving up
             *   @param[in] processTimeout the amount of time to wait for the whole connect, send, receive procedure to take place. If set to 0 then the timeout is ignored
             *   @param[in] delay the amount of time to wait before running the function. This wait time may be longer depending on thread allocation.
-            *   @return <i>clientResponse</i> a clientResponse object containing the HTTP repsonse code and any data sent from the server
+            *   @return clientResponse a clientResponse object containing the HTTP repsonse code and any data sent from the server
             **/
             void Run(const std::function<void(const clientResponse&, unsigned int)>& pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0), const std::chrono::milliseconds& delay = std::chrono::milliseconds(0)) const;
 
@@ -141,64 +141,64 @@ namespace pml::restgoose
 
             /** @brief Set the file location of the certificate authority file to use (if any)
             *   @param[in] ca the file location
-            *   @return <i>bool</i> false if already called Run with a callback function
+            *   @return bool false if already called Run with a callback function
             **/
             bool SetCertificateAuthority(const std::filesystem::path& ca) const;
 
             /** @brief Sets the client certificate to use if server requires authentication
             *   @param[in] cert the path to the certificate file
             *   @param[in] key the path to the private key file
-            *   @return <i>bool</i> false if already called Run with a callback function
+            *   @return bool false if already called Run with a callback function
             **/
             bool SetClientCertificate(const std::filesystem::path& cert, const std::filesystem::path& key) const;
 
 
             /** @brief Set the HTTP method to use
             *   @param[in] method the HTTP method (e.g. restgoose::GET)
-            *   @return <i>bool</i> false if already called Run with a callback function
+            *   @return bool false if already called Run with a callback function
             **/
             bool SetMethod(const httpMethod& method) const;
 
             /** @brief Set the URL to connect to
             *   @param[in] target the URL endpoint to connect to
-            *   @return <i>bool</i> false if already called Run with a callback function
+            *   @return bool false if already called Run with a callback function
             **/
             bool SetEndpoint(const endpoint& target) const;
 
             /** @brief Set the data to send (if a POST/PULL/PUT request) in JSON format
             *   @param[in] jsData the data to send
-            *   @return <i>bool</i> false if already called Run with a callback function
+            *   @return bool false if already called Run with a callback function
             **/
             bool SetData(const Json::Value& jsData) const;
 
             /** @brief Set the data to send (if a POST/PULL/PUT request) in plain/text format
             *   @param[in] data the data to send
-            *   @return <i>bool</i> false if already called Run with a callback function
+            *   @return bool false if already called Run with a callback function
             **/
             bool SetData(const textData& data) const;
 
             /** @brief Set the file to upload (if a POST/PULL/PUT request)
             *   @param[in] filename the name of the file
             *   @param[in] filepath the location of the file
-            *   @return <i>bool</i> false if already called Run with a callback function
+            *   @return bool false if already called Run with a callback function
             **/
             bool SetFile(const textData& filename, const std::filesystem::path& filepath) const;
 
             /** @brief Set the multipart data to send (if a POST/PULL/PUT request)
             *   @param[in] vData the data to send
-            *   @return <i>bool</i> false if already called Run with a callback funtion
+            *   @return bool false if already called Run with a callback funtion
             **/
             bool SetPartData(const std::vector<partData>& vData) const;
 
             /** @brief Add HTTP headers to send
             *   @param[in] mHeaders a map of header name, header value
-            *   @return <i>bool</i> false if already called Run with a callback funtion
+            *   @return bool false if already called Run with a callback funtion
             **/
             bool AddHeaders(const std::map<headerName, headerValue>& mHeaders) const;
 
             /** @brief Set the expected format of the response from the server
             *   @param[in] eResponse the expected format
-            *   @return <i>bool</i> false if already called Run with a callback funtion
+            *   @return bool false if already called Run with a callback funtion
             **/
             bool SetExpectedResponse(const clientResponse::enumResponse eResponse) const;
 
