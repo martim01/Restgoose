@@ -31,35 +31,35 @@ FetchContent_Declare(mongoose GIT_REPOSITORY "https://github.com/cesanta/mongoos
 
 FetchContent_MakeAvailable(log jsoncpp mongoose)
 
-
-message(STATUS "Amalgamate JsonCpp")
+#message(STATUS "Amalgamate JsonCpp")
 
 #Amalgamate JsonCpp
-find_path(RG_TEMP_DIR3 NAMES "jsoncpp.cpp" PATHS ${DIR_JSON}/dist NO_CACHE)
-if((NOT RG_TEMP_DIR3) OR (NOT EXISTS ${RG_TEMP_DIR3}))
-	message("amalgamate jsoncpp")
-	execute_process(COMMAND python3 amalgamate.py WORKING_DIRECTORY ${DIR_JSON})
-endif()
-unset(RG_TEMP_DIR3)
 
-find_path(RG_TEMP_DIR4 NAMES "jsoncpp.cpp" PATHS ${DIR_JSON}/dist NO_CACHE)
-if((NOT RG_TEMP_DIR4) OR (NOT EXISTS ${RG_TEMP_DIR4}))
-	message(FATAL_ERROR "Failed to amalgamate jsoncpp")
-endif()
-unset(RG_TEMP_DIR4)
+#find_path(RG_TEMP_DIR3 NAMES "jsoncpp.cpp" PATHS ${DIR_JSON}/dist NO_CACHE)
+#if((NOT RG_TEMP_DIR3) OR (NOT EXISTS ${RG_TEMP_DIR3}))#
+#	message("amalgamate jsoncpp")
+#	execute_process(COMMAND python3 amalgamate.py WORKING_DIRECTORY ${DIR_JSON})
+#endif()
+#unset(RG_TEMP_DIR3)
+
+#find_path(RG_TEMP_DIR4 NAMES "jsoncpp.cpp" PATHS ${DIR_JSON}/dist NO_CACHE)
+#if((NOT RG_TEMP_DIR4) OR (NOT EXISTS ${RG_TEMP_DIR4}))
+#	message(FATAL_ERROR "Failed to amalgamate jsoncpp")
+#endif()
+#unset(RG_TEMP_DIR4)
 
 #Now restgoose
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 link_directories(${CMAKE_SOURCE_DIR}/lib)
 include_directories(${DIR_MONGOOSE})
-include_directories(${DIR_JSON}/dist)
+include_directories(${DIR_JSON}/include)
 include_directories(${DIR_LOG}/include)
 include_directories("include")
 
 
 SET(SOURCES "src/RestGoose.cpp" "src/mongooseserver.cpp" "src/utils.cpp" "src/websocketclient.cpp" "src/websocketclientimpl.cpp"
  "src/httpclientimpl.cpp" "src/httpclient.cpp" "src/response.cpp" "src/threadpool.cpp" ${CMAKE_BINARY_DIR}/src/restgoose_version.cpp
- "${DIR_MONGOOSE}/mongoose.c" "${DIR_JSON}/dist/jsoncpp.cpp")
+ "${DIR_MONGOOSE}/mongoose.c")
 
 add_library(restgoose SHARED ${SOURCES})
 target_include_directories(restgoose PUBLIC ${CMAKE_BINARY_DIR}/include)
@@ -81,8 +81,10 @@ else()
 endif()
 
 target_compile_options(restgoose PRIVATE ${flags})
-target_link_libraries(restgoose ssl)
+target_link_libraries(restgoose ssl jsoncpp_lib)
 target_link_libraries(restgoose optimized pml_log)
+
+add_dependencies(restgoose jsoncpp_lib) 
 
 set_target_properties(restgoose PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(restgoose PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
