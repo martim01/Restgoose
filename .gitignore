@@ -37,3 +37,5 @@ build/
 #cmake generated version.cpp
 src/version.cpp
 lib/
+external/
+
