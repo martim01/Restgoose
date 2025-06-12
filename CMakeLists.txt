@@ -31,23 +31,6 @@ FetchContent_Declare(mongoose GIT_REPOSITORY "https://github.com/cesanta/mongoos
 
 FetchContent_MakeAvailable(log jsoncpp mongoose)
 
-#message(STATUS "Amalgamate JsonCpp")
-
-#Amalgamate JsonCpp
-
-#find_path(RG_TEMP_DIR3 NAMES "jsoncpp.cpp" PATHS ${DIR_JSON}/dist NO_CACHE)
-#if((NOT RG_TEMP_DIR3) OR (NOT EXISTS ${RG_TEMP_DIR3}))#
-#	message("amalgamate jsoncpp")
-#	execute_process(COMMAND python3 amalgamate.py WORKING_DIRECTORY ${DIR_JSON})
-#endif()
-#unset(RG_TEMP_DIR3)
-
-#find_path(RG_TEMP_DIR4 NAMES "jsoncpp.cpp" PATHS ${DIR_JSON}/dist NO_CACHE)
-#if((NOT RG_TEMP_DIR4) OR (NOT EXISTS ${RG_TEMP_DIR4}))
-#	message(FATAL_ERROR "Failed to amalgamate jsoncpp")
-#endif()
-#unset(RG_TEMP_DIR4)
-
 #Now restgoose
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 link_directories(${CMAKE_SOURCE_DIR}/lib)
