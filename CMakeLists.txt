@@ -29,7 +29,12 @@ FetchContent_Declare(log GIT_REPOSITORY "https://github.com/martim01/log.git"  S
 FetchContent_Declare(jsoncpp GIT_REPOSITORY "https://github.com/open-source-parsers/jsoncpp" SOURCE_DIR ${DIR_JSON})
 FetchContent_Declare(mongoose GIT_REPOSITORY "https://github.com/cesanta/mongoose.git" GIT_TAG ${MONGOOSE_CHECKOUT} SOURCE_DIR ${DIR_MONGOOSE})
 
-FetchContent_MakeAvailable(log jsoncpp mongoose)
+FetchContent_GetProperties(jsoncpp)
+if(NOT jsoncpp_POPULATED)
+    FetchContent_Populate(jsoncpp)
+endif()
+
+FetchContent_MakeAvailable(log mongoose)
 
 #Now restgoose
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -64,10 +69,8 @@ else()
 endif()
 
 target_compile_options(restgoose PRIVATE ${flags})
-target_link_libraries(restgoose ssl jsoncpp_lib)
+target_link_libraries(restgoose ssl)
 target_link_libraries(restgoose optimized pml_log)
-
-add_dependencies(restgoose jsoncpp_lib) 
 
 set_target_properties(restgoose PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(restgoose PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
