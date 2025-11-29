@@ -40,8 +40,8 @@ using authorised = std::pair<bool, userName>;
 
 namespace pml::restgoose
 {
-    extern size_t GetNumberOfConnections(const mg_mgr& mgr);
-    extern size_t DoGetNumberOfWebsocketConnections(const mg_mgr& mgr);
+    extern size_t get_number_of_connections(const mg_mgr& mgr);
+    extern size_t do_get_number_of_websocket_connections(const mg_mgr& mgr);
 
     struct end_less
     {
