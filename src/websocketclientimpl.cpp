@@ -58,6 +58,7 @@ void WebSocketClientImpl::Loop()
         }
     }
     pml::log::debug( "pml::restgoose") << "WebsocketClient\tloop exited";
+
 }
 
 void WebSocketClientImpl::CheckConnections()
@@ -97,7 +98,8 @@ bool WebSocketClientImpl::CheckTimeout(std::map<endpoint, connection>::iterator&
 
     if(itConnection->second.bConnected == false && elapsed.count() > 3000)
     {
-        pml::log::debug( "pml::restgoose") << "WebsocketClient\tWebsocket connection timeout ";
+        pml::log::log(pml::log::Level::kDebug, "pml::restgoose") << "WebsocketClient\tWebsocket connection timeout ";
+
         if(m_pConnectCallback)
         {
             m_pConnectCallback(itConnection->first, false, enumError::TIMEOUT);

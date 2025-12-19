@@ -13,11 +13,12 @@
 
 #include "json/json.h"
 #include "log.h"
+
 #include "threadpool.h"
 #include "utils.h"
 
 
-bool caseInsLess(std::string_view s1, std::string_view s2)
+bool case_ins_less(std::string_view s1, std::string_view s2)
 {
     return std::lexicographical_compare(s1.begin(), s1.end(), s2.begin(), s2.end(), [](unsigned char a, unsigned char b){ return toupper(a) < toupper(b); });
 }
@@ -25,7 +26,7 @@ bool caseInsLess(std::string_view s1, std::string_view s2)
 
 
 
-static void mgpmlLog(char ch, void*)
+static void mgpml_log(char ch, void*)
 {
     static pml::log::Stream ls;
     ls.SetLevel(pml::log::Level::kDebug);
@@ -43,7 +44,7 @@ static void mgpmlLog(char ch, void*)
 
 bool operator<(const methodpoint& e1, const methodpoint& e2)
 {
-    return (e1.first.Get() < e2.first.Get() || (e1.first.Get() == e2.first.Get() && caseInsLess(e1.second.Get(), e2.second.Get())));
+    return (e1.first.Get() < e2.first.Get() || (e1.first.Get() == e2.first.Get() && case_ins_less(e1.second.Get(), e2.second.Get())));
 }
 
 
@@ -52,9 +53,11 @@ using namespace std::placeholders;
 namespace pml::restgoose
 {
 
-const std::string DISPOSITION = "Content-Disposition: ";
-const std::string NAME = " name=";
-const std::string FILENAME = " filename=";
+const std::string kDisposition = "Content-Disposition: ";
+const std::string kName = " name=";
+const std::string kFilename = " filename=";
+
+const std::string kLogPrefix = "pml::restgoose";
 
 static struct mg_http_serve_opts s_ServerOpts;
 
@@ -67,7 +70,7 @@ bool end_less::operator() (endpoint e1, endpoint e2) const
 
 
 
-size_t GetNumberOfConnections(const mg_mgr& mgr)
+size_t get_number_of_connections(const mg_mgr& mgr)
 {
     size_t nCount = 0;
     if(mg_connection* pTmp = mgr.conns; pTmp)
@@ -81,7 +84,7 @@ size_t GetNumberOfConnections(const mg_mgr& mgr)
     return nCount;
 }
 
-size_t DoGetNumberOfWebsocketConnections(const mg_mgr& mgr)
+size_t do_get_number_of_websocket_connections(const mg_mgr& mgr)
 {
     size_t nCount = 0;
     if(mg_connection* pTmp = mgr.conns; pTmp)
@@ -97,7 +100,7 @@ size_t DoGetNumberOfWebsocketConnections(const mg_mgr& mgr)
     return nCount;
 }
 
-headerValue GetHeader(struct mg_http_message* pMessage, const headerName& name)
+headerValue get_header(struct mg_http_message* pMessage, const headerName& name)
 {
     headerValue value("");
     if(mg_str const* pStr = mg_http_get_header(pMessage, name.Get().c_str()); pStr && pStr->len > 0)
@@ -107,7 +110,7 @@ headerValue GetHeader(struct mg_http_message* pMessage, const headerName& name)
     return value;
 }
 
-std::string LoadTLS(const std::filesystem::path& path)
+std::string load_tls(const std::filesystem::path& path)
 {
     std::ifstream ifFile;
 
@@ -125,7 +128,7 @@ std::string LoadTLS(const std::filesystem::path& path)
     return isstr.str();
 }
 
-std::vector<partData> CreatePartData(const mg_str& str, const headerValue& contentType)
+std::vector<partData> create_part_data(const mg_str& str, const headerValue& contentType)
 {
     pml::log::trace("pml::restgoose") << "CreatePartData " << contentType;
     if(contentType.Get() != "application/x-www-form-urlencoded")
@@ -154,7 +157,7 @@ std::vector<partData> CreatePartData(const mg_str& str, const headerValue& conte
     }
 }
 
-partData CreatePartData(const mg_http_part& mgpart, const headerValue& )
+partData create_part_data(const mg_http_part& mgpart, const headerValue& )
 {
     partData part(partName(std::string(mgpart.name.buf, mgpart.name.len)), textData(std::string(mgpart.filename.buf, mgpart.filename.len)), CreateTmpFileName("/tmp"));
 
@@ -176,7 +179,7 @@ partData CreatePartData(const mg_http_part& mgpart, const headerValue& )
 }
 
 
-std::string DecodeQueryString(mg_http_message const* pMessage)
+std::string decode_query_string(mg_http_message const* pMessage)
 {
     if(pMessage->query.len > 0)
     {
@@ -187,11 +190,11 @@ std::string DecodeQueryString(mg_http_message const* pMessage)
     return std::string("");
 }
 
-query ExtractQuery(mg_http_message const* pMessage)
+query extract_query(mg_http_message const* pMessage)
 {
     query mDecode;
 
-    auto sQuery = DecodeQueryString(pMessage);
+    auto sQuery = decode_query_string(pMessage);
 
     auto vQuery = SplitString(sQuery, '&');
     for(const auto& sParam : vQuery)
@@ -381,7 +384,7 @@ void MongooseServer::DoWebsocketAuthentication(mg_connection* pConnection, subsc
     }
     else
     {
-        pmlLog(LOG_DEBUG) << "tWebsocket subscriber not authenticated: close";
+        pml::log::log(pml::log::Level::kDebug) << "tWebsocket subscriber not authenticated: close";
         m_mSubscribers.erase(pConnection);
         pConnection->is_closing = 1;
     }
@@ -676,7 +679,7 @@ void MongooseServer::EventHttpWebsocket(mg_connection *pConnection, mg_http_mess
     std::stringstream ssPeer;
     ssPeer << buffer << ":" << pConnection->rem.port;
 
-    auto itSub = m_mSubscribers.try_emplace(pConnection, uri, ipAddress(ssPeer.str()), ExtractQuery(pMessage)).first;
+    auto itSub = m_mSubscribers.try_emplace(pConnection, uri, ipAddress(ssPeer.str()), extract_query(pMessage)).first;
     itSub->second.setEndpoints.insert(uri);
 
     if(m_mUsers.empty() && m_tokenCallback == nullptr)
@@ -722,16 +725,16 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
         {
             if(itCallback->second.second == false)
             {
-                DoReply(pConnection, itCallback->second.first(ExtractQuery(pMessage), CreatePartData(pMessage->body, GetHeader(pMessage, headerName("Content-Type"))), thePoint.second, user));
+                DoReply(pConnection, itCallback->second.first(extract_query(pMessage), create_part_data(pMessage->body, get_header(pMessage, headerName("Content-Type"))), thePoint.second, user));
             }
             else
             {
-                DoReplyThreaded(pConnection, ExtractQuery(pMessage), CreatePartData(pMessage->body, GetHeader(pMessage, headerName("Content-Type"))), thePoint, user);
+                DoReplyThreaded(pConnection, extract_query(pMessage), create_part_data(pMessage->body, get_header(pMessage, headerName("Content-Type"))), thePoint, user);
             }
         }
         else if(m_callbackNotFound)
         {
-            DoReply(pConnection, m_callbackNotFound(thePoint.first, ExtractQuery(pMessage), {}, thePoint.second, user));
+            DoReply(pConnection, m_callbackNotFound(thePoint.first, extract_query(pMessage), {}, thePoint.second, user));
         }
         else
         {
@@ -781,21 +784,21 @@ void MongooseServer::EventHttpApiMultipart(mg_connection *pConnection, mg_http_m
             size_t nOffset=0;
             while((nOffset = mg_http_next_multipart(pMessage->body, nOffset, &part)) > 0)
             {
-                vData.push_back(CreatePartData(part, GetHeader(pMessage, headerName("Content-Type"))));
+                vData.push_back(create_part_data(part, get_header(pMessage, headerName("Content-Type"))));
             }
             
             if(itCallback->second.second == false)
             {
-                DoReply(pConnection, itCallback->second.first(ExtractQuery(pMessage), vData, thePoint.second, user));
+                DoReply(pConnection, itCallback->second.first(extract_query(pMessage), vData, thePoint.second, user));
             }
             else
             {
-                DoReplyThreaded(pConnection, ExtractQuery(pMessage), vData, thePoint, user);
+                DoReplyThreaded(pConnection, extract_query(pMessage), vData, thePoint, user);
             }
         }
         else if(m_callbackNotFound)
         {
-            DoReply(pConnection, m_callbackNotFound(thePoint.first, ExtractQuery(pMessage), {}, thePoint.second, user));
+            DoReply(pConnection, m_callbackNotFound(thePoint.first, extract_query(pMessage), {}, thePoint.second, user));
         }
         else
         {
@@ -883,7 +886,7 @@ void MongooseServer::HandleOpen(mg_connection* pConnection)
             pml::log::debug("pml::restgoose") << "HandleOpen: Not allowed due to ACL";
             pConnection->is_closing = 1;
         }
-        else if(GetNumberOfConnections(m_mgr) > m_nMaxConnections)
+        else if(get_number_of_connections(m_mgr) > m_nMaxConnections)
         {
             pml::log::debug("pml::restgoose") << "HandleOpen: REACHED MAXIMUM";
             pConnection->is_closing = 1;
@@ -931,7 +934,7 @@ MongooseServer::MongooseServer()
 {
   
     mg_log_set(2);  //info and worse
-    //mg_log_set_fn(mgpmlLog, nullptr);
+    //mg_log_set_fn(mgpml_log, nullptr);
 }
 
 MongooseServer::~MongooseServer()
@@ -942,9 +945,9 @@ MongooseServer::~MongooseServer()
 
 bool MongooseServer::Init(const std::filesystem::path& ca, const std::filesystem::path& cert, const std::filesystem::path& key, const ipAddress& addr, unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
 {
-    m_sKey = LoadTLS(key);
-    m_sCert = LoadTLS(cert);
-    m_sCa = LoadTLS(ca);
+    m_sKey = load_tls(key);
+    m_sCert = load_tls(cert);
+    m_sCa = load_tls(ca);
     
 
     if(m_sCert.empty() == false)
@@ -1056,7 +1059,7 @@ void MongooseServer::Stop()
 
 bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress& )>& funcAuthentication, const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage, const std::function<void(const endpoint&, const ipAddress&)>& funcClose)
 {
-    pml::log::Stream lg(pml::log::Level::kInfo, "pml::restgoose");
+    pml::log::Stream lg(pml::log::Level::kInfo, kLogPrefix);
     lg << "AddWebsocketEndpoint <" << theEndpoint.Get() << "> ";
 
     if(!m_bWebsocket)
@@ -1074,7 +1077,7 @@ bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, const std
 
 bool MongooseServer::AddEndpoint(const methodpoint& theMethodPoint, const std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName& )>& func, bool bUseThread)
 {
-    pml::log::Stream lg(pml::log::Level::kInfo, "pml::restgoose");
+    pml::log::Stream lg(pml::log::Level::kInfo, kLogPrefix);
     lg << "AddEndpoint <" << theMethodPoint.first.Get() << ", " << theMethodPoint.second.Get() << "> ";
     if(m_mEndpoints.find(theMethodPoint) != m_mEndpoints.end())
     {
@@ -1511,7 +1514,7 @@ void MongooseServer::SendAndCheckPings(const std::chrono::milliseconds& elapsed)
 
 size_t MongooseServer::GetNumberOfWebsocketConnections() const
 {
-    return DoGetNumberOfWebsocketConnections(m_mgr);
+    return do_get_number_of_websocket_connections(m_mgr);
 }
 
 void MongooseServer::SetUnprotectedEndpoints(const std::set<methodpoint>& setUnprotected)
