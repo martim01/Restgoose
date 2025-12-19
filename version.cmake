@@ -46,7 +46,7 @@ const char* pml::${NAMESPACE}::VERSION_STRING=\"${MAJOR}.${MINOR}.${PATCH}-${GIT
 const char* pml::${NAMESPACE}::BUILD_DATE = \"${BUILD_DATE}\";
 ")
 
-set(SRC_FILE ${CMAKE_BINARY_DIR}/src/${NAMESPACE}_version.cpp)
+set(SRC_FILE ${OUTPUT}/src/${NAMESPACE}_version.cpp)
 if(EXISTS ${SRC_FILE})
     file(READ ${SRC_FILE} VERSION_)
 else()
@@ -80,7 +80,7 @@ namespace pml
 }
 #endif")
 
-set(INC_FILE ${CMAKE_BINARY_DIR}/include/${NAMESPACE}_version.h)
+set(INC_FILE ${OUTPUT}/include/${NAMESPACE}_version.h)
 if(EXISTS ${INC_FILE})
     file(READ ${INC_FILE} INCLUDE_)
 else()

@@ -10,7 +10,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 message(STATUS "Restgoose Version: ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
 
-execute_process(COMMAND ${CMAKE_COMMAND} -DNAMESPACE=restgoose -DMAJOR=${PROJECT_VERSION_MAJOR} -DMINOR=${PROJECT_VERSION_MINOR} -DPATCH=${PROJECT_VERSION_PATCH} -P ${CMAKE_CURRENT_SOURCE_DIR}/version.cmake)
+execute_process(COMMAND ${CMAKE_COMMAND} -DNAMESPACE=restgoose -DMAJOR=${PROJECT_VERSION_MAJOR} -DMINOR=${PROJECT_VERSION_MINOR} -DPATCH=${PROJECT_VERSION_PATCH} -DOUTPUT=${CMAKE_BINARY_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/version.cmake)
 
 SET(DIR_BASE ${CMAKE_SOURCE_DIR} CACHE STRING "base location for external libraries' source")
 SET(DIR_JSON ${DIR_BASE}/external/jsoncpp CACHE STRING "location of jsoncpp")
@@ -29,7 +29,12 @@ FetchContent_Declare(log GIT_REPOSITORY "https://github.com/martim01/log.git"  S
 FetchContent_Declare(jsoncpp GIT_REPOSITORY "https://github.com/open-source-parsers/jsoncpp" SOURCE_DIR ${DIR_JSON})
 FetchContent_Declare(mongoose GIT_REPOSITORY "https://github.com/cesanta/mongoose.git" GIT_TAG ${MONGOOSE_CHECKOUT} SOURCE_DIR ${DIR_MONGOOSE})
 
-FetchContent_MakeAvailable(log jsoncpp mongoose)
+FetchContent_GetProperties(jsoncpp)
+if(NOT jsoncpp_POPULATED)
+    FetchContent_Populate(jsoncpp)
+endif()
+
+FetchContent_MakeAvailable(log mongoose)
 
 #Now restgoose
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -64,10 +69,8 @@ else()
 endif()
 
 target_compile_options(restgoose PRIVATE ${flags})
-target_link_libraries(restgoose ssl jsoncpp_lib)
+target_link_libraries(restgoose ssl)
 target_link_libraries(restgoose optimized pml_log)
-
-add_dependencies(restgoose jsoncpp_lib) 
 
 set_target_properties(restgoose PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(restgoose PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
