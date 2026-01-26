@@ -110,23 +110,7 @@ headerValue get_header(struct mg_http_message* pMessage, const headerName& name)
     return value;
 }
 
-std::string load_tls(const std::filesystem::path& path)
-{
-    std::ifstream ifFile;
 
-    //attempt to open the file
-    ifFile.open(path,std::ios::in);
-    if(!ifFile.is_open())
-    {
-        pml::log::warning("TLS") << "Could not open " << path;
-        return std::string();
-    }
-
-    std::stringstream isstr;
-    isstr << ifFile.rdbuf();
-    ifFile.close();
-    return isstr.str();
-}
 
 std::vector<partData> create_part_data(const mg_str& str, const headerValue& contentType)
 {

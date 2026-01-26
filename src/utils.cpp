@@ -3,11 +3,13 @@
 #include <cstring>
 #include <algorithm>
 #include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
 
+#include "log.h"
 
 
 namespace pml::restgoose
@@ -113,5 +115,23 @@ std::string ConvertFromJson(const Json::Value& jsValue)
     builder["commentStyle"] = "None";
     builder["indentation"] = "";
     return Json::writeString(builder, jsValue);
+}
+
+std::string load_tls(const std::filesystem::path& path)
+{
+    std::ifstream ifFile;
+
+    //attempt to open the file
+    ifFile.open(path,std::ios::in);
+    if(!ifFile.is_open())
+    {
+        pml::log::warning("TLS") << "Could not open " << path;
+        return std::string();
+    }
+
+    std::stringstream isstr;
+    isstr << ifFile.rdbuf();
+    ifFile.close();
+    return isstr.str();
 }
 }

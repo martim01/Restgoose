@@ -115,8 +115,12 @@ namespace pml::restgoose
             std::string m_sUserData;
 
             std::filesystem::path m_ca;
-            std::filesystem::path m_Cert;
-            std::filesystem::path m_Key;
+            std::filesystem::path m_cert;
+            std::filesystem::path m_key;
+
+            std::string m_sCA;
+            std::string m_sCert;
+            std::string m_sKey;
 
             std::function<void(unsigned long, unsigned long)> m_pUploadProgressCallback = nullptr;
             std::function<void(unsigned long, unsigned long)> m_pDownloadProgressCallback = nullptr;

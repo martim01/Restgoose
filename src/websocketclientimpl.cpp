@@ -196,7 +196,7 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
             MarkConnectionConnected(pConnection, false, errno);
             break;
         case MG_EV_WS_OPEN:
-            pml::log::debug( "pml::restgoose") << "WebsocketClient\tWebsocket connected " << GetNumberOfConnections(m_mgr);
+            pml::log::debug( "pml::restgoose") << "WebsocketClient\tWebsocket connected ";
             MarkConnectionConnected(pConnection);
             break;
         case MG_EV_WS_MSG:

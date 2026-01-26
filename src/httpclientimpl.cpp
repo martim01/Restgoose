@@ -104,14 +104,14 @@ void HttpClientImpl::HandleConnectEventDirect(mg_connection* pConnection)
         mg_tls_opts opts{};
         opts.name = host;
 
-        if(m_ca.empty() == false)
+        if(m_sCA.empty() == false)
         {
-            opts.ca = mg_str(m_ca.c_str());
+            opts.ca = mg_str(m_sCA.c_str());
         }
-        if(m_Cert.empty() == false && m_Key.empty() == false)
+        if(m_sCert.empty() == false && m_sKey.empty() == false)
         {
-            opts.cert = mg_str(m_Cert.c_str());
-            opts.key = mg_str(m_Key.c_str());
+            opts.cert = mg_str(m_sCert.c_str());
+            opts.key = mg_str(m_sKey.c_str());
         }
         mg_tls_init(pConnection, &opts);
     }
@@ -157,14 +157,14 @@ void HttpClientImpl::HandleConnectEventToProxy(mg_connection* pConnection)
         mg_tls_opts opts{};
         opts.name = host;
 
-        if(m_ca.empty() == false)
+        if(m_sCA.empty() == false)
         {
-            opts.ca = mg_str(m_ca.string().c_str());
+            opts.ca = mg_str(m_sCA.c_str());
         }
-        if(m_Cert.empty() == false && m_Key.empty() == false)
+        if(m_sCert.empty() == false && m_sKey.empty() == false)
         {
-            opts.cert = mg_str(m_Cert.string().c_str());
-            opts.key = mg_str(m_Key.string().c_str());
+            opts.cert = mg_str(m_sCert.c_str());
+            opts.key = mg_str(m_sKey.c_str());
         }
         mg_tls_init(pConnection, &opts);
     }
@@ -905,6 +905,11 @@ bool HttpClientImpl::SetCertificateAuthority(const std::filesystem::path& ca)
     if(m_pAsyncCallback == nullptr)
     {
         m_ca = ca;
+        m_sCA = load_tls(m_ca);
+        if(m_sCA.empty())
+        {
+            return false;   
+        }
         return true;
     }
     return false;
@@ -914,8 +919,15 @@ bool HttpClientImpl::SetClientCertificate(const std::filesystem::path& cert, con
 {
     if(m_pAsyncCallback == nullptr)
     {
-        m_Cert = cert;
-        m_Key = key;
+        m_cert = cert;
+        m_key = key;
+
+        m_sCert = load_tls(m_cert);
+        m_sKey = load_tls(m_key);
+        if(m_sCert.empty() || m_sKey.empty())
+        {
+            return false;   
+        }
         return true;
     }
     return false;
