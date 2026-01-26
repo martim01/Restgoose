@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
-include(FetchContent)
+include(addexternal.cmake)
 project(restgoose LANGUAGES CXX C VERSION 3.6.0)
+
 
 message(STATUS "----pml/restgoose ----")
 
@@ -10,7 +11,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 message(STATUS "Restgoose Version: ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
 
-execute_process(COMMAND ${CMAKE_COMMAND} -DNAMESPACE=restgoose -DMAJOR=${PROJECT_VERSION_MAJOR} -DMINOR=${PROJECT_VERSION_MINOR} -DPATCH=${PROJECT_VERSION_PATCH} -P ${CMAKE_CURRENT_SOURCE_DIR}/version.cmake)
+execute_process(COMMAND ${CMAKE_COMMAND} -DNAMESPACE=${PROJECT_NAME} -DMAJOR=${PROJECT_VERSION_MAJOR} -DMINOR=${PROJECT_VERSION_MINOR} -DPATCH=${PROJECT_VERSION_PATCH} -DOUTPUT=${CMAKE_BINARY_DIR} -P ${CMAKE_SOURCE_DIR}/version.cmake)
 
 SET(DIR_BASE ${CMAKE_SOURCE_DIR} CACHE STRING "base location for external libraries' source")
 SET(DIR_JSON ${DIR_BASE}/external/jsoncpp CACHE STRING "location of jsoncpp")
@@ -18,23 +19,22 @@ SET(DIR_MONGOOSE ${DIR_BASE}/external/mongoose CACHE STRING "location of mongoos
 SET(DIR_LOG ${DIR_BASE}/external/log CACHE STRING "location of pml log")
 SET(MONGOOSE_CHECKOUT "7.18" CACHE STRING "Mongoose release 7.18")
 
-message(STATUS, ${CMAKE_SOURCE_DIR})
+message(STATUS "Source Directory: ${CMAKE_SOURCE_DIR}")
 
 #check openssl installed
 message(STATUS "Check OpenSSL")
 find_package(OpenSSL REQUIRED)
 
 message(STATUS "Get external repositories")
-FetchContent_Declare(log GIT_REPOSITORY "https://github.com/martim01/log.git"  SOURCE_DIR ${DIR_LOG})
-FetchContent_Declare(jsoncpp GIT_REPOSITORY "https://github.com/open-source-parsers/jsoncpp" SOURCE_DIR ${DIR_JSON})
-FetchContent_Declare(mongoose GIT_REPOSITORY "https://github.com/cesanta/mongoose.git" GIT_TAG ${MONGOOSE_CHECKOUT} SOURCE_DIR ${DIR_MONGOOSE})
-
-FetchContent_GetProperties(jsoncpp)
-if(NOT jsoncpp_POPULATED)
-    FetchContent_Populate(jsoncpp)
+add_external_library(jsoncpp ${DIR_JSON} "https://github.com/open-source-parsers/jsoncpp" "" FALSE)
+if(EXISTS ${DIR_JSON}/amalgamate.py)
+	message(STATUS "Generating jsoncpp amalgamated source files")
+	execute_process(COMMAND python3 amalgamate.py WORKING_DIRECTORY ${DIR_JSON})
 endif()
 
-FetchContent_MakeAvailable(log mongoose)
+add_external_library(log ${DIR_LOG} "https://github.com/martim01/log.git" "" FALSE)
+add_external_library(mongoose ${DIR_MONGOOSE} "https://github.com/cesanta/mongoose.git" ${MONGOOSE_CHECKOUT} FALSE)
+
 
 #Now restgoose
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)

@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "dllexport.h"
-#include "log.h"
 #include "threadsafequeue.h"
 
 
