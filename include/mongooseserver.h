@@ -86,7 +86,7 @@ namespace pml::restgoose
             void Stop();
 
 
-            bool AddWebsocketEndpoint(const endpoint& theEndpoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress&)>& funcAuthentication,
+            bool AddWebsocketEndpoint(const endpoint& theEndpoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress&)>& funcAuthentication, const std::function<void(const endpoint&, const ipAddress&)>& funcOpen,
                                         const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage,
                                         const std::function<void(const endpoint&, const ipAddress&)>& funcClose);
 
@@ -274,6 +274,7 @@ namespace pml::restgoose
             std::map<methodpoint, endpointCallback> m_mEndpoints;
             std::map<endpoint, std::function<bool(const endpoint&, const query&, const userName&, const ipAddress& peer)>, end_less> m_mWebsocketAuthenticationEndpoints;
             std::map<endpoint, std::function<bool(const endpoint&, const Json::Value&)>, end_less> m_mWebsocketMessageEndpoints;
+            std::map<endpoint, std::function<void(const endpoint&, const ipAddress& peer)>, end_less> m_mWebsocketOpenEndpoints;
             std::map<endpoint, std::function<void(const endpoint&, const ipAddress& peer)>, end_less> m_mWebsocketCloseEndpoints;
             std::multimap<endpoint, httpMethod, end_less> m_mmOptions;
 

@@ -368,7 +368,7 @@ void MongooseServer::DoWebsocketAuthentication(mg_connection* pConnection, subsc
     }
     else
     {
-        pml::log::log(pml::log::Level::kDebug) << "tWebsocket subscriber not authenticated: close";
+        pml::log::log(pml::log::Level::kDebug) << "Websocket subscriber not authenticated: close";
         m_mSubscribers.erase(pConnection);
         pConnection->is_closing = 1;
     }
@@ -414,7 +414,7 @@ void MongooseServer::HandleExternalWebsocketMessage(mg_connection* pConnection, 
         }
         else
         {
-            pml::log::warning("pml::restgoose") << "" << sub.peer << " has no message methodpoint!";
+            pml::log::warning("pml::restgoose") << "Websocket subscriber: " << sub.peer << " has no message methodpoint!";
         }
     }
     else
@@ -427,19 +427,19 @@ void MongooseServer::HandleExternalWebsocketMessage(mg_connection* pConnection, 
 
 void MongooseServer::AddWebsocketSubscriptions(subscriber& sub, const Json::Value& jsData) const
 {
-    pml::log::debug("pml::restgoose") << "tWebsocket subscriber: " << sub.peer << " adding subscriptions " << jsData;
+    pml::log::debug("pml::restgoose") << "Websocket subscriber: " << sub.peer << " adding subscriptions " << jsData;
 
     if(jsData["endpoints"].isArray())
     {
         for(const auto& jsEndpoint : jsData["endpoints"])
         {
-            pml::log::debug("pml::restgoose") << "tWebsocket subscriber: " << sub.peer << " adding subscription " << jsEndpoint.asString();
+            pml::log::debug("pml::restgoose") << "Websocket subscriber: " << sub.peer << " adding subscription " << jsEndpoint.asString();
             sub.setEndpoints.emplace(jsEndpoint.asString());
         }
     }
     else
     {
-        pml::log::debug("pml::restgoose") << "tWebsocket subscriber: Incorrect JSON";
+        pml::log::debug("pml::restgoose") << "Websocket subscriber: Incorrect JSON";
     }
 }
 
@@ -676,6 +676,14 @@ void MongooseServer::EventHttpWebsocket(mg_connection *pConnection, mg_http_mess
         DoWebsocketAuthentication(pConnection, itSub->second, Json::Value(Json::nullValue));
     }
 
+    if(itSub->second.bAuthenticated)
+    {
+        if(auto itEndpoint = m_mWebsocketOpenEndpoints.find(uri); itEndpoint != m_mWebsocketOpenEndpoints.end())
+        {
+            itEndpoint->second(uri, itSub->second.peer);
+        }
+        pml::log::info("pml::restgoose") << "Websocket subscriber: " << itSub->second.peer << " connected to endpoint: " << uri;
+    }
 }
 
 const ipAddress& MongooseServer::GetCurrentPeer(bool bIncludePort) const
@@ -1041,7 +1049,7 @@ void MongooseServer::Stop()
     }
 }
 
-bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress& )>& funcAuthentication, const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage, const std::function<void(const endpoint&, const ipAddress&)>& funcClose)
+bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress& )>& funcAuthentication, const std::function<void(const endpoint&, const ipAddress&)>& funcOpen, const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage, const std::function<void(const endpoint&, const ipAddress&)>& funcClose)
 {
     pml::log::Stream lg(pml::log::Level::kInfo, kLogPrefix);
     lg << "AddWebsocketEndpoint <" << theEndpoint.Get() << "> ";
@@ -1053,10 +1061,23 @@ bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, const std
         return false;
     }
 
-
-    return m_mWebsocketAuthenticationEndpoints.try_emplace(theEndpoint, funcAuthentication).second &&
-           m_mWebsocketMessageEndpoints.try_emplace(theEndpoint, funcMessage).second &&
-           m_mWebsocketCloseEndpoints.try_emplace(theEndpoint, funcClose).second;
+    if(funcAuthentication && m_mWebsocketAuthenticationEndpoints.try_emplace(theEndpoint, funcAuthentication).second == false)
+    {
+        return false;
+    }
+    if(funcOpen && m_mWebsocketOpenEndpoints.try_emplace(theEndpoint, funcOpen).second == false)
+    {
+        return false;
+    }
+    if(funcMessage && m_mWebsocketMessageEndpoints.try_emplace(theEndpoint, funcMessage).second == false)
+    {
+        return false;
+    }
+    if(funcClose && m_mWebsocketCloseEndpoints.try_emplace(theEndpoint, funcClose).second == false)
+    {        
+        return false;
+    }
+    return true;
 }
 
 bool MongooseServer::AddEndpoint(const methodpoint& theMethodPoint, const std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName& )>& func, bool bUseThread)
@@ -1475,7 +1496,7 @@ void MongooseServer::SendAndCheckPings(const std::chrono::milliseconds& elapsed)
                             //check PONG timeout
                         if(!itSub->second.bPonged)    //not replied within the last second
                         {
-                            pml::log::warning("pml::restgoose") << "Websocket from " << itSub->second.peer << " has not responded to PING. Close";
+                            pml::log::warning("pml::restgoose") << "Websocket subscriber: " << itSub->second.peer << " has not responded to PING. Close";
                             pConnection->is_closing = true;
                             //call the close callback
                             auto itCallback = m_mWebsocketCloseEndpoints.find(itSub->second.theEndpoint);

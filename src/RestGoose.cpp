@@ -60,9 +60,9 @@ void Server::AddNotFoundCallback(const std::function<response(const httpMethod&,
     return m_pImpl->AddNotFoundCallback(func);
 }
 
-bool Server::AddWebsocketEndpoint(const endpoint& theMethodPoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress&)>& funcAuthentication, const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage, const std::function<void(const endpoint&, const ipAddress&)>& funcClose)
+bool Server::AddWebsocketEndpoint(const endpoint& theMethodPoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress&)>& funcAuthentication, const std::function<void(const endpoint&, const ipAddress&)>& funcOpen, const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage, const std::function<void(const endpoint&, const ipAddress&)>& funcClose)
 {
-    return m_pImpl->AddWebsocketEndpoint(theMethodPoint, funcAuthentication, funcMessage, funcClose);
+    return m_pImpl->AddWebsocketEndpoint(theMethodPoint, funcAuthentication, funcOpen, funcMessage, funcClose);
 }
 
 bool Server::DeleteEndpoint(const httpMethod& method, const endpoint& theEndpoint)
