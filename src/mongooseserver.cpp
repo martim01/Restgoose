@@ -566,8 +566,9 @@ methodpoint MongooseServer::GetMethodPoint(mg_http_message* pMessage) const
     mg_url_decode(pMessage->uri.buf, pMessage->uri.len, decode, 6000, 0);
 
     std::string sUri(decode);
+    pml::log::trace("pml::restgoose") << "GetMethodPoint: '" << sUri    << "'";
 
-    if(sUri[sUri.length()-1] == '/')    //get rid of trailling /
+    if(sUri[sUri.length()-1] == '/' && sUri.length() > 1)    //get rid of trailling / if it's not the root endpoint
     {
         sUri = sUri.substr(0, sUri.length()-1);
     }
@@ -591,7 +592,7 @@ methodpoint MongooseServer::GetMethodPoint(mg_http_message* pMessage) const
     std::string sMethod(pMessage->method.buf);
     size_t nSpace = sMethod.find(' ');
     sMethod = sMethod.substr(0, nSpace);
-    pml::log::debug("pml::restgoose") << "GetMethodPoint: " << sMethod << "\t" << sUri;
+    pml::log::debug("pml::restgoose") << "GetMethodPoint: " << sMethod << "\t'" << sUri << "'";
 
     return methodpoint(httpMethod(sMethod), endpoint(sUri));
 
