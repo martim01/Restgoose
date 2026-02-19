@@ -600,6 +600,12 @@ methodpoint MongooseServer::GetMethodPoint(mg_http_message* pMessage) const
 
 void MongooseServer::EventHttp(mg_connection *pConnection, int, void* pData)
 {
+    if(m_redirectType != redirectType::none)
+    {
+        SendRedirect(pConnection);
+        return;
+    }
+
     auto pMessage = reinterpret_cast<mg_http_message*>(pData);
 
     auto thePoint = GetMethodPoint(pMessage);
@@ -681,7 +687,17 @@ void MongooseServer::EventHttpWebsocket(mg_connection *pConnection, mg_http_mess
     {
         if(auto itEndpoint = m_mWebsocketOpenEndpoints.find(uri); itEndpoint != m_mWebsocketOpenEndpoints.end())
         {
-            itEndpoint->second(uri, itSub->second.peer);
+            auto sSend = itEndpoint->second(uri, itSub->second.peer);
+            if(sSend.empty() == false)
+            {
+                //turn message into array - for some reason sending sMessage.c_str() does not work
+                auto cstr = new char[sSend.length() + 1];
+                strcpy(cstr, sSend.c_str());
+                
+                mg_ws_send(pConnection, cstr, sSend.length(), WEBSOCKET_OP_TEXT);
+
+                delete[] cstr;
+            }
         }
         pml::log::info("pml::restgoose") << "Websocket subscriber: " << itSub->second.peer << " connected to endpoint: " << uri;
     }
@@ -978,6 +994,9 @@ bool MongooseServer::Init(const std::filesystem::path& ca, const std::filesystem
 void MongooseServer::SetInterface(const ipAddress& addr, unsigned short nPort)
 {
     m_sServerName = (m_sCert.empty() ? "http://" : "https://");
+    
+    m_sProtocol = m_sServerName;
+
     m_sServerName += addr.Get();
     m_sServerName += (nPort == 0 ? "" : ":"+std::to_string(nPort));
 
@@ -1050,7 +1069,7 @@ void MongooseServer::Stop()
     }
 }
 
-bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress& )>& funcAuthentication, const std::function<void(const endpoint&, const ipAddress&)>& funcOpen, const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage, const std::function<void(const endpoint&, const ipAddress&)>& funcClose)
+bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress& )>& funcAuthentication, const std::function<std::string(const endpoint&, const ipAddress&)>& funcOpen, const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage, const std::function<void(const endpoint&, const ipAddress&)>& funcClose)
 {
     pml::log::Stream lg(pml::log::Level::kInfo, kLogPrefix);
     lg << "AddWebsocketEndpoint <" << theEndpoint.Get() << "> ";
@@ -1589,6 +1608,33 @@ void MongooseServer::SetStaticDirectory(std::string_view sDir)
 {
     pml::log::info("pml::restgoose") << "MongooseServer::SetStaticDirectory " << sDir;
      m_sStaticRootDir = sDir;
+}
+
+void MongooseServer::EnableOverallRedirect(bool bPermanent, const endpoint& theEndpoint)
+{
+    pml::log::debug("pml::restgoose") << "MongooseServer::EnableOverallRedirect to " << theEndpoint.Get() << " with type " << (bPermanent ? "permanent" : "temporary");
+
+    m_redirectType = bPermanent ? redirectType::permanent : redirectType::temporary;
+    m_redirectEndpoint = theEndpoint;
+}
+
+void MongooseServer::DisableOverallRedirect()
+{
+    pml::log::debug("pml::restgoose") << "MongooseServer::DisableOverallRedirect";
+    m_redirectType = redirectType::none;
+}
+
+void MongooseServer::SendRedirect(mg_connection* pConnection) const
+{
+    pml::log::debug("pml::restgoose") << "MongooseServer::SendRedirect to " << m_redirectEndpoint.Get() << " with type " << (m_redirectType == redirectType::permanent ? "permanent" : "temporary");
+
+    std::stringstream ssHeaders;
+    ssHeaders << "HTTP/1.1 " << (m_redirectType == redirectType::permanent ? "301" : "302") << "\r\n"
+                << "Location: " << m_sProtocol << m_redirectEndpoint.Get() << "\r\n"
+                << "\r\n";
+
+    mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
+    pConnection->is_draining = 1;
 }
 
 }

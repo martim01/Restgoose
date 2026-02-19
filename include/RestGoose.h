@@ -104,13 +104,13 @@ namespace pml::restgoose
             *   @param[in] theEndpoint the address the client is allowed to connect to
             *   @param[in] funcAuthentication a function that will be called when a client first attempts to connect to the methodpoint. The function is passed the methodpoint address, a map of any query paramaters in the url,
             the username that has been passed by the websocket and the ip address of the connecting client. The function should return true to allow the connection to continue and false to close it
-            *   @param[in] funcOpen a function that is called when a client successfully connects to the websocket methodpoint. The function is passed the methodpoint address and the ip address of the connecting client
+            *   @param[in] funcOpen a function that is called when a client successfully connects to the websocket methodpoint. The function is passed the methodpoint address and the ip address of the connecting client. Any string returned by the function will be sent to the client as a message after connection
             *   @param[in] funcMessage a function that is called everytime the client sends a websocket message to the server. The function is passed the methodpoint address and the message passed (as Json).
                 The function should return true to allow the connection to continue and false to close it
             *  @param[in] funcClose a function that is called when the client closes the websocket connection. The function is passed the methodpoint address and the client ip address
             *  @return bool true if the websocket methodpoint was added
                 **/
-            bool AddWebsocketEndpoint(const endpoint& theEndpoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress&)>& funcAuthentication, const std::function<void(const endpoint&, const ipAddress&)>& funcOpen, const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage, const std::function<void(const endpoint&, const ipAddress&)>& funcClose);
+            bool AddWebsocketEndpoint(const endpoint& theEndpoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress&)>& funcAuthentication, const std::function<std::string(const endpoint&, const ipAddress&)>& funcOpen, const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage, const std::function<void(const endpoint&, const ipAddress&)>& funcClose);
 
             /** @brief Adds a function to be called everytime a client attempts to connect to a methodpoint that is not defined
             *   @param[in] func the function to be called. The function is passed the query data, std::vector<partData> (for a PUT,PATCH or POST) the methodpoint and the userName if any.
@@ -240,6 +240,19 @@ namespace pml::restgoose
             *   @note Content-Type and Content-Length are always sent
             **/
             void SetHeaders(const std::map<headerName, headerValue>& mHeaders);
+
+
+            /**
+             * @brief Enables redirection for all endpoints
+             * @param[in] bPermanent if true then a 301 Moved Permanently response is sent else a 302 Found response is sent
+             * @param[in] theEndpoint the methodpoint to redirect to
+             */
+            void EnableOverallRedirect(bool bPermanent, const endpoint& theEndpoint);
+
+            /**
+             * @brief Disables redirection
+             */
+            void DisableOverallRedirect();
 
         private:
             std::unique_ptr<MongooseServer> m_pImpl;

@@ -60,7 +60,7 @@ void Server::AddNotFoundCallback(const std::function<response(const httpMethod&,
     return m_pImpl->AddNotFoundCallback(func);
 }
 
-bool Server::AddWebsocketEndpoint(const endpoint& theMethodPoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress&)>& funcAuthentication, const std::function<void(const endpoint&, const ipAddress&)>& funcOpen, const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage, const std::function<void(const endpoint&, const ipAddress&)>& funcClose)
+bool Server::AddWebsocketEndpoint(const endpoint& theMethodPoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress&)>& funcAuthentication, const std::function<std::string(const endpoint&, const ipAddress&)>& funcOpen, const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage, const std::function<void(const endpoint&, const ipAddress&)>& funcClose)
 {
     return m_pImpl->AddWebsocketEndpoint(theMethodPoint, funcAuthentication, funcOpen, funcMessage, funcClose);
 }
@@ -190,4 +190,13 @@ void Server::SetHeaders(const std::map<headerName, headerValue>& mHeaders)
     m_pImpl->SetHeaders(mHeaders);
 }
 
+void Server::EnableOverallRedirect(bool bPermanent, const endpoint& theEndpoint)
+{
+    m_pImpl->EnableOverallRedirect(bPermanent, theEndpoint);
 }
+
+void Server::DisableOverallRedirect()
+{
+    m_pImpl->DisableOverallRedirect();
+}
+} // namespace pml::restgoose
