@@ -252,7 +252,7 @@ namespace pml::restgoose
 
             void SendAndCheckPings(const std::chrono::milliseconds& elapsed);
 
-            void SendRedirect(mg_connection* pConnection) const;
+            void SendRedirect(mg_connection* pConnection, const endpoint& theEndpoint) const;
 
             mg_connection* m_pConnection = nullptr;
             int m_nPipe =0;

@@ -600,17 +600,18 @@ methodpoint MongooseServer::GetMethodPoint(mg_http_message* pMessage) const
 
 void MongooseServer::EventHttp(mg_connection *pConnection, int, void* pData)
 {
-    if(m_redirectType != redirectType::none)
-    {
-        SendRedirect(pConnection);
-        return;
-    }
+    
 
     auto pMessage = reinterpret_cast<mg_http_message*>(pData);
 
     auto thePoint = GetMethodPoint(pMessage);
     auto content = mg_http_get_header(pMessage, "Content-Type");
 
+    if(m_redirectType != redirectType::none)
+    {
+        SendRedirect(pConnection, thePoint.second);
+        return;
+    }
 
     std::string sContents;
     if(content && content->len > 0)
@@ -1624,13 +1625,13 @@ void MongooseServer::DisableOverallRedirect()
     m_redirectType = redirectType::none;
 }
 
-void MongooseServer::SendRedirect(mg_connection* pConnection) const
+void MongooseServer::SendRedirect(mg_connection* pConnection, const endpoint& theEndpoint) const
 {
-    pml::log::debug("pml::restgoose") << "MongooseServer::SendRedirect to " << m_redirectEndpoint.Get() << " with type " << (m_redirectType == redirectType::permanent ? "permanent" : "temporary");
+    pml::log::debug("pml::restgoose") << "MongooseServer::SendRedirect to " << m_redirectEndpoint.Get() << theEndpoint << " with type " << (m_redirectType == redirectType::permanent ? "permanent" : "temporary");
 
     std::stringstream ssHeaders;
     ssHeaders << "HTTP/1.1 " << (m_redirectType == redirectType::permanent ? "301" : "302") << "\r\n"
-                << "Location: " << m_sProtocol << m_redirectEndpoint.Get() << "\r\n"
+                << "Location: " << m_sProtocol << m_redirectEndpoint.Get() << theEndpoint.Get() << "\r\n"
                 << "\r\n";
 
     mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
