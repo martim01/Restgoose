@@ -190,13 +190,9 @@ void Server::SetHeaders(const std::map<headerName, headerValue>& mHeaders)
     m_pImpl->SetHeaders(mHeaders);
 }
 
-void Server::EnableOverallRedirect(bool bPermanent, const endpoint& theEndpoint)
+void Server::OverallRedirect(redirectType type, const endpoint& theEndpoint);
 {
-    m_pImpl->EnableOverallRedirect(bPermanent, theEndpoint);
+    m_pImpl->OverallRedirect(type, theEndpoint);
 }
 
-void Server::DisableOverallRedirect()
-{
-    m_pImpl->DisableOverallRedirect();
-}
 } // namespace pml::restgoose

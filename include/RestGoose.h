@@ -244,15 +244,10 @@ namespace pml::restgoose
 
             /**
              * @brief Enables redirection for all endpoints
-             * @param[in] bPermanent if true then a 301 Moved Permanently response is sent else a 302 Found response is sent
+             * @param[in] type the type of redirection to use
              * @param[in] theEndpoint the methodpoint to redirect to
              */
-            void EnableOverallRedirect(bool bPermanent, const endpoint& theEndpoint);
-
-            /**
-             * @brief Disables redirection
-             */
-            void DisableOverallRedirect();
+            void OverallRedirect(redirectType type, const endpoint& theEndpoint = endpoint(""));
 
         private:
             std::unique_ptr<MongooseServer> m_pImpl;

@@ -1611,31 +1611,36 @@ void MongooseServer::SetStaticDirectory(std::string_view sDir)
      m_sStaticRootDir = sDir;
 }
 
-void MongooseServer::EnableOverallRedirect(bool bPermanent, const endpoint& theEndpoint)
+void MongooseServer::OverallRedirect(redirectType type, const endpoint& theEndpoint)
 {
-    pml::log::debug("pml::restgoose") << "MongooseServer::EnableOverallRedirect to " << theEndpoint.Get() << " with type " << (bPermanent ? "permanent" : "temporary");
-
-    m_redirectType = bPermanent ? redirectType::permanent : redirectType::temporary;
+ 
+    m_redirectType = type;
     m_redirectEndpoint = theEndpoint;
 }
 
-void MongooseServer::DisableOverallRedirect()
-{
-    pml::log::debug("pml::restgoose") << "MongooseServer::DisableOverallRedirect";
-    m_redirectType = redirectType::none;
-}
 
 void MongooseServer::SendRedirect(mg_connection* pConnection, const endpoint& theEndpoint) const
 {
-    pml::log::debug("pml::restgoose") << "MongooseServer::SendRedirect to " << m_redirectEndpoint.Get() << theEndpoint << " with type " << (m_redirectType == redirectType::permanent ? "permanent" : "temporary");
+    if(m_redirectType == redirectType::none)
+    {
+        return;
+    }
+    else if(m_redirectType == redirectType::permanent || m_redirectType == redirectType::temporary)
+    {
+        std::stringstream ssHeaders;
+        ssHeaders << "HTTP/1.1 " << (m_redirectType == redirectType::permanent ? "301" : "307") << "\r\n"
+                    << "Location: " << m_sProtocol << m_redirectEndpoint.Get() << theEndpoint.Get() << "\r\n"
+                    << "\r\n";
 
-    std::stringstream ssHeaders;
-    ssHeaders << "HTTP/1.1 " << (m_redirectType == redirectType::permanent ? "301" : "302") << "\r\n"
-                << "Location: " << m_sProtocol << m_redirectEndpoint.Get() << theEndpoint.Get() << "\r\n"
-                << "\r\n";
-
-    mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
-    pConnection->is_draining = 1;
+        mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
+        pConnection->is_draining = 1;
+    }
+    else
+    {
+        std::stringstream ssHeaders;
+        ssHeaders << "HTTP/1.1 503\r\n"
+                    << "\r\n";
+    }
 }
 
 }

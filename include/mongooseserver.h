@@ -151,8 +151,7 @@ namespace pml::restgoose
             ~MongooseServer();
 
 
-            void EnableOverallRedirect(bool bPermanent, const endpoint& theEndpoint);
-            void DisableOverallRedirect();
+            void OverallRedirect(redirectType type, const endpoint& theEndpoint);
 
         protected:
 
@@ -330,12 +329,7 @@ namespace pml::restgoose
             std::string m_sHostname;
 
 
-            enum class redirectType
-            {
-                none,
-                permanent,
-                temporary
-            };
+            
 
             std::string m_sProtocol;
             redirectType m_redirectType = redirectType::none;
