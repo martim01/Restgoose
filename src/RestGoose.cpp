@@ -190,7 +190,7 @@ void Server::SetHeaders(const std::map<headerName, headerValue>& mHeaders)
     m_pImpl->SetHeaders(mHeaders);
 }
 
-void Server::OverallRedirect(redirectType type, const endpoint& theEndpoint);
+void Server::OverallRedirect(redirectType type, const endpoint& theEndpoint)
 {
     m_pImpl->OverallRedirect(type, theEndpoint);
 }
