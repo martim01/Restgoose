@@ -1101,6 +1101,14 @@ bool MongooseServer::AddWebsocketEndpoint(const endpoint& theEndpoint, const std
     return true;
 }
 
+void MongooseServer::RemoveWebsocketEndpoint(const endpoint& theEndpoint)
+{
+    m_mWebsocketAuthenticationEndpoints.erase(theEndpoint);
+    m_mWebsocketOpenEndpoints.erase(theEndpoint);
+    m_mWebsocketMessageEndpoints.erase(theEndpoint);
+    m_mWebsocketCloseEndpoints.erase(theEndpoint);
+}
+
 bool MongooseServer::AddEndpoint(const methodpoint& theMethodPoint, const std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName& )>& func, bool bUseThread)
 {
     pml::log::Stream lg(pml::log::Level::kInfo, kLogPrefix);

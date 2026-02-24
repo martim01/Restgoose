@@ -65,6 +65,11 @@ bool Server::AddWebsocketEndpoint(const endpoint& theMethodPoint, const std::fun
     return m_pImpl->AddWebsocketEndpoint(theMethodPoint, funcAuthentication, funcOpen, funcMessage, funcClose);
 }
 
+void Server::RemoveWebsocketEndpoint(const endpoint& theEndpoint)
+{
+    m_pImpl->RemoveWebsocketEndpoint(theEndpoint);
+}
+
 bool Server::DeleteEndpoint(const httpMethod& method, const endpoint& theEndpoint)
 {
     return m_pImpl->DeleteEndpoint(methodpoint(method, theEndpoint));

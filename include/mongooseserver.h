@@ -90,6 +90,8 @@ namespace pml::restgoose
                                         const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage,
                                         const std::function<void(const endpoint&, const ipAddress&)>& funcClose);
 
+            void RemoveWebsocketEndpoint(const endpoint& theEndpoint);
+
             /** Adds a callback handler for an methodpoint - this method will run in the same thread as the server thread
             *   @param theMethodPoint a pair definining the HTTP method and methodpoint address
             *   @param func std::function that defines the callback function

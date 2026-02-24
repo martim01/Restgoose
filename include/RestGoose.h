@@ -112,6 +112,12 @@ namespace pml::restgoose
                 **/
             bool AddWebsocketEndpoint(const endpoint& theEndpoint, const std::function<bool(const endpoint&, const query&, const userName&, const ipAddress&)>& funcAuthentication, const std::function<std::string(const endpoint&, const ipAddress&)>& funcOpen, const std::function<bool(const endpoint&, const Json::Value&)>& funcMessage, const std::function<void(const endpoint&, const ipAddress&)>& funcClose);
 
+            /**
+             * @brief Removes a websocket endpoint and its associated callback functions
+             * @param theEndpoint the endpoint to remove
+             */
+            void RemoveWebsocketEndpoint(const endpoint& theEndpoint);
+
             /** @brief Adds a function to be called everytime a client attempts to connect to a methodpoint that is not defined
             *   @param[in] func the function to be called. The function is passed the query data, std::vector<partData> (for a PUT,PATCH or POST) the methodpoint and the userName if any.
             The function should return a response which will be sent back to the client
