@@ -26,14 +26,14 @@ message(STATUS "Check OpenSSL")
 find_package(OpenSSL REQUIRED)
 
 message(STATUS "Get external repositories")
-add_external_library(jsoncpp ${DIR_JSON} "https://github.com/open-source-parsers/jsoncpp" "" FALSE)
+add_external_library(jsoncpp ${DIR_JSON} "https://github.com/open-source-parsers/jsoncpp" "" FALSE "CMakeLists.txt")
 if(EXISTS ${DIR_JSON}/amalgamate.py)
 	message(STATUS "Generating jsoncpp amalgamated source files")
 	execute_process(COMMAND python3 amalgamate.py WORKING_DIRECTORY ${DIR_JSON})
 endif()
 
-add_external_library(log ${DIR_LOG} "https://github.com/martim01/log.git" "" FALSE)
-add_external_library(mongoose ${DIR_MONGOOSE} "https://github.com/cesanta/mongoose.git" ${MONGOOSE_CHECKOUT} FALSE)
+add_external_library(log ${DIR_LOG} "https://github.com/martim01/log.git" "" FALSE "CMakeLists.txt")
+add_external_library(mongoose ${DIR_MONGOOSE} "https://github.com/cesanta/mongoose.git" ${MONGOOSE_CHECKOUT} FALSE "mongoose.c")
 
 
 #Now restgoose
