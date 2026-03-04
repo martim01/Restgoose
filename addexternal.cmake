@@ -1,13 +1,14 @@
 include(FetchContent)
 
 function(add_external_library name dir repo tag build file)
-	message(STATUS "name: '${name}' dir: '${dir}' repo: '${repo}' tag: '${tag}' build: '${build}' file: '${file}'")
-
+	
 	if(DEFINED ENV{GITHUB_ACTION})
 		SET(GIT_REPO https://$ENV{GH_PAT}@github.com/${repo})
 	else()
 		SET(GIT_REPO https://github.com/${repo})
 	endif()
+
+	message(STATUS "name: '${name}' dir: '${dir}' repo: '${GIT_REPO}' tag: '${tag}' build: '${build}' file: '${file}'")
 
 	if(NOT EXISTS ${dir}/${file})
 		message(STATUS "Cloning ${name} from ${repo} to ${dir}")
@@ -16,7 +17,7 @@ function(add_external_library name dir repo tag build file)
 		else()
 			FetchContent_Declare(${name} GIT_REPOSITORY ${GIT_REPO} SOURCE_DIR ${dir})
 		endif()
-		FetchContent_MakeAvailable(${name})
+		FetchContent_Populate(${name})
 	endif()
 	if(EXISTS ${dir}/${file})
 		message(STATUS "Using existing ${name} at ${dir}")
