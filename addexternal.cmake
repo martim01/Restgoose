@@ -4,7 +4,7 @@ function(add_external_library name dir repo tag build file)
 	message(STATUS "name: '${name}' dir: '${dir}' repo: '${repo}' tag: '${tag}' build: '${build}' file: '${file}'")
 
 	if(DEFINED ENV{GITHUB_ACTION})
-		SET(GIT_REPO https://worflow:$ENV{GH_PAT}@github.com/${repo})
+		SET(GIT_REPO https://$ENV{GH_PAT}@github.com/${repo})
 	else()
 		SET(GIT_REPO https://github.com/${repo})
 	endif()
