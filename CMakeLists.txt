@@ -32,8 +32,8 @@ if(EXISTS ${DIR_JSON}/amalgamate.py)
 	execute_process(COMMAND python3 amalgamate.py WORKING_DIRECTORY ${DIR_JSON})
 endif()
 
-add_external_library(log ${DIR_LOG} "martim01/log.git" "" FALSE "CMakeLists.txt")
-add_external_library(mongoose ${DIR_MONGOOSE} "cesanta/mongoose.git" ${MONGOOSE_CHECKOUT} FALSE "mongoose.c")
+add_external_library(log ${DIR_LOG} "martim01/log" "" FALSE "CMakeLists.txt")
+add_external_library(mongoose ${DIR_MONGOOSE} "cesanta/mongoose" ${MONGOOSE_CHECKOUT} FALSE "mongoose.c")
 
 
 #Now restgoose
