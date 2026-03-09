@@ -2197,7 +2197,7 @@ LOAD C:/Program Files (x86)/CodeBlocks/MinGW/bin/../lib/gcc/mingw32/5.1.0/crtend
                 0x6927d4a0                DoGetNumberOfWebsocketConnections(mg_mgr const&)
                 0x6927d4e0                CreatePartData(mg_str const&)
                 0x6927d7a0                CreatePartData(mg_http_part const&)
-                0x6927dfe0                caseInsLess(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)
+                0x6927dfe0                case_ins_less(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)
                 0x6927e070                operator<(std::pair<NamedType<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, MethodParameter>, NamedType<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, endpointParameter> > const&, std::pair<NamedType<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, MethodParameter>, NamedType<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, endpointParameter> > const&)
                 0x6927e130                DecodeQueryString[abi:cxx11](mg_http_message*)
                 0x6927e200                pml::restgoose::MongooseServer::EventWebsocketOpen(mg_connection*, int, void*)

@@ -6,7 +6,6 @@
 #include <mutex>
 #include <queue>
 
-#include "log.h"
 
 namespace pml::restgoose
 {

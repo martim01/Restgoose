@@ -11,11 +11,19 @@ The following libraries are required from GitHub. Using the CMake build will aut
 - [log](https://github.com/martim01/log) - a simple logging library
 - [JsonCPP](https://github.com/open-source-parsers/jsoncpp) - a JSON library for C++
 - [mongoose](https://github.com/cesanta/mongoose) - the embedded web server from Cesanta
+- [sqsthread](https://github.com/MatthewMartinBBC/sqsthread) - polls an AWS SQS for messages
+- [deel-cpp](https://github.com/MatthewMartinBBC/deel-cpp) - c++ library to decode DEEL messages
+- [deel-spec](https://github.com/MatthewMartinBBC/deel-spec) the DEEL spec - needed by deel-cpp
+- [valijson)](https://github.com/tristanpenman/valijson.git) JSON validator - needed by deel-cpp
 
-In order to allow secure connections you also need openssl. 
+Other libraries required
+- openssl for secure connections
+- uuid to generate UUIDs
+- pkg-config dor CMake to find various packages
+
 On a Debian Linux build
 ```
-sudo apt install libssl-dev
+sudo apt install libssl-dev uuid-dev pkg-config
 ```
 
 # Building

@@ -44,6 +44,14 @@ namespace pml::restgoose
     extern RG_EXPORT const httpMethod kDelete;
     extern RG_EXPORT const httpMethod kOptions;
 
+    enum class redirectType
+    {
+        none,
+        permanent,
+        temporary,
+        unavailable
+    };
+    
     struct RG_EXPORT partData
     {
         friend class HttpClientImpl;

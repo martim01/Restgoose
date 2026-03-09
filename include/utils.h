@@ -24,6 +24,8 @@ namespace pml::restgoose
     RG_EXPORT extern std::string ConvertFromJson(const Json::Value& jsValue);
 
     RG_EXPORT extern std::filesystem::path CreateTmpFileName(const std::filesystem::path& path);
+
+    extern std::string load_tls(const std::filesystem::path& path);
 }
 
 #endif

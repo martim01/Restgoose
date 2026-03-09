@@ -51,9 +51,9 @@ void HttpClient::Run(const std::function<void(const clientResponse&, unsigned in
 
     ThreadPool::Get().Submit([=, pImpl=m_pImpl]
                              {
-                                pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient::Run #" << nRunId;
+                                pml::log::log(pml::log::Level::kTrace, "pml::restgoose") << "HttpClient::Run #" << nRunId;
                                 std::this_thread::sleep_for(delay);
-                                pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient::RunAsync " << nRunId;
+                                pml::log::log(pml::log::Level::kTrace, "pml::restgoose") << "HttpClient::RunAsync " << nRunId;
                                 pImpl->RunAsync(pCallback, nRunId, sUser, connectionTimeout, processTimeout);
                             });
 }
@@ -63,9 +63,9 @@ void HttpClient::Run(const std::function<void(const clientResponse&, unsigned in
 
     ThreadPool::Get().Submit([=, pImpl=m_pImpl]
                              {
-                                pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient::Run #" << nRunId;
+                                pml::log::log(pml::log::Level::kTrace, "pml::restgoose") << "HttpClient::Run #" << nRunId;
                                 std::this_thread::sleep_for(delay);
-                                pmlLog(pml::LOG_TRACE, "pml::restgoose") << "HttpClient::RunAsync " << nRunId;
+                                pml::log::log(pml::log::Level::kTrace, "pml::restgoose") << "HttpClient::RunAsync " << nRunId;
                                 pImpl->RunAsyncOld(pCallback, nRunId, connectionTimeout, processTimeout);
                             });
 }
