@@ -226,7 +226,7 @@ bool MongooseServer::AuthenticateWebsocket(const subscriber& sub, const Json::Va
 {
     std::scoped_lock lg(m_mutex);
 
-    pml::log::debug("pml::restgoose") << "AuthenticateWebsocket";
+    pml::log::trace("pml::restgoose") << "AuthenticateWebsocket";
     if(m_tokenCallback)
     {
         return AuthenticateWebsocketBearer(sub, jsData);
@@ -299,7 +299,6 @@ bool MongooseServer::AuthenticateWebsocketBearer(const subscriber& sub, const Js
         pml::log::warning("pml::restgoose") << "Websocket subscriber: " << sub.peer << " No bearer token sent";
         return false;
     }
-    pml::log::debug("pml::restgoose") << "AuthenticateWebsocketBearer token=" << sToken;
 
     if(auto itEndpoint = m_mWebsocketAuthenticationEndpoints.find(sub.theEndpoint); itEndpoint != m_mWebsocketAuthenticationEndpoints.end())
     {
@@ -436,10 +435,6 @@ void MongooseServer::AddWebsocketSubscriptions(subscriber& sub, const Json::Valu
             pml::log::debug("pml::restgoose") << "Websocket subscriber: " << sub.peer << " adding subscription " << jsEndpoint.asString();
             sub.setEndpoints.emplace(jsEndpoint.asString());
         }
-    }
-    else
-    {
-        pml::log::debug("pml::restgoose") << "Websocket subscriber: Incorrect JSON";
     }
 }
 
@@ -592,7 +587,6 @@ methodpoint MongooseServer::GetMethodPoint(mg_http_message* pMessage) const
     std::string sMethod(pMessage->method.buf);
     size_t nSpace = sMethod.find(' ');
     sMethod = sMethod.substr(0, nSpace);
-    pml::log::debug("pml::restgoose") << "GetMethodPoint: " << sMethod << "\t'" << sUri << "'";
 
     return methodpoint(httpMethod(sMethod), endpoint(sUri));
 
@@ -626,7 +620,7 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int, void* pData)
     else if(InApiTree(thePoint.second))
     {
 
-        pml::log::debug("pml::restgoose") << "'" << thePoint.second << "' in Api tree";
+        pml::log::trace("pml::restgoose") << "'" << thePoint.second << "' in Api tree";
         if(auto itWsEndpoint = m_mWebsocketAuthenticationEndpoints.find(thePoint.second); itWsEndpoint != m_mWebsocketAuthenticationEndpoints.end())
         {
             EventHttpWebsocket(pConnection, pMessage, thePoint.second);
@@ -642,7 +636,7 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int, void* pData)
     }
     else
     {
-        pml::log::debug("pml::restgoose") << "'" << thePoint.second << "' not in Api tree";
+        pml::log::trace("pml::restgoose") << "'" << thePoint.second << "' not in Api tree";
         auto [bAuth, user] = CheckAuthorization(pMessage);
         if(bAuth == false)
         {
@@ -828,15 +822,15 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
             }
             break;
         case MG_EV_OPEN:
-            pml::log::debug("pml::restgoose") << "HandleOpen";
+            pml::log::trace("pml::restgoose") << "HandleOpen";
             HandleOpen(pConnection);
             break;
         case MG_EV_ACCEPT:
-            pml::log::debug("pml::restgoose") << "HandleAccept";
+            pml::log::trace("pml::restgoose") << "HandleAccept";
             HandleAccept(pConnection);
             break;
         case MG_EV_WS_OPEN:
-            pml::log::debug("pml::restgoose") << "HandleWebsocketOpen";
+            pml::log::trace("pml::restgoose") << "HandleWebsocketOpen";
             EventWebsocketOpen(pConnection, nEvent, pData);
             break;
         case MG_EV_WS_CTL:
@@ -844,11 +838,11 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
             EventWebsocketCtl(pConnection, nEvent, pData);
             break;
         case MG_EV_WS_MSG:
-            pml::log::debug("pml::restgoose") << "HandleWebsocketMsg";
+            pml::log::trace("pml::restgoose") << "HandleWebsocketMsg";
             EventWebsocketMessage(pConnection, nEvent, pData);
             break;
         case MG_EV_HTTP_MSG:
-            pml::log::debug("pml::restgoose") << "HandleHTTPMsg";
+            pml::log::trace("pml::restgoose") << "HandleHTTPMsg";
             pml::log::trace("pml::restgoose") << "HTTP_MSG: " << pConnection;
             EventHttp(pConnection, nEvent, pData);
             break;
@@ -856,7 +850,7 @@ void MongooseServer::HandleEvent(mg_connection *pConnection, int nEvent, void* p
             EventWrite(pConnection);
             break;
         case MG_EV_CLOSE:
-            pml::log::debug("pml::restgoose") << "HandleClose";
+            pml::log::trace("pml::restgoose") << "HandleClose";
             if (is_websocket(pConnection))
             {
                 pConnection->fn_data = nullptr;
@@ -908,7 +902,7 @@ void MongooseServer::HandleAccept(mg_connection* pConnection) const
 {
     if(mg_url_is_ssl(m_sServerName.c_str()))
     {
-        pml::log::debug("pml::restgoose") << "Accept connection: Turn on TLS";
+        pml::log::trace("pml::restgoose") << "Accept connection: Turn on TLS";
         struct mg_tls_opts tls_opts;
         if(m_sCa.empty())
         {
@@ -919,10 +913,10 @@ void MongooseServer::HandleAccept(mg_connection* pConnection) const
         }
         else
         {
-            pml::log::debug("pml::restgoose") << "TLS We have a CA";
+            pml::log::trace("pml::restgoose") << "TLS We have a CA";
             tls_opts.ca = mg_str(m_sCa.c_str());
         }
-        pml::log::debug("pml::restgoose") << "TLS Hostname: " << m_sHostname;
+        pml::log::trace("pml::restgoose") << "TLS Hostname: " << m_sHostname;
 
         tls_opts.name = mg_str(m_sHostname.c_str());
         
@@ -1195,9 +1189,6 @@ void MongooseServer::DoReplyText(mg_connection* pConnection, const response& the
         sReply = theResponse.data.Get();
     }
 
-    pml::log::debug("pml::restgoose") << "DoReply " << theResponse.nHttpCode;
-    pml::log::debug("pml::restgoose") << "DoReply " << sReply;
-
     std::string sHeaders = CreateHeaders(theResponse, sReply.length());
 
     mg_send(pConnection, sHeaders.c_str(), sHeaders.length());
@@ -1207,9 +1198,6 @@ void MongooseServer::DoReplyText(mg_connection* pConnection, const response& the
 
 void MongooseServer::DoReplyFile(mg_connection* pConnection, const response& theResponse)
 {
-    pml::log::debug("pml::restgoose") << "DoReplyFile " << theResponse.nHttpCode;
-    pml::log::debug("pml::restgoose") << "DoReplyFile " << theResponse.data;
-
     auto itIfs = m_mFileDownloads.insert(std::make_pair(pConnection, std::make_unique<std::ifstream>())).first;
     itIfs->second->open(theResponse.data.Get(), std::ifstream::ate | std::ifstream::binary);
     if(itIfs->second->is_open())
