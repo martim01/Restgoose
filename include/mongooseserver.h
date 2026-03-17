@@ -117,7 +117,8 @@ namespace pml::restgoose
 
             void SendWebsocketMessage(const std::set<endpoint>& setEndpoints, const Json::Value& jsMessage);
 
-
+            void CloseAllWebsockets();
+            
             void AddHeaders(const std::map<headerName, headerValue>& mHeaders);
             void RemoveHeaders(const std::set<headerName>& setHeaders);
             void SetHeaders(const std::map<headerName, headerValue>& mHeaders);

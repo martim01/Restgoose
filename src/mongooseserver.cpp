@@ -1639,4 +1639,19 @@ void MongooseServer::SendRedirect(mg_connection* pConnection, const endpoint& th
     }
 }
 
+void MongooseServer::CloseAllWebsockets()
+{
+    for(auto& [pConnection, subscriber] : m_mSubscribers)
+    {
+        pConnection->is_closing = true;
+        //call the close callback
+        auto itCallback = m_mWebsocketCloseEndpoints.find(subscriber.theEndpoint);
+        if(itCallback != m_mWebsocketCloseEndpoints.end())
+        {
+            itCallback->second(subscriber.theEndpoint, subscriber.peer);
+        }
+    }
+    m_mSubscribers.clear();
 }
+
+}   //namespace pml::restgoose

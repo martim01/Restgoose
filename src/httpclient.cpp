@@ -146,7 +146,7 @@ bool HttpClient::SetExpectedResponse(const clientResponse::enumResponse eRespons
 }
 
 
-void HttpClient::UseProxy(const std::string& proxy)
+void HttpClient::UseProxy(const std::string& proxy) const
 {
     m_pImpl->UseProxy(endpoint(proxy));
 }

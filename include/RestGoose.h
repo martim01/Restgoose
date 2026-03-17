@@ -255,6 +255,12 @@ namespace pml::restgoose
              */
             void OverallRedirect(redirectType type, const endpoint& theEndpoint = endpoint(""));
 
+
+            /**
+             * @brief Closes all open websocket connections
+             */
+            void CloseAllWebsockets();
+
         private:
             std::unique_ptr<MongooseServer> m_pImpl;
     };

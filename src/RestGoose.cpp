@@ -16,6 +16,7 @@ Server::Server() : m_pImpl(std::unique_ptr<MongooseServer>(new MongooseServer())
 Server::~Server()
 {
     m_pImpl->Stop();
+    m_pImpl = nullptr;
 }
 
 bool Server::Init(const std::filesystem::path& ca, const std::filesystem::path& cert, const std::filesystem::path& key,const ipAddress& addr, unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
@@ -198,6 +199,11 @@ void Server::SetHeaders(const std::map<headerName, headerValue>& mHeaders)
 void Server::OverallRedirect(redirectType type, const endpoint& theEndpoint)
 {
     m_pImpl->OverallRedirect(type, theEndpoint);
+}
+
+void Server::CloseAllWebsockets()
+{
+    m_pImpl->CloseAllWebsockets();
 }
 
 } // namespace pml::restgoose

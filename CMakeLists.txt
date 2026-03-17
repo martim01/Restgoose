@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 include(${CMAKE_SOURCE_DIR}/addexternal.cmake)
-project(restgoose LANGUAGES CXX C VERSION 3.6.0)
+project(restgoose LANGUAGES CXX C VERSION 3.6.1)
 
 
 message(STATUS "----pml/restgoose ----")

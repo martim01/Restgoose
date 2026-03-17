@@ -118,7 +118,7 @@ namespace pml::restgoose
              * 
              * @param proxy the url/ip address of the proxy
              */
-            void UseProxy(const std::string& proxy);
+            void UseProxy(const std::string& proxy) const;
 
             /**
              * @brief Use basic authenitication for the connection
