@@ -6,43 +6,43 @@ endif()
 
 message(STATUS "Namespace ${NAMESPACE}")
 
-execute_process(COMMAND git -C ${CMAKE_CURRENT_LIST_DIR} log --pretty=format:'%h' -n 1 OUTPUT_VARIABLE GIT_REV ERROR_QUIET)
+execute_process(COMMAND git -C ${CMAKE_CURRENT_LIST_DIR} log --pretty=format:'%h' -n 1 OUTPUT_VARIABLE kGitRev ERROR_QUIET)
 execute_process(COMMAND git -C ${CMAKE_CURRENT_LIST_DIR} log --pretty=format:'%ai' -n 1 OUTPUT_VARIABLE GIT_TIME ERROR_QUIET)
 
 # Check whether we got any revision (which isn't
 # always the case, e.g. when someone downloaded a zip
 # file from Github instead of a checkout)
-if ("${GIT_REV}" STREQUAL "")
-    set(GIT_REV "N/A")
-    set(GIT_DIFF "")
-    set(GIT_TAG "N/A")
-    set(GIT_BRANCH "N/A")
-    set(GIT_DATE "N/A")
+if ("${kGitRev}" STREQUAL "")
+    set(kGitRev "N/A")
+    set(kGitDiff "")
+    set(kGitTag "N/A")
+    set(kGitBranch "N/A")
+    set(kGitDate "N/A")
 else()
-    execute_process(COMMAND bash -c "git -C ${CMAKE_CURRENT_LIST_DIR} diff --quiet --exit-code || echo .x" OUTPUT_VARIABLE GIT_DIFF)
-    execute_process(COMMAND git -C ${CMAKE_CURRENT_LIST_DIR} describe --exact-match --tags OUTPUT_VARIABLE GIT_TAG ERROR_QUIET)
-    execute_process(COMMAND git -C ${CMAKE_CURRENT_LIST_DIR} rev-parse --abbrev-ref HEAD OUTPUT_VARIABLE GIT_BRANCH)
+    execute_process(COMMAND bash -c "git -C ${CMAKE_CURRENT_LIST_DIR} diff --quiet --exit-code || echo .x" OUTPUT_VARIABLE kGitDiff ERROR_QUIET)
+    execute_process(COMMAND git -C ${CMAKE_CURRENT_LIST_DIR} describe --exact-match --tags OUTPUT_VARIABLE kGitTag ERROR_QUIET)
+    execute_process(COMMAND git -C ${CMAKE_CURRENT_LIST_DIR} rev-parse --abbrev-ref HEAD OUTPUT_VARIABLE kGitBranch)
 
-    string(STRIP "${GIT_REV}" GIT_REV)
-    string(SUBSTRING "${GIT_REV}" 1 7 GIT_REV)
-    string(STRIP "${GIT_DIFF}" GIT_DIFF)
-    string(STRIP "${GIT_TAG}" GIT_TAG)
-    string(STRIP "${GIT_BRANCH}" GIT_BRANCH)
-    string(SUBSTRING "${GIT_TIME}" 1 10 GIT_DATE)
+    string(STRIP "${kGitRev}" kGitRev)
+    string(SUBSTRING "${kGitRev}" 1 7 kGitRev)
+    string(STRIP "${kGitDiff}" kGitDiff)
+    string(STRIP "${kGitTag}" kGitTag)  
+    string(STRIP "${kGitBranch}" kGitBranch)
+    string(SUBSTRING "${GIT_TIME}" 1 10 kGitDate)
 endif()
 
 
 set(VERSION "#include \"${NAMESPACE}_version.h\"
-const std::string pml::${NAMESPACE}::GIT_REV=\"${GIT_REV}${GIT_DIFF}\";
-const std::string pml::${NAMESPACE}::GIT_TAG=\"${GIT_TAG}\";
-const std::string pml::${NAMESPACE}::GIT_BRANCH=\"${GIT_BRANCH}\";
-const std::string pml::${NAMESPACE}::GIT_DATE=\"${GIT_DATE}\";
-unsigned int pml::${NAMESPACE}::VERSION_MAJOR=${MAJOR};
-unsigned int pml::${NAMESPACE}::VERSION_MINOR=${MINOR};
-unsigned int pml::${NAMESPACE}::VERSION_PATCH=${PATCH};
-const std::string pml::${NAMESPACE}::VERSION_STRING=\"${MAJOR}.${MINOR}.${PATCH}-${GIT_REV}${GIT_DIFF}\";
-const std::string pml::${NAMESPACE}::CMAKE_DATE = \"${BUILD_DATE}\";
-const std::string pml::${NAMESPACE}::BUILD_TIME = std::string(__DATE__)+\" \"+std::string(__TIME__);
+const std::string pml::${NAMESPACE}::kGitRev=\"${kGitRev}${kGitDiff}\";
+const std::string pml::${NAMESPACE}::kGitTag=\"${kGitTag}\";
+const std::string pml::${NAMESPACE}::kGitBranch=\"${kGitBranch}\";
+const std::string pml::${NAMESPACE}::kGitDate=\"${kGitDate}\";
+unsigned int pml::${NAMESPACE}::kVersionMajor=${MAJOR};
+unsigned int pml::${NAMESPACE}::kVersionMinor=${MINOR};
+unsigned int pml::${NAMESPACE}::kVersionPatch=${PATCH};
+const std::string pml::${NAMESPACE}::kVersionString=\"${MAJOR}.${MINOR}.${PATCH}-${kGitRev}${kGitDiff}\";
+const std::string pml::${NAMESPACE}::kCMakeDate = \"${BUILD_DATE}\";
+const std::string pml::${NAMESPACE}::kBuildTime = std::string(__DATE__)+\" \"+std::string(__TIME__);
 ")
 
 set(SRC_FILE ${OUTPUT}/src/${NAMESPACE}_version.cpp)
@@ -67,16 +67,16 @@ namespace pml
 {
     namespace ${NAMESPACE}
     {
-        extern const std::string GIT_TAG;
-        extern const std::string GIT_REV;
-        extern const std::string GIT_BRANCH;
-        extern const std::string GIT_DATE;
-        extern unsigned int VERSION_MAJOR;
-        extern unsigned int VERSION_MINOR;
-        extern unsigned int VERSION_PATCH;
-        extern const std::string VERSION_STRING;
-        extern const std::string CMAKE_DATE;
-        extern const std::string BUILD_TIME;
+        extern const std::string kGitTag;
+        extern const std::string kGitRev;
+        extern const std::string kGitBranch;
+        extern const std::string kGitDate;
+        extern unsigned int kVersionMajor;
+        extern unsigned int kVersionMinor;
+        extern unsigned int kVersionPatch;
+        extern const std::string kVersionString;
+        extern const std::string kCMakeDate;
+        extern const std::string kBuildTime;
     }   
 }
 #endif")
