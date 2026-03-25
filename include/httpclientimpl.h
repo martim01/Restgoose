@@ -31,8 +31,6 @@ namespace pml::restgoose
             const clientResponse& Run(const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0));
             void RunAsync(const std::function<void(const clientResponse&, unsigned int, const std::string&)>& pCallback, unsigned int nRunId, const std::string& sUserData, const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0));
 
-            void RunAsyncOld(const std::function<void(const clientResponse&, unsigned int)>& pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0));
-
             void SetUploadProgressCallback(const std::function<void(unsigned long, unsigned long)>& pCallback);
             void SetDownloadProgressCallback(const std::function<void(unsigned long, unsigned long)>& pCallback);
 
@@ -45,7 +43,6 @@ namespace pml::restgoose
             void HandleReadEvent(mg_connection* pConnection);
             void HandleWroteEvent(mg_connection* pConnection, int nBytes);
             void HandleMessageEvent(mg_http_message* pReply);
-            void HandleChunkEvent(mg_connection* pConnection, mg_http_message* pReply);
             void HandleErrorEvent(const char* error);
 
             bool SetBasicAuthentication(const userName& user, const password& pass);
@@ -86,7 +83,7 @@ namespace pml::restgoose
 
             bool SendFile(mg_connection* pConnection, const std::filesystem::path& filename, bool bOpen);
 
-            unsigned long WorkoutDataSize();
+            unsigned long ComputeAndCacheContentLength();
             unsigned long WorkoutFileSize(const std::filesystem::path& filename);
             void SetupRedirect();
 
@@ -125,9 +122,12 @@ namespace pml::restgoose
             std::function<void(unsigned long, unsigned long)> m_pUploadProgressCallback = nullptr;
             std::function<void(unsigned long, unsigned long)> m_pDownloadProgressCallback = nullptr;
             std::function<void(const clientResponse&, unsigned int, const std::string& )> m_pAsyncCallback = nullptr;
-            std::function<void(const clientResponse&, unsigned int)> m_pAsyncCallbackV1 = nullptr;
+
             endpoint m_proxy;
             bool m_bConnectedViaProxy{false};
+
+            uint16_t m_nRedirects = 0;
+            static constexpr uint16_t kMaxRedirects = 5;
     };
 }
 
