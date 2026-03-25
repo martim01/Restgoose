@@ -98,13 +98,12 @@ namespace pml::restgoose
 
 
             std::map<unsigned long, int> m_mConnectionError;
-            std::mutex m_mutexConnection;
 
             std::queue<endpoint> m_qConnection;
             std::atomic_uint64_t m_nQueued{0};
 
             int m_nPipe{1};
-            bool m_bPingPong;
+            bool m_bPingPong{false};
     };
 }
 

@@ -20,7 +20,8 @@ WebSocketClientImpl::WebSocketClientImpl(const std::function<bool(const endpoint
                                          const std::function<bool(const endpoint& theEndpoint, const std::string&)>& pMessageCallback, unsigned int nTimeout, bool bPingPong) :
     m_pConnectCallback(pConnectCallback),
     m_pMessageCallback(pMessageCallback),
-    m_nTimeout(nTimeout)
+    m_nTimeout(nTimeout),
+    m_bPingPong(bPingPong)
 {
     mg_mgr_init(&m_mgr);        // Initialise event manager
     mg_wakeup_init(&m_mgr);
@@ -99,15 +100,8 @@ bool WebSocketClientImpl::CheckTimeout(std::map<endpoint, connection>::iterator&
     if(itConnection->second.bConnected == false && elapsed.count() > 3000)
     {
         pml::log::log(pml::log::Level::kDebug, "pml::restgoose") << "WebsocketClient Websocket connection timeout ";
-
-        if(m_pConnectCallback)
-        {
-            m_pConnectCallback(itConnection->first, false, enumError::TIMEOUT);
-        }
-
+        m_mConnectionError[itConnection->second.pConnection->id] = enumError::TIMEOUT;
         itConnection->second.pConnection->is_closing = 1;
-        itConnection = m_mConnection.erase(itConnection);
-        bHandled = true;
     }
     return bHandled;
 }
@@ -121,16 +115,9 @@ bool WebSocketClientImpl::CheckPingPong(std::map<endpoint, connection>::iterator
         itConnection->second.tp = std::chrono::system_clock::now();
         if(itConnection->second.bPonged == false)    //not replied within the last 4 seconds
         {
-            pml::log::warning( "pml::restgoose") << "WebsocketClient Websocket has not responded to PING. Close " << itConnection->second.bPonged;
+            pml::log::warning( "pml::restgoose") << "WebsocketClient Websocket has not responded to PING. Close " << itConnection->second.pConnection->id;
             itConnection->second.pConnection->is_closing = 1;
-
-            if(m_pConnectCallback)
-            {
-                m_pConnectCallback(itConnection->first, false, enumError::PING);
-            }
-            itConnection = m_mConnection.erase(itConnection);
-
-            bHandled = true;
+            m_mConnectionError[itConnection->second.pConnection->id] = enumError::PING;
         }
         else
         {
@@ -227,23 +214,19 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
 
 void WebSocketClientImpl::CtlEvent(mg_connection* pConnection, void* pEventData)
 {
-    if(m_pConnectCallback)
-        {
-            auto * pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
-            std::string sMessage(pMessage->data.buf, pMessage->data.len);
+    auto* pMessage = reinterpret_cast<mg_ws_message*>(pEventData);
 
-            if((pMessage->flags & 15) == WEBSOCKET_OP_CLOSE)
-            {
-                pml::log::warning( "pml::restgoose") << "WebsocketClient Websocket closed by server";
-                
-                m_pConnectCallback(FindUrl(pConnection), false,  enumError::NONE);
-                EraseConnection(pConnection);
-            }
-            else
-            {
-                CheckPong(pConnection, pMessage);
-            }
-        }
+    if((pMessage->flags & 15) == WEBSOCKET_OP_CLOSE)
+    {
+        pml::log::warning( "pml::restgoose") << "WebsocketClient Websocket closed by server";
+        // Don't notify or erase here — MG_EV_CLOSE will follow immediately and
+        // CloseEvent handles the single callback consistently for all close paths.
+        pConnection->is_closing = 1;
+    }
+    else
+    {
+        CheckPong(pConnection, pMessage);
+    }
 }
 
 void WebSocketClientImpl::CloseEvent(mg_connection* pConnection)
@@ -322,18 +305,19 @@ void WebSocketClientImpl::Stop()
 
 bool WebSocketClientImpl::SendMessage(const endpoint& theEndpoint, const std::string& sMessage)
 {
-    m_mutex.lock();
+    std::unique_lock<std::mutex> lg(m_mutex);
+
     if(auto itConnection = m_mConnection.find(theEndpoint); itConnection != m_mConnection.end())
     {
         itConnection->second.q.push(sMessage);
-        m_mutex.unlock();
+        lg.unlock();  //need to unlock before waking up the thread to avoid a deadlock
         if(m_nPipe != 0)
         {
             mg_wakeup(&m_mgr, m_nPipe, nullptr, 0);
         }
         return true;
     }
-    m_mutex.unlock();
+    lg.unlock();
     return false;
 }
 
@@ -344,7 +328,7 @@ bool WebSocketClientImpl::DoConnect()
         return true;
     }
 
-    std::scoped_lock lg(m_mutexConnection);
+    std::scoped_lock lg(m_mutex);
 
     if(m_qConnection.empty() == false)
     {
@@ -379,7 +363,7 @@ bool WebSocketClientImpl::DoConnect()
 
 bool WebSocketClientImpl::Connect(const endpoint& theEndpoint)
 {
-    std::scoped_lock lg(m_mutexConnection);
+    std::scoped_lock lg(m_mutex);
     if(m_mConnection.find(theEndpoint) == m_mConnection.end())
     {
         m_qConnection.push(theEndpoint);
@@ -402,19 +386,11 @@ void WebSocketClientImpl::CloseConnection(mg_connection* pConnection, bool bTell
     }
     pml::log::debug( "pml::restgoose") << "WebsocketClient CloseConnection called by client";
     pConnection->is_closing = 1;    //let mongoose know to get rid of the connection
-
-    for(const auto& [theEndpoint, theConnection] : m_mConnection)
-    {
-        if(theConnection.pConnection == pConnection)
-        {
-            m_mConnection.erase(theEndpoint);
-            break;
-        }
-    }
 }
 
 void WebSocketClientImpl::CloseConnection(const endpoint& theEndpoint)
 {
+    std::scoped_lock lg(m_mutex);
     if(auto itConnection = m_mConnection.find(theEndpoint); itConnection != m_mConnection.end())
     {
         mg_ws_send(itConnection->second.pConnection, nullptr, 0, WEBSOCKET_OP_CLOSE);
@@ -451,9 +427,8 @@ void WebSocketClientImpl::MarkConnectionConnected(mg_connection* pConnection, bo
                 theConnection.tp = std::chrono::system_clock::now();    //mark first time connected for future ping/ponging
             }
             else
-            if(!bConnected)
             {
-                m_mConnection.erase(theEndpoint);
+                theConnection.pConnection->is_closing = 1;
             }
 
             if(m_pConnectCallback && m_bRun)
