@@ -31,6 +31,8 @@ namespace pml::restgoose
             const clientResponse& Run(const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0));
             void RunAsync(const std::function<void(const clientResponse&, unsigned int, const std::string&)>& pCallback, unsigned int nRunId, const std::string& sUserData, const std::chrono::milliseconds& connectionTimeout = std::chrono::milliseconds(5000), const std::chrono::milliseconds& processTimeout = std::chrono::milliseconds(0));
 
+            void RunAsync(const std::function<void(const clientResponse&, unsigned int)>& pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout);
+
             void SetUploadProgressCallback(const std::function<void(unsigned long, unsigned long)>& pCallback);
             void SetDownloadProgressCallback(const std::function<void(unsigned long, unsigned long)>& pCallback);
 
@@ -122,6 +124,8 @@ namespace pml::restgoose
             std::function<void(unsigned long, unsigned long)> m_pUploadProgressCallback = nullptr;
             std::function<void(unsigned long, unsigned long)> m_pDownloadProgressCallback = nullptr;
             std::function<void(const clientResponse&, unsigned int, const std::string& )> m_pAsyncCallback = nullptr;
+
+            std::function<void(const clientResponse&, unsigned int)> m_pAsyncCallbackV1 = nullptr;
 
             endpoint m_proxy;
             bool m_bConnectedViaProxy{false};

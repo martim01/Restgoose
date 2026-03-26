@@ -66,7 +66,7 @@ void HttpClient::Run(const std::function<void(const clientResponse&, unsigned in
                                 pml::log::log(pml::log::Level::kTrace, "pml::restgoose") << "HttpClient::Run #" << nRunId;
                                 std::this_thread::sleep_for(delay);
                                 pml::log::log(pml::log::Level::kTrace, "pml::restgoose") << "HttpClient::RunAsync " << nRunId;
-                                pImpl->RunAsyncOld(pCallback, nRunId, connectionTimeout, processTimeout);
+                                pImpl->RunAsync(pCallback, nRunId, connectionTimeout, processTimeout);
                             });
 }
 

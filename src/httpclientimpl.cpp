@@ -448,6 +448,14 @@ void HttpClientImpl::RunAsync(const std::function<void(const clientResponse&, un
     Run(connectionTimeout, processTimeout);
 }
 
+void HttpClientImpl::RunAsync(const std::function<void(const clientResponse&, unsigned int)>& pCallback, unsigned int nRunId, const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout)
+{
+    m_pAsyncCallbackV1 = pCallback;
+    m_nRunId = nRunId;
+    pml::log::trace("pml::restgoose") << "RestGoose:HttpClient::RunAsync: nRunId = " << nRunId << " Endpoint: " << m_point.second;
+    Run(connectionTimeout, processTimeout);
+}
+
 
 const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout)
 {
