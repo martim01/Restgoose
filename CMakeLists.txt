@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 include(${CMAKE_SOURCE_DIR}/addexternal.cmake)
 project(restgoose LANGUAGES CXX C VERSION 3.6.1)
 
+option(RESTGOOSE_BUILD_TESTS "Build restgoose test executables" OFF)
+
 
 message(STATUS "----pml/restgoose ----")
 
@@ -78,4 +80,8 @@ set_target_properties(restgoose PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOUR
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux") 
     install(TARGETS restgoose LIBRARY DESTINATION lib)
+endif()
+
+if(RESTGOOSE_BUILD_TESTS)
+   add_subdirectory(tests)
 endif()
