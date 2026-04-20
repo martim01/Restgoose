@@ -7,6 +7,7 @@
 #include <fstream>
 #include <functional>
 #include <queue>
+#include <set>
 #include <string>
 #include <thread>
 
@@ -51,6 +52,8 @@ namespace pml::restgoose
             bool SetBearerAuthentication(const std::string& sToken);
 
             void UseProxy(const endpoint& proxy);
+
+            void SetDNS(const std::string& sDnsServer);
 
         private:
 
@@ -130,8 +133,13 @@ namespace pml::restgoose
             endpoint m_proxy;
             bool m_bConnectedViaProxy{false};
 
+            std::string m_sDnsServer;
+
             uint16_t m_nRedirects = 0;
             static constexpr uint16_t kMaxRedirects = 5;
+
+
+
     };
 }
 

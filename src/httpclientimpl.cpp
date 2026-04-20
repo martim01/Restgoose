@@ -415,6 +415,8 @@ static void evt_handler(mg_connection* pConnection, int nEvent, void* pEventData
 {
     auto pMessage = reinterpret_cast<HttpClientImpl*>(pConnection->fn_data);
 
+    pml::log::trace("pml::restgoose") << "HttpClient:Event: " << nEvent;
+
     if(nEvent == MG_EV_CONNECT)
     {
         pMessage->HandleConnectEvent(pConnection);
@@ -467,7 +469,22 @@ const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& conne
 
     pml::log::trace("pml::restgoose") << "RestGoose:HttpClient::Run - connect to " << m_point.second;
     mg_mgr mgr;
+
     mg_mgr_init(&mgr);
+
+    if(m_sDnsServer.empty() == false)
+    {
+        if(m_sDnsServer.substr(0, 6) != "udp://")
+        {
+            m_sDnsServer = "udp://"+m_sDnsServer;
+        }
+        if(m_sDnsServer.find(':', 6) == std::string::npos)
+        {
+            m_sDnsServer += ":53";
+        }
+        pml::log::trace("pml::restgoose") << "RestGoose:HttpClient::Run - Using custom DNS: " << m_sDnsServer;
+        mgr.dns4.url = m_sDnsServer.c_str();
+    }
 
     auto theEndpoint =  m_proxy.Get().empty() ? m_point.second.Get().c_str() : m_proxy.Get().c_str();
     if(auto pConnection = mg_http_connect(&mgr, theEndpoint, evt_handler, (void*)this); pConnection == nullptr)
@@ -893,5 +910,11 @@ void HttpClientImpl::UseProxy(const endpoint& proxy)
 {
     m_proxy = proxy;
 }
+
+void HttpClientImpl::SetDNS(const std::string& sDnsServer)
+{
+    m_sDnsServer = sDnsServer;
+}   
+
 
 }

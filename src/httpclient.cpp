@@ -151,4 +151,9 @@ void HttpClient::UseProxy(const std::string& proxy) const
     m_pImpl->UseProxy(endpoint(proxy));
 }
 
+void HttpClient::SetDNS(const std::string& sDnsServer)
+{
+    m_pImpl->SetDNS(sDnsServer);   
+}
+
 }

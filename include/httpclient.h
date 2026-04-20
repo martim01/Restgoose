@@ -121,6 +121,13 @@ namespace pml::restgoose
             void UseProxy(const std::string& proxy) const;
 
             /**
+             * @brief Set the url of a DNS server to use for the connection
+             * 
+             * @param sDnsServer the url/ip address of the DNS server
+             */
+            void SetDNS(const std::string& sDnsServer);
+
+            /**
              * @brief Use basic authenitication for the connection
              * 
              * @param[in] user  the usnername to use
