@@ -1,5 +1,5 @@
 add_executable(restgoose_proxy_test
-    proxy.cpp
+    proxy.cpp ${DIR_JSON}/dist/jsoncpp.cpp
 )
 
 target_link_libraries(restgoose_proxy_test
