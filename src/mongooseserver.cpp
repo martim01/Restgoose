@@ -906,7 +906,6 @@ void MongooseServer::HandleAccept(mg_connection* pConnection) const
         struct mg_tls_opts tls_opts;
         if(m_sCa.empty())
         {
-            pml::log::debug("pml::restgoose") << "TLS No CA";
             tls_opts.ca.buf = nullptr;
             tls_opts.ca.len = 0;
 

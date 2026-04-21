@@ -125,7 +125,7 @@ namespace pml::restgoose
              * 
              * @param sDnsServer the url/ip address of the DNS server
              */
-            void SetDNS(const std::string& sDnsServer);
+            void SetDNS(const std::string& sDnsServer) const;
 
             /**
              * @brief Use basic authenitication for the connection
@@ -214,7 +214,7 @@ namespace pml::restgoose
              * MG_LL_NONE = 0, MG_LL_ERROR = 1, MG_LL_WARN = 2, MG_LL_INFO = 3, MG_LL_DEBUG = 4, MG_LL_VERBOSE = 5
              * @param nLevel the log level to set
              */
-            void SetDebugLogLevel(unsigned int nLevel);
+            void SetDebugLogLevel(unsigned int nLevel) const;
 
         private:
             std::shared_ptr<HttpClientImpl> m_pImpl;

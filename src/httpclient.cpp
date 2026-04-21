@@ -151,12 +151,12 @@ void HttpClient::UseProxy(const std::string& proxy) const
     m_pImpl->UseProxy(endpoint(proxy));
 }
 
-void HttpClient::SetDNS(const std::string& sDnsServer)
+void HttpClient::SetDNS(const std::string& sDnsServer) const
 {
     m_pImpl->SetDNS(sDnsServer);   
 }
 
-void HttpClient::SetDebugLogLevel(unsigned int nLevel)
+void HttpClient::SetDebugLogLevel(unsigned int nLevel) const
 {
     m_pImpl->SetDebugLogLevel(nLevel);
 }
