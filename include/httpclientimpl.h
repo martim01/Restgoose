@@ -44,6 +44,9 @@ namespace pml::restgoose
             void HandleConnectEventDirect(mg_connection* pConnection);
             void HandleConnectEventToProxy(mg_connection* pConnection);
             void HandleReadEvent(mg_connection* pConnection);
+            void HandleTlsHandshakeEvent(mg_connection* pConnection);
+            bool HandleProxyConnectReply(mg_connection* pConnection, mg_http_message* pReply);
+            bool IsWaitingForTunnelTls() const;
             void HandleWroteEvent(mg_connection* pConnection, int nBytes);
             void HandleMessageEvent(mg_http_message* pReply);
             void HandleErrorEvent(const char* error);
@@ -54,6 +57,8 @@ namespace pml::restgoose
             void UseProxy(const endpoint& proxy);
 
             void SetDNS(const std::string& sDnsServer);
+
+            void SetDebugLogLevel(unsigned int nLevel);
 
         private:
 
@@ -90,6 +95,7 @@ namespace pml::restgoose
 
             unsigned long ComputeAndCacheContentLength();
             unsigned long WorkoutFileSize(const std::filesystem::path& filename);
+            void SendRequestHeaders(mg_connection* pConnection, bool bAbsoluteUri);
             void SetupRedirect();
 
             methodpoint m_point = methodpoint(kGet, endpoint("127.0.0.1"));
@@ -132,12 +138,15 @@ namespace pml::restgoose
 
             endpoint m_proxy;
             bool m_bConnectedViaProxy{false};
+            bool m_bWaitingForTunnelTls{false};
 
             std::string m_sDnsServer;
 
             uint16_t m_nRedirects = 0;
             static constexpr uint16_t kMaxRedirects = 5;
 
+
+            unsigned int m_nLogLevel{0};
 
 
     };

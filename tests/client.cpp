@@ -28,6 +28,7 @@ int main(int argc, char** argv)
 	program.add_argument("target");
 	program.add_argument("-p", "--proxy").help("Proxy").default_value("");
 	program.add_argument("-d", "--dns").help("DNS Server").default_value("");
+	program.add_argument("-l", "--log").help("Log Level").default_value("0");
 
 	try
     {
@@ -61,6 +62,22 @@ int main(int argc, char** argv)
 	{
 		client.UseProxy(proxyUrl);
 	}
+
+	if(program.get<std::string>("--log") != "0")
+	{
+		try
+		{
+			auto sLevel = program.get<std::string>("--log");
+			unsigned int nLevel = std::stoul(sLevel);
+			client.SetDebugLogLevel(nLevel);
+		}
+		catch(const std::exception& e)
+		{
+			std::cout << "Invalid log level: " << e.what() << std::endl;
+			std::exit(1);
+		}
+	}
+
 
 	const pml::restgoose::clientResponse& response = client.Run();
 

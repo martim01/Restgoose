@@ -71,6 +71,30 @@ HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target,
 
 }
 
+void HttpClientImpl::SendRequestHeaders(mg_connection* pConnection, bool bAbsoluteUri)
+{
+    auto host = mg_url_host(m_point.second.Get().c_str());
+    auto sEndpoint = bAbsoluteUri ? m_point.second.Get() : std::string(mg_url_uri(m_point.second.Get().c_str()));
+
+    std::stringstream ss;
+    ss << m_point.first.Get() << " " << sEndpoint << " HTTP/1.1" << kCrLf
+       << "Host: " << std::string(host.buf, host.len) << kCrLf
+       << "Content-Length: " << ComputeAndCacheContentLength() << kCrLf;
+    if(m_contentType.Get().empty() == false)
+    {
+        ss << "Content-Type: " << m_contentType.Get() << kCrLf;
+    }
+    for(const auto& [name, value] : m_mHeaders)
+    {
+        ss << name.Get() << ": " << value.Get() << kCrLf;
+    }
+    ss << kCrLf;
+
+    auto str = ss.str();
+    pml::log::trace("pml::restgoose") << "HttpClient:SendHeader: " << str;
+    mg_send(pConnection, str.c_str(), str.length());
+}
+
 void HttpClientImpl::HandleConnectEvent(mg_connection* pConnection)
 {
     m_eStatus = HttpClientImpl::kConnected;
@@ -89,12 +113,9 @@ void HttpClientImpl::HandleConnectEventDirect(mg_connection* pConnection)
     pml::log::trace("pml::restgoose") << "Direct Connection";
 
     //if https then do so
-    std::string sProto("http://");
     mg_str host = mg_url_host(m_point.second.Get().c_str());
     if(mg_url_is_ssl(m_point.second.Get().c_str()))
     {
-        sProto = "https://";
-
         pml::log::trace("pml::restgoose") << "HttpClient\tConnection is https";
         mg_tls_opts opts{};
         opts.name = host;
@@ -111,52 +132,18 @@ void HttpClientImpl::HandleConnectEventDirect(mg_connection* pConnection)
         mg_tls_init(pConnection, &opts);
     }
 
-    //start with http:// then find next /
-    size_t nStart = m_point.second.Get().substr(sProto.length()).find('/');
-    std::string sEndpoint;
-    if(nStart == std::string::npos)
-    {
-        sEndpoint = "/";
-    }
-    else
-    {
-        sEndpoint = m_point.second.Get().substr(nStart+sProto.length());
-    }
-
-    //send the connection headers
-    std::stringstream ss;
-    ss << m_point.first.Get() << " " << sEndpoint << " HTTP/1.1" << kCrLf
-       << "Host: " << std::string(host.buf, host.len) << kCrLf;
-    if(m_contentType.Get().empty() == false)
-    {
-        ss << "Content-Type: " << m_contentType.Get() << kCrLf;
-    }
-    ss << "Content-Length: " << ComputeAndCacheContentLength() << kCrLf;
-       //<< "Expect: 100-continue\r\n"
-    for(const auto& [name, value] : m_mHeaders)
-    {
-        ss << name.Get() << ": " << value.Get() << kCrLf;
-    }
-    ss << kCrLf;
-    auto str = ss.str();
-
-    pml::log::trace("pml::restgoose") << "HttpClient:SendHeader: " << str;
-    mg_send(pConnection, str.c_str(), str.length());
+    SendRequestHeaders(pConnection, false);
 }
 
 void HttpClientImpl::HandleConnectEventToProxy(mg_connection* pConnection)
 {
     pml::log::trace("pml::restgoose") << "Connected to Proxy";
-    //if https then do so
-    std::string sProto("http://");
-    auto host = mg_url_host(m_point.second.Get().c_str());
-    //auto port = mg_url_port(m_point.second.Get().c_str());
 
-    if(mg_url_is_ssl(m_point.second.Get().c_str()))
+    if(mg_url_is_ssl(m_proxy.Get().c_str()))
     {
-        sProto = "https://";
+        pml::log::trace("pml::restgoose") << "Connection to Proxy is https";
+        auto host = mg_url_host(m_proxy.Get().c_str());
 
-        pml::log::trace("pml::restgoose") << "HttpClient\tConnection is https";
         mg_tls_opts opts{};
         opts.name = host;
 
@@ -172,35 +159,20 @@ void HttpClientImpl::HandleConnectEventToProxy(mg_connection* pConnection)
         mg_tls_init(pConnection, &opts);
     }
 
-    //if we've alreday got the http:// bit don't repeat it
-    std::string sEndpoint;
-    if(m_point.second.Get().substr(0, sProto.length()) == sProto)
+    auto host = mg_url_host(m_point.second.Get().c_str());
+
+    if(mg_url_is_ssl(m_point.second.Get().c_str()) == false)
     {
-        sEndpoint = m_point.second.Get().substr(sProto.length());
-        sProto = "";
+        m_bConnectedViaProxy = true;
+        SendRequestHeaders(pConnection, true);
+        return;
     }
 
-    m_bConnectedViaProxy = true;
-
-    auto vSplit = SplitString(sEndpoint, '/');
-    if(vSplit.empty())
-    {
-        vSplit.emplace_back("/");
-    }
-
-    //send the connection headers
     std::stringstream ss;
-    ss << m_point.first.Get() << " " << sProto << m_point.second.Get() << " HTTP/1.1" << kCrLf
-       << "Host: " << vSplit[0] << kCrLf;
+    ss << "CONNECT " << std::string(host.buf, host.len) << ":" << mg_url_port(m_point.second.Get().c_str()) << " HTTP/1.1" << kCrLf
+       << "Host: " << std::string(host.buf, host.len) << ":" << mg_url_port(m_point.second.Get().c_str()) << kCrLf
+       << "Accept: */*" << kCrLf;
 
-    if(auto nLength = ComputeAndCacheContentLength(); nLength != 0 && m_contentType.Get().empty() == false)
-    {
-        ss << "Content-Type: " << m_contentType.Get() << kCrLf;
-        ss << "Content-Length: " << nLength << kCrLf;
-    }
-    ss << "Accept: */*" << kCrLf;
-
-       //<< "Expect: 100-continue\r\n"
     for(const auto& [name, value] : m_mHeaders)
     {
         ss << name.Get() << ": " << value.Get() << kCrLf;
@@ -214,47 +186,159 @@ void HttpClientImpl::HandleConnectEventToProxy(mg_connection* pConnection)
 
 void HttpClientImpl::HandleReadEvent(mg_connection* pConnection)
 {
-    if(m_proxy.Get().empty() == false && m_bConnectedViaProxy == false)
+    if(m_proxy.Get().empty() != false || m_bConnectedViaProxy != false)
     {
-        mg_http_message hm;
-        auto n = mg_http_parse((char*)pConnection->recv.buf, pConnection->recv.len, &hm);
-        if(n > 0)
-        {
-            //auto host = mg_url_host(m_point.second.Get().c_str());
-            m_bConnectedViaProxy = true;
-
-            pml::log::trace("pml::restgoose") << "HttpClient:Connected Via Proxy: " << std::string(hm.uri.buf, hm.uri.len);
-
-            mg_iobuf_del(&pConnection->recv, 0, n);
-
-            auto vSplit = SplitString(m_point.second.Get(), '/');
-            if(vSplit.size() < 2)
-            {
-                vSplit.emplace_back("/");
-            }
-
-            //send the connection headers
-            std::stringstream ss;
-            ss << m_point.first.Get() << " /" << vSplit[1] << " HTTP/1.1" << kCrLf
-               << "Host: " << vSplit[0] << kCrLf;
-            if(m_contentType.Get().empty() == false)
-            {
-                ss << "Content-Type: " << m_contentType.Get() << kCrLf;
-            }
-            ss << "Content-Length: " << ComputeAndCacheContentLength() << kCrLf;
-               //<< "Expect: 100-continue\r\n"
-            for(const auto& [name, value] : m_mHeaders)
-            {
-                ss << name.Get() << ": " << value.Get() << kCrLf;
-            }
-            ss << kCrLf;
-            auto str = ss.str();
-
-            pml::log::trace("pml::restgoose") << "HttpClient:SendHeader: " << str;
-            mg_send(pConnection, str.c_str(), str.length());
-        }
-
+        return;
     }
+    
+    mg_http_message hm;
+    auto n = mg_http_parse((char*)pConnection->recv.buf, pConnection->recv.len, &hm);
+    if(n <= 0)
+    {
+        pml::log::warning("pml::restgoose") << "HttpClient: Failed to parse proxy response";
+        return;
+    }
+    
+    unsigned short nHttpCode = 0;
+    try
+    {
+        nHttpCode = static_cast<unsigned short>(std::stoul(std::string(hm.uri.buf, hm.uri.len)));
+    }
+    catch(const std::invalid_argument&)
+    {
+        m_response.nHttpCode = clientResponse::enumError::kErrorReply;
+        m_eStatus = HttpClientImpl::kComplete;
+        return;
+    }
+    catch(const std::out_of_range&)
+    {
+        m_response.nHttpCode = clientResponse::enumError::kErrorReply;
+        m_eStatus = HttpClientImpl::kComplete;
+        return;
+    }
+
+    mg_iobuf_del(&pConnection->recv, 0, n);
+
+    if(nHttpCode != 200)
+    {
+        m_response.nHttpCode = nHttpCode;
+        m_response.data.Get().assign(hm.body.buf, hm.body.len);
+        m_eStatus = HttpClientImpl::kComplete;
+        return;
+    }
+
+    m_bConnectedViaProxy = true;
+
+    pml::log::trace("pml::restgoose") << "HttpClient:Connected Via Proxy: " << std::string(hm.uri.buf, hm.uri.len);
+
+    auto host = mg_url_host(m_point.second.Get().c_str());
+
+    if(mg_url_is_ssl(m_point.second.Get().c_str()))
+    {
+        pml::log::trace("pml::restgoose") << "HttpClient\tConnection is https host: " << std::string(host.buf, host.len);
+        
+        mg_tls_opts opts{};
+        opts.name = host;
+
+        if(m_sCA.empty() == false)
+        {
+            opts.ca = mg_str(m_sCA.c_str());
+        }
+        if(m_sCert.empty() == false && m_sKey.empty() == false)
+        {
+            opts.cert = mg_str(m_sCert.c_str());
+            opts.key = mg_str(m_sKey.c_str());
+        }
+        mg_tls_init(pConnection, &opts);
+        mg_tls_handshake(pConnection);
+        m_bWaitingForTunnelTls = true;
+        return;
+    }
+    SendRequestHeaders(pConnection, false);
+}
+
+void HttpClientImpl::HandleTlsHandshakeEvent(mg_connection* pConnection)
+{
+    if(m_bWaitingForTunnelTls == false)
+    {
+        return;
+    }
+
+    m_bWaitingForTunnelTls = false;
+    SendRequestHeaders(pConnection, false);
+}
+
+bool HttpClientImpl::HandleProxyConnectReply(mg_connection* pConnection, mg_http_message* pReply)
+{
+    if(m_proxy.Get().empty() || m_bConnectedViaProxy)
+    {
+        return false;
+    }
+
+    unsigned short nHttpCode = 0;
+    try
+    {
+        nHttpCode = static_cast<unsigned short>(std::stoul(std::string(pReply->uri.buf, pReply->uri.len)));
+    }
+    catch(const std::invalid_argument&)
+    {
+        m_response.nHttpCode = clientResponse::enumError::kErrorReply;
+        m_eStatus = HttpClientImpl::kComplete;
+        return true;
+    }
+    catch(const std::out_of_range&)
+    {
+        m_response.nHttpCode = clientResponse::enumError::kErrorReply;
+        m_eStatus = HttpClientImpl::kComplete;
+        return true;
+    }
+
+    if(nHttpCode != 200)
+    {
+        m_response.nHttpCode = nHttpCode;
+        m_response.data.Get().assign(pReply->body.buf, pReply->body.len);
+        m_eStatus = HttpClientImpl::kComplete;
+        return true;
+    }
+
+    // When CONNECT arrives via MG_EV_HTTP_MSG, consume it from recv before TLS starts.
+    if(pReply->message.len > 0 && pReply->message.len <= pConnection->recv.len)
+    {
+        mg_iobuf_del(&pConnection->recv, 0, pReply->message.len);
+    }
+
+    m_bConnectedViaProxy = true;
+
+    if(mg_url_is_ssl(m_point.second.Get().c_str()))
+    {
+        auto host = mg_url_host(m_point.second.Get().c_str());
+        mg_tls_opts opts{};
+        opts.name = host;
+
+        if(m_sCA.empty() == false)
+        {
+            opts.ca = mg_str(m_sCA.c_str());
+        }
+        if(m_sCert.empty() == false && m_sKey.empty() == false)
+        {
+            opts.cert = mg_str(m_sCert.c_str());
+            opts.key = mg_str(m_sKey.c_str());
+        }
+        mg_tls_init(pConnection, &opts);
+        mg_tls_handshake(pConnection);
+        m_bWaitingForTunnelTls = true;
+    }
+    else
+    {
+        SendRequestHeaders(pConnection, false);
+    }
+
+    return true;
+}
+
+bool HttpClientImpl::IsWaitingForTunnelTls() const
+{
+    return m_bWaitingForTunnelTls;
 }
 
 void HttpClientImpl::GetContentHeaders(mg_http_message* pReply)
@@ -411,11 +495,87 @@ void HttpClientImpl::HandleErrorEvent(const char* error)
     pml::log::trace("pml::restgoose") << "RestGoose:HttpClient\tError event: " << m_response.data.Get();
 }
 
+void log_event(int nEvent)
+{
+    switch(nEvent)
+    {      
+        case MG_EV_ERROR:
+            pml::log::trace("pml::restgoose") << "MG_EV_ERROR";
+            break;
+        case MG_EV_OPEN:
+            pml::log::trace("pml::restgoose") << "MG_EV_OPEN";
+            break;  
+        case MG_EV_RESOLVE:
+            pml::log::trace("pml::restgoose") << "MG_EV_RESOLVE";
+            break;
+        case MG_EV_CONNECT:
+            pml::log::trace("pml::restgoose") << "MG_EV_CONNECT";
+            break;
+        case MG_EV_ACCEPT:
+            pml::log::trace("pml::restgoose") << "MG_EV_ACCEPT";
+            break;
+        case MG_EV_TLS_HS:
+            pml::log::trace("pml::restgoose") << "MG_EV_TLS_HS";
+            break;
+        case MG_EV_READ:
+            pml::log::trace("pml::restgoose") << "MG_EV_READ";
+            break;
+        case MG_EV_WRITE:
+            pml::log::trace("pml::restgoose") << "MG_EV_WRITE";
+            break;
+        case MG_EV_CLOSE:
+            pml::log::trace("pml::restgoose") << "MG_EV_CLOSE";
+            break;
+        case MG_EV_HTTP_HDRS:
+            pml::log::trace("pml::restgoose") << "MG_EV_HTTP_HDRS";
+            break;
+        case MG_EV_HTTP_MSG:
+            pml::log::trace("pml::restgoose") << "MG_EV_HTTP_MSG";
+            break;
+        case MG_EV_WS_OPEN:
+            pml::log::trace("pml::restgoose") << "MG_EV_WS_OPEN";
+            break;
+        case MG_EV_WS_MSG:
+            pml::log::trace("pml::restgoose") << "MG_EV_WS_MSG";
+            break;
+        case MG_EV_WS_CTL:
+            pml::log::trace("pml::restgoose") << "MG_EV_WS_CTL";
+            break;
+        case MG_EV_MQTT_CMD:
+            pml::log::trace("pml::restgoose") << "MG_EV_MQTT_CMD";
+            break;
+        case MG_EV_MQTT_MSG:
+            pml::log::trace("pml::restgoose") << "MG_EV_MQTT_MSG";
+            break;
+        case MG_EV_MQTT_OPEN:
+            pml::log::trace("pml::restgoose") << "MG_EV_MQTT_OPEN";
+            break;
+        case MG_EV_SNTP_TIME:
+            pml::log::trace("pml::restgoose") << "MG_EV_SNTP_TIME";
+            break;
+        case MG_EV_WAKEUP:
+            pml::log::trace("pml::restgoose") << "MG_EV_WAKEUP";
+            break;
+        case MG_EV_MDNS_REQ:
+            pml::log::trace("pml::restgoose") << "MG_EV_MDNS_REQ";
+            break;
+        case MG_EV_MDNS_RESP:
+            pml::log::trace("pml::restgoose") << "MG_EV_MDNS_RESP";
+            break;
+        case MG_EV_MODBUS_REQ:
+            pml::log::trace("pml::restgoose") << "MG_EV_MODBUS_REQ";
+            break;
+        case MG_EV_USER:
+            pml::log::trace("pml::restgoose") << "MG_EV_USER";
+            break;
+    }
+}
+
 static void evt_handler(mg_connection* pConnection, int nEvent, void* pEventData)
 {
     auto pMessage = reinterpret_cast<HttpClientImpl*>(pConnection->fn_data);
 
-    pml::log::trace("pml::restgoose") << "HttpClient:Event: " << nEvent;
+    log_event(nEvent);
 
     if(nEvent == MG_EV_CONNECT)
     {
@@ -425,6 +585,15 @@ static void evt_handler(mg_connection* pConnection, int nEvent, void* pEventData
     {
         pMessage->HandleReadEvent(pConnection);
     }
+    else if(nEvent == MG_EV_TLS_HS)
+    {
+        auto pOk = reinterpret_cast<int*>(pEventData);
+        if(pOk)
+        {
+            pml::log::trace("pml::restgoose") << "MG_EV_TLS_HS result=" << *pOk;
+        }
+        pMessage->HandleTlsHandshakeEvent(pConnection);
+    }
     else if(nEvent == MG_EV_WRITE)
     {
         pMessage->HandleWroteEvent(pConnection, *(reinterpret_cast<int*>(pEventData)));
@@ -432,6 +601,16 @@ static void evt_handler(mg_connection* pConnection, int nEvent, void* pEventData
     else if(nEvent == MG_EV_HTTP_MSG)
     {
         auto pReply = reinterpret_cast<mg_http_message*>(pEventData);
+
+        if(pMessage->HandleProxyConnectReply(pConnection, pReply))
+        {
+            return;
+        }
+        if(pMessage->IsWaitingForTunnelTls())
+        {
+            return;
+        }
+
         pMessage->HandleMessageEvent(pReply);
         pConnection->is_closing = 1;
     }
@@ -458,14 +637,22 @@ void HttpClientImpl::RunAsync(const std::function<void(const clientResponse&, un
     Run(connectionTimeout, processTimeout);
 }
 
+void HttpClientImpl::SetDebugLogLevel(unsigned int nLevel)
+{
+    if(nLevel <= MG_LL_VERBOSE)
+    {
+        m_nLogLevel = nLevel;
+    }
+}
 
 const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout)
 {
-    mg_log_set(0);
+    mg_log_set(m_nLogLevel);
 
     m_connectionTimeout = connectionTimeout;
     m_processTimeout = processTimeout;
     m_bConnectedViaProxy = false;
+    m_bWaitingForTunnelTls = false;
 
     pml::log::trace("pml::restgoose") << "RestGoose:HttpClient::Run - connect to " << m_point.second;
     mg_mgr mgr;
@@ -628,6 +815,16 @@ unsigned long HttpClientImpl::ComputeAndCacheContentLength()
 
 void HttpClientImpl::HandleWroteEvent(mg_connection* pConnection, int nBytes)
 {
+    if(m_bWaitingForTunnelTls)
+    {
+        return;
+    }
+
+    if(m_proxy.Get().empty() == false && m_bConnectedViaProxy == false)
+    {
+        return;
+    }
+
     if(m_eStatus != kConnected)
     {
         m_nBytesSent += nBytes;

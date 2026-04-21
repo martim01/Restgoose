@@ -156,4 +156,9 @@ void HttpClient::SetDNS(const std::string& sDnsServer)
     m_pImpl->SetDNS(sDnsServer);   
 }
 
+void HttpClient::SetDebugLogLevel(unsigned int nLevel)
+{
+    m_pImpl->SetDebugLogLevel(nLevel);
+}
+
 }
