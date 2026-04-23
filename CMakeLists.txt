@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 include(${CMAKE_SOURCE_DIR}/addexternal.cmake)
-project(restgoose LANGUAGES CXX C VERSION 3.6.1)
+project(restgoose LANGUAGES CXX C VERSION 3.6.2)
 
 option(RESTGOOSE_BUILD_TESTS "Build restgoose test executables" OFF)
 
@@ -15,12 +15,12 @@ message(STATUS "Restgoose Version: ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MI
 
 execute_process(COMMAND ${CMAKE_COMMAND} -DNAMESPACE=${PROJECT_NAME} -DMAJOR=${PROJECT_VERSION_MAJOR} -DMINOR=${PROJECT_VERSION_MINOR} -DPATCH=${PROJECT_VERSION_PATCH} -DOUTPUT=${CMAKE_BINARY_DIR} -P ${CMAKE_SOURCE_DIR}/version.cmake)
 
-SET(DIR_BASE ${CMAKE_SOURCE_DIR} CACHE STRING "base location for external libraries' source")
-SET(DIR_JSON ${DIR_BASE}/external/jsoncpp CACHE STRING "location of jsoncpp")
-SET(DIR_MONGOOSE ${DIR_BASE}/external/mongoose CACHE STRING "location of mongoose")
-SET(DIR_LOG ${DIR_BASE}/external/log CACHE STRING "location of pml log")
+SET(DIR_BASE ${CMAKE_SOURCE_DIR}/external CACHE STRING "base location for external libraries' source")
+SET(DIR_JSON ${DIR_BASE}/jsoncpp CACHE STRING "location of jsoncpp")
+SET(DIR_MONGOOSE ${DIR_BASE}/mongoose CACHE STRING "location of mongoose")
+SET(DIR_LOG ${DIR_BASE}/log CACHE STRING "location of pml log")
 SET(MONGOOSE_CHECKOUT "7.18" CACHE STRING "Mongoose release 7.18")
-SET(DIR_QUEUE ${DIR_BASE}/external/concurrentqueue CACHE STRING "location of concurrentqueue")
+SET(DIR_QUEUE ${DIR_BASE}/concurrentqueue CACHE STRING "location of concurrentqueue")
 
 message(STATUS "Source Directory: ${CMAKE_SOURCE_DIR}")
 
