@@ -719,8 +719,15 @@ const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& conne
     }
     if(m_pAsyncCallback)
     {
+        pml::log::trace("pml::restgoose") << "RestGoose:HttpClient\tInvoking async callback";
         m_pAsyncCallback(m_response, m_nRunId, m_sUserData);
     }
+    else if(m_pAsyncCallbackV1)
+    {
+        pml::log::trace("pml::restgoose") << "RestGoose:HttpClient\tInvoking async callback v1";
+        m_pAsyncCallbackV1(m_response, m_nRunId);
+    }
+    
     mg_mgr_free(&mgr);
     return m_response;
 }
