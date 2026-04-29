@@ -562,9 +562,9 @@ void log_event(int nEvent)
         case MG_EV_MDNS_RESP:
             pml::log::trace("pml::restgoose") << "MG_EV_MDNS_RESP";
             break;
-        case MG_EV_MODBUS_REQ:
-            pml::log::trace("pml::restgoose") << "MG_EV_MODBUS_REQ";
-            break;
+//        case MG_EV_MODBUS_REQ:
+//            pml::log::trace("pml::restgoose") << "MG_EV_MODBUS_REQ";
+//            break;
         case MG_EV_USER:
             pml::log::trace("pml::restgoose") << "MG_EV_USER";
             break;
