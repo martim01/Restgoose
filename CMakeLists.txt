@@ -19,7 +19,7 @@ SET(DIR_BASE ${CMAKE_SOURCE_DIR}/external CACHE STRING "base location for extern
 SET(DIR_JSON ${DIR_BASE}/jsoncpp CACHE STRING "location of jsoncpp")
 SET(DIR_MONGOOSE ${DIR_BASE}/mongoose CACHE STRING "location of mongoose")
 SET(DIR_LOG ${DIR_BASE}/log CACHE STRING "location of pml log")
-SET(MONGOOSE_CHECKOUT "7.18" CACHE STRING "Mongoose release 7.18")
+SET(MONGOOSE_CHECKOUT "7.21" CACHE STRING "Mongoose release 7.21")
 SET(DIR_QUEUE ${DIR_BASE}/concurrentqueue CACHE STRING "location of concurrentqueue")
 
 message(STATUS "Source Directory: ${CMAKE_SOURCE_DIR}")

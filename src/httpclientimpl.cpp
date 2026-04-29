@@ -575,7 +575,7 @@ static void evt_handler(mg_connection* pConnection, int nEvent, void* pEventData
 {
     auto pMessage = reinterpret_cast<HttpClientImpl*>(pConnection->fn_data);
 
-    log_event(nEvent);
+//    log_event(nEvent);
 
     if(nEvent == MG_EV_CONNECT)
     {
