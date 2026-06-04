@@ -60,6 +60,8 @@ namespace pml::restgoose
 
             void SetDebugLogLevel(unsigned int nLevel);
 
+            bool IgnoreSSLErrors(bool bIgnore);
+
         private:
 
             HttpClientImpl();
@@ -144,6 +146,8 @@ namespace pml::restgoose
 
             uint16_t m_nRedirects = 0;
             static constexpr uint16_t kMaxRedirects = 5;
+
+            bool m_bIgnoreSSLErrors{false};
 
 
             unsigned int m_nLogLevel{0};

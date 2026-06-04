@@ -118,7 +118,14 @@ void HttpClientImpl::HandleConnectEventDirect(mg_connection* pConnection)
     {
         pml::log::trace("pml::restgoose") << "HttpClient\tConnection is https";
         mg_tls_opts opts{};
-        opts.name = host;
+        if(m_bIgnoreSSLErrors)
+        {
+            opts.skip_verification = 1;
+        }
+        else
+        {
+            opts.name = host;
+        }
 
         if(m_sCA.empty() == false)
         {
@@ -145,7 +152,14 @@ void HttpClientImpl::HandleConnectEventToProxy(mg_connection* pConnection)
         auto host = mg_url_host(m_proxy.Get().c_str());
 
         mg_tls_opts opts{};
-        opts.name = host;
+        if(m_bIgnoreSSLErrors)
+        {
+            opts.skip_verification = 1;
+        }
+        else
+        {
+            opts.name = host;
+        }
 
         if(m_sCA.empty() == false)
         {
@@ -972,6 +986,17 @@ void HttpClientImpl::Cancel()
 }
 
 
+bool HttpClientImpl::IgnoreSSLErrors(bool bIgnore)
+{
+    if(m_pAsyncCallback == nullptr)
+    {
+        m_bIgnoreSSLErrors = bIgnore;
+        return true;
+    }
+    return false;
+}
+
+
 bool HttpClientImpl::SetBasicAuthentication(const userName& user, const password& pass)
 {
     if(m_pAsyncCallback == nullptr)
@@ -1120,6 +1145,7 @@ void HttpClientImpl::SetDNS(const std::string& sDnsServer)
 {
     m_sDnsServer = sDnsServer;
 }   
+
 
 
 }

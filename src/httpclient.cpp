@@ -161,4 +161,9 @@ void HttpClient::SetDebugLogLevel(unsigned int nLevel) const
     m_pImpl->SetDebugLogLevel(nLevel);
 }
 
+bool HttpClient::IgnoreSSLErrors(bool bIgnore) const
+{
+    return m_pImpl->IgnoreSSLErrors(bIgnore);
+}
+
 }

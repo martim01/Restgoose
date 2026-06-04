@@ -210,6 +210,12 @@ namespace pml::restgoose
             bool SetExpectedResponse(const clientResponse::enumResponse eResponse) const;
 
             /**
+             * @brief Set whether to ignore SSL errors (e.g. self signed certificate). This is not recommended for production use but can be useful for testing against development servers
+             * @param bIgnore true to ignore SSL errors, false to not ignore
+             */
+            bool IgnoreSSLErrors(bool bIgnore) const;
+
+            /**
              * @brief Set the log level for the underlying Mongoose library. This is useful for debugging connection issues. The levels are as follows:
              * MG_LL_NONE = 0, MG_LL_ERROR = 1, MG_LL_WARN = 2, MG_LL_INFO = 3, MG_LL_DEBUG = 4, MG_LL_VERBOSE = 5
              * @param nLevel the log level to set
