@@ -76,7 +76,7 @@ namespace pml::restgoose
             std::unique_ptr<std::thread> m_pThread{nullptr};
             std::atomic<bool> m_bRun{true};
 
-            std::mutex m_mutex;
+            mutable std::mutex m_mutex;
 
             struct connection
             {
