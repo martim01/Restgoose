@@ -1156,6 +1156,7 @@ void MongooseServer::Loop()
             mg_mgr_poll(&m_mgr, static_cast<int>(m_PollTimeout.count()));
 
             auto diff = (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()-now.time_since_epoch()));
+           
             if(m_loopCallback)
             {   //call the loopback functoin saying how long it is since we last called the loopback function
                 m_loopCallback(diff);
@@ -1163,7 +1164,7 @@ void MongooseServer::Loop()
 
             if(m_bCloseWebsockets)
             {
-                CloseAllWebsockets();
+                DoCloseWebsockets();
             }
             else if(m_bWebsocket)
             {
@@ -1802,18 +1803,26 @@ void MongooseServer::SendRedirect(mg_connection* pConnection, const endpoint& th
 
 void MongooseServer::CloseAllWebsockets()
 {
+    pml::log::info("pml::restgoose") << "CloseAllWebsockets called...";
     m_bCloseWebsockets = true;
 }
 
 void MongooseServer::DoCloseWebsockets()
 {
+    pml::log::info("pml::restgoose") << "Closing all websockets...";
+
+
     m_bCloseWebsockets = false;
     std::vector<std::pair<endpoint, ipAddress>> vCloseCallbacks;
     {
         std::scoped_lock lgSubscribers(m_mutexSubscribers);
         for(auto& [pConnection, subscriber] : m_mSubscribers)
         {
-            pConnection->is_closing = true;
+            subscriber.bAuthenticated = false;
+            subscriber.setEndpoints.clear();
+            mg_ws_send(pConnection, nullptr, 0, WEBSOCKET_OP_CLOSE);
+            pConnection->is_draining = 1;
+            pConnection->is_closing = 1;
             vCloseCallbacks.emplace_back(subscriber.theEndpoint, subscriber.peer);
         }
         m_mSubscribers.clear();
