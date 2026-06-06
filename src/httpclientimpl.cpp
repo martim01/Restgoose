@@ -124,12 +124,13 @@ void HttpClientImpl::HandleConnectEventDirect(mg_connection* pConnection)
         }
         else
         {
+            opts.skip_verification = 0;
             opts.name = host;
-        }
-
-        if(m_sCA.empty() == false)
-        {
-            opts.ca = mg_str(m_sCA.c_str());
+        
+            if(m_sCA.empty() == false)
+            {
+                opts.ca = mg_str(m_sCA.c_str());
+            }
         }
         if(m_sCert.empty() == false && m_sKey.empty() == false)
         {
@@ -158,13 +159,16 @@ void HttpClientImpl::HandleConnectEventToProxy(mg_connection* pConnection)
         }
         else
         {
+            opts.skip_verification = 0;
             opts.name = host;
+
+            if(m_sCA.empty() == false)
+            {
+                opts.ca = mg_str(m_sCA.c_str());
+            }
         }
 
-        if(m_sCA.empty() == false)
-        {
-            opts.ca = mg_str(m_sCA.c_str());
-        }
+        
         if(m_sCert.empty() == false && m_sKey.empty() == false)
         {
             opts.cert = mg_str(m_sCert.c_str());
@@ -463,7 +467,7 @@ void HttpClientImpl::HandleMessageEvent(mg_http_message* pReply)
     }
     else
     {
-        m_response.nBytesReceived = m_response.nContentLength;
+        m_response.nBytesReceived = static_cast<unsigned long>(pReply->body.len);
 
         if(m_response.bBinary == false)
         {
@@ -490,13 +494,46 @@ void HttpClientImpl::HandleMessageEvent(mg_http_message* pReply)
 void HttpClientImpl::SetupRedirect()
 {
     m_eStatus = HttpClientImpl::kConnecting;
-    if(m_response.data.Get().find("://") != std::string::npos)
+    const auto& location = m_response.data.Get();
+    if(location.find("://") != std::string::npos)
     {
-        m_point.second = endpoint(m_response.data.Get());
+        m_point.second = endpoint(location);
     }
     else
     {
-        m_point.second = endpoint(m_point.second.Get()+m_response.data.Get());
+        const auto current = m_point.second.Get();
+        const bool bSsl = mg_url_is_ssl(current.c_str());
+        const auto host = mg_url_host(current.c_str());
+        const int nPort = mg_url_port(current.c_str());
+
+        std::string origin = bSsl ? "https://" : "http://";
+        origin.append(host.buf, host.len);
+
+        const bool bDefaultPort = (bSsl && nPort == 443) || (!bSsl && nPort == 80);
+        if(nPort > 0 && bDefaultPort == false)
+        {
+            origin += ":" + std::to_string(nPort);
+        }
+
+        if(location.empty() == false && location.front() == '/')
+        {
+            m_point.second = endpoint(origin + location);
+        }
+        else
+        {
+            std::string path = mg_url_uri(current.c_str());
+            const auto nPos = path.rfind('/');
+            if(nPos == std::string::npos)
+            {
+                path = "/";
+            }
+            else
+            {
+                path = path.substr(0, nPos + 1);
+            }
+
+            m_point.second = endpoint(origin + path + location);
+        }
     }
 }
 
@@ -659,78 +696,113 @@ void HttpClientImpl::SetDebugLogLevel(unsigned int nLevel)
     }
 }
 
+void HttpClientImpl::ResetRunState()
+{
+    m_response = clientResponse{};
+    m_nContentLength = 0;
+    m_nBytesSent = 0;
+    m_nPostPart = 0;
+    m_nRedirects = 0;
+    m_eStatus = kConnecting;
+    m_bConnectedViaProxy = false;
+    m_bWaitingForTunnelTls = false;
+
+    if(m_ofs.is_open())
+    {
+        m_ofs.close();
+    }
+    if(m_ifs.is_open())
+    {
+        m_ifs.close();
+    }
+}
+
 const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& connectionTimeout, const std::chrono::milliseconds& processTimeout)
 {
     mg_log_set(m_nLogLevel);
 
+    ResetRunState();
+
     m_connectionTimeout = connectionTimeout;
     m_processTimeout = processTimeout;
-    m_bConnectedViaProxy = false;
-    m_bWaitingForTunnelTls = false;
 
-    pml::log::trace("pml::restgoose") << "RestGoose:HttpClient::Run - connect to " << m_point.second;
-    mg_mgr mgr;
-
-    mg_mgr_init(&mgr);
-
-    if(m_sDnsServer.empty() == false)
+    bool bRetry = true;
+    while(bRetry)
     {
-        if(m_sDnsServer.substr(0, 6) != "udp://")
+        pml::log::trace("pml::restgoose") << "RestGoose:HttpClient::Run - connect to " << m_point.second;
+
+        mg_mgr mgr;
+        mg_mgr_init(&mgr);
+
+        if(m_sDnsServer.empty() == false)
         {
-            m_sDnsServer = "udp://"+m_sDnsServer;
+            if(m_sDnsServer.substr(0, 6) != "udp://")
+            {
+                m_sDnsServer = "udp://"+m_sDnsServer;
+            }
+            if(m_sDnsServer.find(':', 6) == std::string::npos)
+            {
+                m_sDnsServer += ":53";
+            }
+            pml::log::trace("pml::restgoose") << "RestGoose:HttpClient::Run - Using custom DNS: " << m_sDnsServer;
+            mgr.dns4.url = m_sDnsServer.c_str();
         }
-        if(m_sDnsServer.find(':', 6) == std::string::npos)
-        {
-            m_sDnsServer += ":53";
-        }
-        pml::log::trace("pml::restgoose") << "RestGoose:HttpClient::Run - Using custom DNS: " << m_sDnsServer;
-        mgr.dns4.url = m_sDnsServer.c_str();
-    }
 
-    auto theEndpoint =  m_proxy.Get().empty() ? m_point.second.Get().c_str() : m_proxy.Get().c_str();
-    if(auto pConnection = mg_http_connect(&mgr, theEndpoint, evt_handler, (void*)this); pConnection == nullptr)
-    {
-        pml::log::error("pml::restgoose") << "RestGoose:HttpClient\tCould not create connection";
-        m_response.nHttpCode = clientResponse::enumError::kErrorSetup;
-    }
-    else
-    {
-        if(m_proxy.Get().empty())
+        auto theEndpoint = m_proxy.Get().empty() ? m_point.second.Get().c_str() : m_proxy.Get().c_str();
+
+        if(auto pConnection = mg_http_connect(&mgr, theEndpoint, evt_handler, (void*)this); pConnection == nullptr)
         {
-            pml::log::trace("pml::restgoose") << "RestGoose:HttpClient::Run - connecting " << m_point.second;
+            pml::log::error("pml::restgoose") << "RestGoose:HttpClient\tCould not create connection";
+            m_response.nHttpCode = clientResponse::enumError::kErrorSetup;
+            bRetry = false;
         }
         else
         {
-            pml::log::trace("pml::restgoose") << "RestGoose:HttpClient::Run - connecting " << m_point.second << " via proxy " << m_proxy;
-        }
-        DoLoop(mgr);
-        if(m_eStatus == HttpClientImpl::kRedirecting)
-        {
-            if(m_nRedirects >= kMaxRedirects)
+            if(m_proxy.Get().empty())
             {
-                pml::log::trace("pml::restgoose") << "RestGoose:HttpClient\tToo many redirects";
-                m_response.nHttpCode = clientResponse::enumError::kErrorReply;
-                m_eStatus = HttpClientImpl::kComplete;
+                pml::log::trace("pml::restgoose") << "RestGoose:HttpClient::Run - connecting " << m_point.second;
             }
             else
             {
-                m_nRedirects++;
-                pml::log::trace("pml::restgoose") << "RestGoose:HttpClient\tRedirecting to " << m_response.data.Get();
-                SetupRedirect();
-                return Run();
+                pml::log::trace("pml::restgoose") << "RestGoose:HttpClient::Run - connecting " << m_point.second << " via proxy " << m_proxy;
+            }
+
+            DoLoop(mgr);
+            
+            if(m_eStatus == HttpClientImpl::kRedirecting)
+            {
+                if(m_nRedirects >= kMaxRedirects)
+                {
+                    pml::log::trace("pml::restgoose") << "RestGoose:HttpClient\tToo many redirects";
+                    m_response.nHttpCode = clientResponse::enumError::kErrorReply;
+                    m_eStatus = HttpClientImpl::kComplete;
+                    bRetry = false;
+                }
+                else
+                {
+                    m_nRedirects++;
+                    pml::log::trace("pml::restgoose") << "RestGoose:HttpClient\tRedirecting to " << m_response.data.Get();
+                    SetupRedirect();
+                    bRetry = true;
+                }
+            }
+            else if(m_eStatus == HttpClientImpl::kComplete)
+            {
+                bRetry = false;
+                pml::log::trace("pml::restgoose") << "RestGoose:HttpClient\tComplete";
+            }
+            else
+            {
+                bRetry = false;
+                pml::log::trace("pml::restgoose") << "RestGoose:HttpClient\tTimed out";
+                //timed out
+                m_response.nHttpCode = clientResponse::enumError::kErrorTime;
             }
         }
-        else if(m_eStatus == HttpClientImpl::kComplete)
-        {
-            pml::log::trace("pml::restgoose") << "RestGoose:HttpClient\tComplete";
-        }
-        else
-        {
-            pml::log::trace("pml::restgoose") << "RestGoose:HttpClient\tTimed out";
-            //timed out
-            m_response.nHttpCode = clientResponse::enumError::kErrorTime;
-        }
+
+        mg_mgr_free(&mgr);
     }
+
     if(m_pAsyncCallback)
     {
         pml::log::trace("pml::restgoose") << "RestGoose:HttpClient\tInvoking async callback";
@@ -742,8 +814,6 @@ const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& conne
         m_pAsyncCallbackV1(m_response, m_nRunId);
     }
 
-
-    mg_mgr_free(&mgr);
     return m_response;
 }
 

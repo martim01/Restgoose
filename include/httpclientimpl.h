@@ -89,6 +89,7 @@ namespace pml::restgoose
             void GetResponseCode(mg_http_message* pReply);
 
             void DoLoop(mg_mgr& mgr) const;
+            void ResetRunState();
 
             void HandleSimpleWroteEvent(mg_connection* pConnection);
             void HandleMultipartWroteEvent(mg_connection* pConnection);
