@@ -223,9 +223,9 @@ namespace pml::restgoose
             /**
              * @brief Get the Number Of Websocket Connections object
              * 
-             * @return size_t the number of websocket connections
+             * @return uint32_t the number of websocket connections
              */
-            size_t GetNumberOfWebsocketConnections() const;
+            uint32_t GetNumberOfWebsocketConnections() const;
 
             /** @brief Adds extra headers for the server to send on all replies
             *   @param[in] mHeaders a map of headerName, headerValue pairs

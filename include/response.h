@@ -93,11 +93,11 @@ namespace pml::restgoose
     struct RG_EXPORT clientResponse
     {
         unsigned short nHttpCode=500;
-        headerValue contentType;
+        headerValue contentType{std::string()};
         unsigned long nContentLength=0;
         unsigned long nBytesReceived=0;
         bool bBinary=false;
-        textData data;
+        textData data{std::string()};
         std::map<headerName, headerValue> mHeaders;
 
         enum enumResponse {kText, kFile, kAuto};

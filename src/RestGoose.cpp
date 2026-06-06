@@ -161,7 +161,7 @@ const ipAddress& Server::GetCurrentPeer(bool bIncludePort) const
     return m_pImpl->GetCurrentPeer(bIncludePort);
 }
 
-size_t Server::GetNumberOfWebsocketConnections() const
+uint32_t Server::GetNumberOfWebsocketConnections() const
 {
     return m_pImpl->GetNumberOfWebsocketConnections();
 }

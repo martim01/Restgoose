@@ -40,9 +40,8 @@ using authorised = std::pair<bool, userName>;
 
 namespace pml::restgoose
 {
-    extern size_t get_number_of_connections(const mg_mgr& mgr);
-    extern size_t do_get_number_of_websocket_connections(const mg_mgr& mgr);
-
+    
+    
     struct end_less
     {
         bool operator() (endpoint e1, endpoint e2) const;
@@ -131,7 +130,6 @@ namespace pml::restgoose
 
             unsigned long GetPort() const { return m_nPort; }
 
-            size_t GetNumberOfWebsocketConnections() const;
 
             void Wait();
             void PrimeWait();
@@ -147,7 +145,8 @@ namespace pml::restgoose
             **/
             void HandleEvent(mg_connection *pConnection, int nEvent, void* pData);
 
-            void SendWSQueue();
+            
+            uint32_t GetNumberOfWebsocketConnections() const { return m_nWebsocketConnections.load(); }
 
             const ipAddress& GetCurrentPeer(bool bIncludePort = true) const;
 
@@ -159,6 +158,8 @@ namespace pml::restgoose
         protected:
 
             MongooseServer();
+
+            void SendWSQueue();
 
 
         private:
@@ -173,7 +174,7 @@ namespace pml::restgoose
             *   @param nEvent the event type
             *   @param pData any associated data
             **/
-            void EventWebsocketOpen(mg_connection const* pConnection, int nEvent, void* pData) const;
+            void EventWebsocketOpen(mg_connection const* pConnection, int nEvent, void* pData);
 
             void EventWebsocketMessage(mg_connection* pConnection, int nEvent, void* pData);
             void EventWebsocketCtl(mg_connection* pConnection, int nEvent, void* pData);
@@ -256,6 +257,8 @@ namespace pml::restgoose
 
             void SendRedirect(mg_connection* pConnection, const endpoint& theEndpoint) const;
 
+            void DoCloseWebsockets();
+
             mg_connection* m_pConnection = nullptr;
             int m_nPipe =0;
             std::string m_sIniPath;
@@ -295,6 +298,11 @@ namespace pml::restgoose
 
             std::map<mg_connection*, threadsafe_queue<response>> m_mConnectionQueue;
 
+            mutable std::mutex m_mutexConnectionQueue;
+            mutable std::mutex m_mutexSubscribers;
+            mutable std::mutex m_mutexEndpoints;
+            mutable std::mutex m_mutexWebsocketEndpoints;
+
             std::mutex m_mutex;
             bool m_bThreaded = true;
             std::condition_variable m_cvSync;
@@ -332,7 +340,8 @@ namespace pml::restgoose
             std::string m_sHostname;
 
 
-            
+            std::atomic_bool m_bCloseWebsockets{false};
+            std::atomic_uint32_t m_nWebsocketConnections{0};
 
             std::string m_sProtocol;
             redirectType m_redirectType = redirectType::none;
