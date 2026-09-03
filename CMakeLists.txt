@@ -52,7 +52,7 @@ include_directories(${DIR_MONGOOSE}
                     "include")
 
 
-SET(SOURCES "src/RestGoose.cpp" "src/mongooseserver.cpp" "src/utils.cpp" "src/websocketclient.cpp" "src/websocketclientimpl.cpp"
+SET(SOURCES "src/RestGoose.cpp" "src/mongooseserver.cpp" "src/rgutils.cpp" "src/websocketclient.cpp" "src/websocketclientimpl.cpp"
  "src/httpclientimpl.cpp" "src/httpclient.cpp" "src/response.cpp" "src/threadpool.cpp" ${CMAKE_BINARY_DIR}/src/restgoose_version.cpp
  "${DIR_MONGOOSE}/mongoose.c")
 
