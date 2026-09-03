@@ -1,4 +1,4 @@
-#include "utils.h"
+#include "rgutils.h"
 
 #include <cstring>
 #include <algorithm>
@@ -15,7 +15,7 @@
 namespace pml::restgoose
 {
 
-std::filesystem::path CreateTmpFileName(const std::filesystem::path& path)
+std::filesystem::path create_tmp_file_name(const std::filesystem::path& path)
 {
     std::stringstream sstr;
     auto tp = std::chrono::system_clock::now();
@@ -28,7 +28,7 @@ std::filesystem::path CreateTmpFileName(const std::filesystem::path& path)
     return ret;
 }
 
-std::vector<std::string> SplitString(const std::string& str, char cSplit, size_t nMax)
+std::vector<std::string> split_string(const std::string& str, char cSplit, size_t nMax)
 {
     
     if(str.find(cSplit) == std::string::npos)
@@ -57,7 +57,7 @@ std::vector<std::string> SplitString(const std::string& str, char cSplit, size_t
     return vSplit;
 }
 
-void SplitString(std::queue<std::string>& qSplit, const std::string& str, char cSplit)
+void split_string(std::queue<std::string>& qSplit, const std::string& str, char cSplit)
 {
     while(qSplit.empty() == false)
     {
@@ -77,7 +77,7 @@ void SplitString(std::queue<std::string>& qSplit, const std::string& str, char c
 }
 
 
-bool CmpNoCase(std::string_view str1, std::string_view str2)
+bool cmp_no_case(std::string_view str1, std::string_view str2)
 {
     return ((str1.size() == str2.size()) && std::equal(str1.begin(), str1.end(), str2.begin(), [](char c1, char c2)
     {
@@ -85,7 +85,7 @@ bool CmpNoCase(std::string_view str1, std::string_view str2)
     }));
 }
 
-std::string CreatePath(std::string sPath)
+std::string create_path(std::string sPath)
 {
     if(sPath[sPath.length()-1] != '/' && sPath[sPath.length()-1] != '\\')
     {
@@ -109,7 +109,7 @@ std::string& trim(std::string& s)
     return ltrim(rtrim(s));
 }
 
-std::string ConvertFromJson(const Json::Value& jsValue)
+std::string convert_from_json(const Json::Value& jsValue)
 {
     Json::StreamWriterBuilder builder;
     builder["commentStyle"] = "None";
@@ -134,4 +134,49 @@ std::string load_tls(const std::filesystem::path& path)
     ifFile.close();
     return isstr.str();
 }
+
+std::optional<Json::Value> convert_to_json(const std::string& str)
+{
+    Json::CharReaderBuilder builder;
+    auto pReader = builder.newCharReader();
+    std::string err;
+    Json::Value root;
+    if (!pReader->parse(str.c_str(), str.c_str() + str.size(), &root, &err)) 
+    {
+        pml::log::error("pml::routemasterengine") << "Could not convert '" << str << "' to JSON: " << err;
+        return {};
+    }
+
+    return root;
+}
+
+std::optional<Json::Value> convert_post_to_json(const std::vector<partData>& vData)
+{
+    if(vData.size() == 1)
+    {
+        return convert_to_json(vData[0].data.Get());
+    }
+    else if(vData.size() > 1)
+    {
+        Json::Value js;
+        for(const auto& data : vData)
+        {
+            if(data.name.Get().empty() == false)
+            {
+                if(data.filepath.empty() == true)
+                {
+                    js[data.name.Get()] = data.data.Get();
+                }
+                else
+                {
+                    js[data.name.Get()]["name"] = data.data.Get();
+                    js[data.name.Get()]["location"] = data.filepath.string();
+                }
+            }
+        }
+        return js;
+    }
+    return {};
+}
+
 }

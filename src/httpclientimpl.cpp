@@ -5,7 +5,7 @@
 #include "log.h"
 #include "mongoose.h"
 #include "threadpool.h"
-#include "utils.h"
+#include "rgutils.h"
 
 namespace pml::restgoose
 {
@@ -47,7 +47,7 @@ HttpClientImpl::HttpClientImpl(const httpMethod& method, const endpoint& target,
     m_mHeaders(mExtraHeaders),
     m_eResponse(eResponse)
 {
-    auto sData = ConvertFromJson(jsData);
+    auto sData = convert_from_json(jsData);
     pml::log::trace("pml::restgoose") << "HttpClient: convert from json to '" << sData << "'";
     m_vPostData.emplace_back(partName(""), textData(sData));
 }
@@ -402,7 +402,7 @@ void HttpClientImpl::GetContentHeaders(mg_http_message* pReply)
 
         if(m_response.bBinary)
         {   //if binary data then we save it to a file and pass back the filename
-            m_response.data.Get() = CreateTmpFileName("/tmp").string();
+            m_response.data.Get() = create_tmp_file_name("/tmp").string();
             m_ofs.open(m_response.data.Get());
         }
 
@@ -1115,7 +1115,7 @@ bool HttpClientImpl::SetData(const Json::Value& jsData)
     if(m_pAsyncCallback == nullptr)
     {
         m_vPostData.clear();
-        m_vPostData.emplace_back(partName(""), textData(ConvertFromJson(jsData)));
+        m_vPostData.emplace_back(partName(""), textData(convert_from_json(jsData)));
         return true;
     }
     return false;

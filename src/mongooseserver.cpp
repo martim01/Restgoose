@@ -15,7 +15,7 @@
 #include "log.h"
 
 #include "threadpool.h"
-#include "utils.h"
+#include "rgutils.h"
 
 
 bool case_ins_less(std::string_view s1, std::string_view s2)
@@ -123,7 +123,7 @@ std::vector<partData> create_part_data(const mg_str& str, const headerValue& con
     }
     else
     {
-        auto vSplit = SplitString(std::string(str.buf, str.buf+str.len), '&');
+        auto vSplit = split_string(std::string(str.buf, str.buf+str.len), '&');
         std::vector<partData> vData;
         vData.reserve(vSplit.size());
 
@@ -145,7 +145,7 @@ std::vector<partData> create_part_data(const mg_str& str, const headerValue& con
 
 partData create_part_data(const mg_http_part& mgpart, const headerValue& )
 {
-    partData part(partName(std::string(mgpart.name.buf, mgpart.name.len)), textData(std::string(mgpart.filename.buf, mgpart.filename.len)), CreateTmpFileName("/tmp"));
+    partData part(partName(std::string(mgpart.name.buf, mgpart.name.len)), textData(std::string(mgpart.filename.buf, mgpart.filename.len)), create_tmp_file_name("/tmp"));
 
     if(part.filepath.empty() == false)
     {
@@ -182,10 +182,10 @@ query extract_query(mg_http_message const* pMessage)
 
     auto sQuery = decode_query_string(pMessage);
 
-    auto vQuery = SplitString(sQuery, '&');
+    auto vQuery = split_string(sQuery, '&');
     for(const auto& sParam : vQuery)
     {
-        auto vValue = SplitString(sParam, '=');
+        auto vValue = split_string(sParam, '=');
         if(vValue.size() == 2)
         {
             mDecode.try_emplace(queryKey(vValue[0]), vValue[1]);
@@ -688,7 +688,7 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int, void* pData)
         sContents = std::string(content->buf, content->len);
     }
 
-    if(CmpNoCase(thePoint.first.Get(), "OPTIONS"))
+    if(cmp_no_case(thePoint.first.Get(), "OPTIONS"))
     {
         SendOptions(pConnection, thePoint.second);
     }
@@ -1318,7 +1318,7 @@ void MongooseServer::DoReplyText(mg_connection* pConnection, const response& the
     std::string sReply;
     if(theResponse.contentType.Get() == "application/json")
     {
-        sReply = ConvertFromJson(theResponse.jsonData);
+        sReply = convert_from_json(theResponse.jsonData);
     }
     else
     {
@@ -1464,7 +1464,7 @@ void MongooseServer::SendWSQueue()
 
         while(m_qWsMessages.try_dequeue(message))
         {
-            auto sMessage = ConvertFromJson(message.second);
+            auto sMessage = convert_from_json(message.second);
 
             pml::log::trace("pml::restgoose") << "SendWSQueue: " << sMessage;
 
@@ -1509,11 +1509,11 @@ void MongooseServer::SendWSQueue()
 bool MongooseServer::WebsocketSubscribedToEndpoint(const subscriber& sub, const endpoint& anEndpoint) const
 {
     
-    auto vEndpoint = SplitString(anEndpoint.Get() , '/');
+    auto vEndpoint = split_string(anEndpoint.Get() , '/');
     for(auto endp : sub.setEndpoints)
     {
         pml::log::trace("pml::restgoose") << "WebsocketSubscribedToEndpoint: " << endp;
-        auto vSub = SplitString(endp.Get(), '/');
+        auto vSub = split_string(endp.Get(), '/');
         if(vSub.size() <= vEndpoint.size() && vSub == std::vector<std::string>(vEndpoint.begin(), vEndpoint.begin()+vSub.size()))
         {
             return true;
@@ -1711,13 +1711,13 @@ bool MongooseServer::MethodPointUnprotected(const methodpoint& thePoint)
         return true;
     }
 
-    auto vEndpoint = SplitString(thePoint.second.Get() , '/');
+    auto vEndpoint = split_string(thePoint.second.Get() , '/');
 
     for(const auto& [method, endp] : m_setUnprotected)
     {
         if(method == thePoint.first)
         {
-            auto vSub = SplitString(endp.Get(), '/');
+            auto vSub = split_string(endp.Get(), '/');
 
             if(vSub.empty() == false && vSub.back() == "*" && vSub.size() <= vEndpoint.size())
             {
