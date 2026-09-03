@@ -56,7 +56,7 @@ std::vector<std::string> split_string(const std::string& str, char cSplit, size_
     }
     return vSplit;
 }
-
+/*
 void split_string(std::queue<std::string>& qSplit, const std::string& str, char cSplit)
 {
     while(qSplit.empty() == false)
@@ -75,7 +75,7 @@ void split_string(std::queue<std::string>& qSplit, const std::string& str, char 
         }
     }
 }
-
+*/
 
 bool cmp_no_case(std::string_view str1, std::string_view str2)
 {

@@ -13,7 +13,8 @@
 
 namespace pml::restgoose
 {
-    RG_EXPORT extern void split_string(std::queue<std::string>& qSplit, const std::string& str, char cSplit);
+    RG_EXPORT extern std::vector<std::string> split_string(const std::string& str, char cSplit, size_t nMax=0);
+    //RG_EXPORT extern void split_string(std::queue<std::string>& qSplit, const std::string& str, char cSplit);
     RG_EXPORT extern bool cmp_no_case(std::string_view str1, std::string_view str2);
     RG_EXPORT extern std::string create_path(std::string sPath);
 
