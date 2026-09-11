@@ -186,11 +186,11 @@ query extract_query(mg_http_message const* pMessage)
     for(const auto& sParam : vQuery)
     {
         auto vValue = split_string(sParam, '=');
-        if(vValue.size() == 2)
+        if(vValue.size() == 2 && vValue[0].empty() == false)
         {
             mDecode.try_emplace(queryKey(vValue[0]), vValue[1]);
         }
-        else if(vValue.size() == 1)
+        else if(vValue.size() == 1 && vValue[0].empty() == false)
         {
             mDecode.try_emplace(queryKey(vValue[0]), "");
         }
