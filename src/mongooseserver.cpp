@@ -1071,7 +1071,6 @@ MongooseServer::MongooseServer()
 MongooseServer::~MongooseServer()
 {
     Stop();
-
 }
 
 bool MongooseServer::Init(const std::filesystem::path& ca, const std::filesystem::path& cert, const std::filesystem::path& key, const ipAddress& addr, unsigned short nPort, const endpoint& apiRoot, bool bEnableWebsocket, bool bSendPings)
@@ -1462,8 +1461,18 @@ void MongooseServer::SendWSQueue()
     {
         wsMessage message;
 
-        while(m_qWsMessages.try_dequeue(message))
+        while(true)
         {
+            {
+                std::scoped_lock lg(m_mutexWsMessages);
+                if(m_qWsMessages.empty())
+                {
+                    break;
+                }
+                message = m_qWsMessages.front();
+                m_qWsMessages.pop();
+            }
+        
             auto sMessage = convert_from_json(message.second);
 
             pml::log::trace("pml::restgoose") << "SendWSQueue: " << sMessage;
@@ -1525,7 +1534,10 @@ bool MongooseServer::WebsocketSubscribedToEndpoint(const subscriber& sub, const 
 
 void MongooseServer::SendWebsocketMessage(const std::set<endpoint>& setEndpoints, const Json::Value& jsMessage)
 {
-    m_qWsMessages.try_enqueue({setEndpoints, jsMessage});
+    {
+        std::scoped_lock lg(m_mutexWsMessages);
+        m_qWsMessages.push({setEndpoints, jsMessage});
+    }
 }
 
 void MongooseServer::SetLoopCallback(const std::function<void(std::chrono::milliseconds)>& func)
@@ -1811,7 +1823,8 @@ void MongooseServer::DoCloseWebsockets()
 {
     pml::log::info("pml::restgoose") << "Closing all websockets...";
 
-
+    wsMessage message;
+    
     m_bCloseWebsockets = false;
     std::vector<std::pair<endpoint, ipAddress>> vCloseCallbacks;
     {

@@ -294,8 +294,9 @@ namespace pml::restgoose
 
             std::map<mg_connection*, subscriber > m_mSubscribers;
 
-            moodycamel::ConcurrentQueue<wsMessage> m_qWsMessages;
-
+//            moodycamel::ConcurrentQueue<wsMessage> m_qWsMessages;
+            std::queue<wsMessage> m_qWsMessages;
+            std::mutex m_mutexWsMessages;
             std::map<mg_connection*, threadsafe_queue<response>> m_mConnectionQueue;
 
             mutable std::mutex m_mutexConnectionQueue;
