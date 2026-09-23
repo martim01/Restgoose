@@ -1463,6 +1463,13 @@ void MongooseServer::SendWSQueue()
 
         while(true)
         {
+            #ifdef USE_CONCURRENT_QUEUE
+            if(m_qWsMessages.try_dequeue(message) == false)
+            {
+                break;
+            }
+            #else
+
             {
                 std::scoped_lock lg(m_mutexWsMessages);
                 if(m_qWsMessages.empty())
@@ -1472,6 +1479,7 @@ void MongooseServer::SendWSQueue()
                 message = m_qWsMessages.front();
                 m_qWsMessages.pop();
             }
+            #endif
         
             auto sMessage = convert_from_json(message.second);
 
@@ -1534,10 +1542,14 @@ bool MongooseServer::WebsocketSubscribedToEndpoint(const subscriber& sub, const 
 
 void MongooseServer::SendWebsocketMessage(const std::set<endpoint>& setEndpoints, const Json::Value& jsMessage)
 {
+    #ifdef USE_CONCURRENT_QUEUE
+        m_qWsMessages.enqueue({setEndpoints, jsMessage});
+    #else
     {
         std::scoped_lock lg(m_mutexWsMessages);
         m_qWsMessages.push({setEndpoints, jsMessage});
     }
+    #endif
 }
 
 void MongooseServer::SetLoopCallback(const std::function<void(std::chrono::milliseconds)>& func)

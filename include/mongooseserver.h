@@ -34,10 +34,6 @@ using wsMessage = std::pair<std::set<endpoint>, Json::Value>;
 using authorised = std::pair<bool, userName>;
 
 
-
-
-
-
 namespace pml::restgoose
 {
     
@@ -294,9 +290,13 @@ namespace pml::restgoose
 
             std::map<mg_connection*, subscriber > m_mSubscribers;
 
-//            moodycamel::ConcurrentQueue<wsMessage> m_qWsMessages;
+            #ifdef USE_CONCURRENT_QUEUE
+            moodycamel::ConcurrentQueue<wsMessage> m_qWsMessages;
+            #else
             std::queue<wsMessage> m_qWsMessages;
             std::mutex m_mutexWsMessages;
+            #endif
+            
             std::map<mg_connection*, threadsafe_queue<response>> m_mConnectionQueue;
 
             mutable std::mutex m_mutexConnectionQueue;
