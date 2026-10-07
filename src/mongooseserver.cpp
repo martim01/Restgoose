@@ -669,8 +669,6 @@ methodpoint MongooseServer::GetMethodPoint(mg_http_message* pMessage) const
 
 void MongooseServer::EventHttp(mg_connection *pConnection, int, void* pData)
 {
-    
-
     auto pMessage = reinterpret_cast<mg_http_message*>(pData);
 
     auto thePoint = GetMethodPoint(pMessage);
@@ -814,32 +812,18 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
 
         m_lastPeerAndPort = ipAddress(ssPeer.str());
 
-
-
-        //find the callback function assigned to the method and endpoint
-        endpointCallback callback;
-        bool bHasCallback = false;
+        if(FindAndTriggerEndpointCallback(pConnection, thePoint, pMessage, user))
         {
-            std::scoped_lock lgEndpoints(m_mutexEndpoints);
-            if(auto itCallback = m_mEndpoints.find(thePoint); itCallback != m_mEndpoints.end())
-            {
-                callback = itCallback->second;
-                bHasCallback = true;
-            }
+            return;
         }
 
-        if(bHasCallback)
+        if(FindAndTriggerEndpointExCallback(pConnection, thePoint, pMessage, user))
         {
-            if(callback.second == false)
-            {
-                DoReply(pConnection, callback.first(extract_query(pMessage), create_part_data(pMessage->body, get_header(pMessage, headerName("Content-Type"))), thePoint.second, user));
-            }
-            else
-            {
-                DoReplyThreaded(pConnection, extract_query(pMessage), create_part_data(pMessage->body, get_header(pMessage, headerName("Content-Type"))), thePoint, user);
-            }
+            return;
         }
-        else if(m_callbackNotFound)
+        
+        
+        if(m_callbackNotFound)
         {
             DoReply(pConnection, m_callbackNotFound(thePoint.first, extract_query(pMessage), {}, thePoint.second, user));
         }
@@ -849,6 +833,67 @@ void MongooseServer::EventHttpApi(mg_connection *pConnection, mg_http_message* p
         }
     }
 }
+
+bool MongooseServer::FindAndTriggerEndpointCallback(mg_connection* pConnection,const methodpoint& thePoint, mg_http_message* pMessage, const userName& user)
+{
+    //find the callback function assigned to the method and endpoint
+    endpointCallback callback{nullptr, false};
+    {
+        std::scoped_lock lgEndpoints(m_mutexEndpoints);
+        if(auto itCallback = m_mEndpoints.find(thePoint); itCallback != m_mEndpoints.end())
+        {
+            callback = itCallback->second;
+        }
+    }
+
+    if(callback.first)
+    {
+        if(callback.second == false)
+        {
+            DoReply(pConnection, callback.first(extract_query(pMessage), create_part_data(pMessage->body, get_header(pMessage, headerName("Content-Type"))), thePoint.second, user));
+        }
+        else
+        {
+            DoReplyThreaded(pConnection, extract_query(pMessage), create_part_data(pMessage->body, get_header(pMessage, headerName("Content-Type"))), thePoint, user);
+        }
+    }
+
+    return callback.first != nullptr;
+}
+
+bool MongooseServer::FindAndTriggerEndpointExCallback(mg_connection* pConnection,const methodpoint& thePoint, mg_http_message* pMessage, const userName& user)
+{
+    endpointExCallback callback{nullptr, false};
+    std::vector<std::string> pathSegments;
+    {
+        std::scoped_lock lgEndpoints(m_mutexEndpoints);
+
+        if(auto endpointEx = FindEndpointEx(thePoint.second); endpointEx.has_value())
+        {
+            if(auto itCallback = endpointEx->mCallbacks.find(thePoint.first); itCallback != endpointEx->mCallbacks.end())
+            {
+                callback = itCallback->second;
+                pathSegments = endpointEx->vMatchedWildSegments;
+            }
+        }
+    }
+
+    if(callback.first)
+    {
+        if(callback.second == false)
+        {
+            DoReply(pConnection, 
+                    callback.first(extract_query(pMessage), create_part_data(pMessage->body, get_header(pMessage, headerName("Content-Type"))), pathSegments, user));
+        }
+        else
+        {
+            DoReplyExThreaded(pConnection, extract_query(pMessage), create_part_data(pMessage->body, get_header(pMessage, headerName("Content-Type"))), thePoint, user);
+        }
+    }
+
+    return callback.first != nullptr;
+}
+
 
 void MongooseServer::DoReplyThreaded(mg_connection* pConnection,const query& theQuery, const std::vector<partData>& theData, const methodpoint& thePoint, const userName& theUser)
 {
@@ -873,6 +918,48 @@ void MongooseServer::DoReplyThreaded(mg_connection* pConnection,const query& the
         }
 
         auto theResponse = fnCallback(theQuery, theData, thePoint.second, theUser);
+
+        {
+            std::scoped_lock lgQueue(m_mutexConnectionQueue);
+            auto itQueue = m_mConnectionQueue.find(pConnection);
+            if(itQueue != m_mConnectionQueue.end())
+            {
+                itQueue->second.push(theResponse);
+            }
+        }
+
+        mg_wakeup(&m_mgr, pConnection->id, nullptr, 0 /* No data */);
+    });
+}
+
+void MongooseServer::DoReplyExThreaded(mg_connection* pConnection, const query& theQuery, const std::vector<partData>& theData, const methodpoint& thePoint, const userName& theUser)
+{
+    {
+        std::scoped_lock lgQueue(m_mutexConnectionQueue);
+        m_mConnectionQueue.try_emplace(pConnection /* emplacing a default constructed object */);
+    }
+
+    ThreadPool::Get().Submit([this, pConnection, theQuery, theData, thePoint, theUser]()
+    {
+        std::function<response(const query&, const std::vector<partData>&, const std::vector<std::string>&, const userName&)> fnCallback;
+        std::vector<std::string> vMatchedWildSegments;
+        {
+            std::scoped_lock lgEndpoints(m_mutexEndpoints);
+            if(auto ex = FindEndpointEx(thePoint.second); ex.has_value())
+            {
+                if(auto itFn = ex->mCallbacks.find(thePoint.first); itFn != ex->mCallbacks.end())
+                {
+                    fnCallback = itFn->second.first;
+                    vMatchedWildSegments = ex->vMatchedWildSegments;
+                }
+            }
+        }
+        if(!fnCallback)
+        {
+            return;
+        }
+
+        auto theResponse = fnCallback(theQuery, theData, vMatchedWildSegments, theUser);
 
         {
             std::scoped_lock lgQueue(m_mutexConnectionQueue);
@@ -1255,6 +1342,72 @@ bool MongooseServer::AddEndpoint(const methodpoint& theMethodPoint, const std::f
     return true;
 }
 
+bool MongooseServer::AddEndpointEx(const methodpoint& theMethodPoint, const std::function<response(const query&, const std::vector<partData>&, const std::vector<std::string>&, const userName&)>& func, bool bUseThread)
+{
+    pml::log::Stream lg(pml::log::Level::kDebug, kLogPrefix);
+    lg << "AddEndpoint <" << theMethodPoint.first.Get() << ", " << theMethodPoint.second.Get() << "> ";
+
+    if(auto nPos = theMethodPoint.second.Get().find("**"); nPos != std::string::npos && nPos != theMethodPoint.second.Get().size() - 2)
+    {
+        lg(pml::log::Level::kWarning) << " failed as endpoint contains '**' not at the end";
+        return false;
+    }
+
+    std::scoped_lock lgEndpoints(m_mutexEndpoints);
+
+    auto itEndpoint = m_mEndpointExs.find(theMethodPoint.second);
+    if(itEndpoint == m_mEndpointExs.end())
+    {   //no endpoint yet so add
+        EndpointEx ex;
+        ex.vPathSegments = split_string(theMethodPoint.second.Get(), '/');
+        endpointExCallback callback{func, bUseThread};
+
+        if(ex.vPathSegments.empty())
+        {
+            lg(pml::log::Level::kWarning) << " failed as endpoint path is empty";
+            return false;
+        }
+        else
+        {
+            ex.mCallbacks.try_emplace(theMethodPoint.first, callback);
+            m_mEndpointExs.try_emplace(theMethodPoint.second,    std::move(ex));
+        }
+    }
+    else if(itEndpoint->second.mCallbacks.find(theMethodPoint.first) == itEndpoint->second.mCallbacks.end())
+    {   //endpoint already exists but method not yet added
+        endpointExCallback callback{func, bUseThread};
+        itEndpoint->second.mCallbacks.try_emplace(theMethodPoint.first, callback);
+    }
+    else
+    {   //endpoint and method both already exist, do nothing
+        lg(pml::log::Level::kWarning) << " failed as method already exists";
+        return false;
+    }   
+
+    return true;
+}
+
+bool MongooseServer::DeleteEndpointEx(const methodpoint& theMethodPoint)
+{
+    std::scoped_lock lgEndpoints(m_mutexEndpoints);
+    auto itEndpoint = m_mEndpointExs.find(theMethodPoint.second);
+    if(itEndpoint != m_mEndpointExs.end())
+    {
+        auto itMethod = itEndpoint->second.mCallbacks.find(theMethodPoint.first);
+        if(itMethod != itEndpoint->second.mCallbacks.end())
+        {
+            itEndpoint->second.mCallbacks.erase(itMethod);
+            if(itEndpoint->second.mCallbacks.empty())
+            {
+                m_mEndpointExs.erase(itEndpoint);
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+
 bool MongooseServer::DeleteEndpoint(const methodpoint& theMethodPoint)
 {
     std::scoped_lock lgEndpoints(m_mutexEndpoints);
@@ -1345,7 +1498,6 @@ void MongooseServer::DoReplyFile(mg_connection* pConnection, const response& the
 
         mg_send(pConnection, sHeaders.c_str(), sHeaders.length());
         EventWrite(pConnection);
-        pConnection->is_resp = 0;
         pConnection->is_draining = 1;
 
     }
@@ -1371,56 +1523,92 @@ void MongooseServer::EventWrite(mg_connection* pConnection)
     }
 }
 
+void MongooseServer::SendOptions(mg_connection* pConnection)
+{
+    std::stringstream ssHeaders;
+    ssHeaders << "HTTP/1.1 404\r\n"
+            << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
+            << "Access-Control-Allow-Origin: *\r\n"
+            << "Access-Control-Allow-Methods: OPTIONS";
+
+    if(m_sCert.empty() == false)
+    {
+        ssHeaders << "\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains";
+    }
+
+    ssHeaders << "\r\nContent-Length: 0 \r\n"
+            << "Access-Control-Allow-Headers: Content-Type, Accept, Authorization\r\n"
+            << "Access-Control-Max-Age: 3600\r\n\r\n";
+
+    mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
+    pConnection->is_draining = 1;
+}
 
 void MongooseServer::SendOptions(mg_connection* pConnection, const endpoint& theEndpoint)
 {
     std::scoped_lock lgEndpoints(m_mutexEndpoints);
-    auto itOption = m_mmOptions.lower_bound(theEndpoint);
-    if(itOption == m_mmOptions.upper_bound(theEndpoint))
+    if(auto itOption = m_mmOptions.lower_bound(theEndpoint); itOption != m_mmOptions.upper_bound(theEndpoint))
     {
-        std::stringstream ssHeaders;
-        ssHeaders << "HTTP/1.1 404\r\n"
-                << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
-                  << "Access-Control-Allow-Origin: *\r\n"
-                  << "Access-Control-Allow-Methods: OPTIONS";
-
-        if(m_sCert.empty() == false)
-        {
-            ssHeaders << "\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains";
-        }
-
-        ssHeaders << "\r\nContent-Length: 0 \r\n"
-                  << "Access-Control-Allow-Headers: Content-Type, Accept, Authorization\r\n"
-                  << "Access-Control-Max-Age: 3600\r\n\r\n";
-
-        mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
-        pConnection->is_draining = 1;
-
+        SendOptions(pConnection, itOption);
+    }
+    else if(auto endpointEx = FindEndpointEx(theEndpoint); endpointEx.has_value())
+    {
+        SendOptions(pConnection, endpointEx.value());
     }
     else
     {
-        std::stringstream ssHeaders;
-        ssHeaders << "HTTP/1.1 200\r\n"
+        SendOptions(pConnection);
+    }
+}
+
+void MongooseServer::SendOptions(mg_connection* pConnection, std::multimap<endpoint, httpMethod, end_less>::iterator itOption)
+{
+    const auto &theEndpoint = itOption->first;
+
+    std::stringstream ssHeaders;
+    ssHeaders << "HTTP/1.1 200\r\n"
                 << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
                   << "Access-Control-Allow-Origin: *\r\n"
                   << "Access-Control-Allow-Methods: OPTIONS";
-        for(; itOption != m_mmOptions.upper_bound(theEndpoint); ++itOption)
-        {
-            ssHeaders << ", " << itOption->second.Get();
-        }
-	if(m_sCert.empty() == false)
-        {
-            ssHeaders << "\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains";
-        }
-
-        ssHeaders << "\r\nContent-Length: 0 \r\n"
-                  << "Access-Control-Allow-Headers: Content-Type, Accept, Authorization\r\n"
-                  << "Access-Control-Max-Age: 3600\r\n\r\n";
-
-        mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
-        pConnection->is_resp = 0;
-        pConnection->is_draining = 1;
+    for(; itOption != m_mmOptions.upper_bound(theEndpoint); ++itOption)
+    {
+        ssHeaders << ", " << itOption->second.Get();
     }
+    if(m_sCert.empty() == false)
+    {
+        ssHeaders << "\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains";
+    }
+
+    ssHeaders << "\r\nContent-Length: 0 \r\n"
+                << "Access-Control-Allow-Headers: Content-Type, Accept, Authorization\r\n"
+                << "Access-Control-Max-Age: 3600\r\n\r\n";
+
+    mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
+    pConnection->is_draining = 1;
+}
+
+void MongooseServer::SendOptions(mg_connection* pConnection, const EndpointEx& ex)
+{
+    std::stringstream ssHeaders;
+    ssHeaders << "HTTP/1.1 200\r\n"
+                << "X-Frame-Options: sameorigin\r\nCache-Control: no-cache\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nServer: unknown\r\n"
+                  << "Access-Control-Allow-Origin: *\r\n"
+                  << "Access-Control-Allow-Methods: OPTIONS";
+    for(const auto& [method, callback] : ex.mCallbacks)
+    {
+        ssHeaders << ", " << method.Get();
+    }
+    if(m_sCert.empty() == false)
+    {
+        ssHeaders << "\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains";
+    }
+
+    ssHeaders << "\r\nContent-Length: 0 \r\n"
+                << "Access-Control-Allow-Headers: Content-Type, Accept, Authorization\r\n"
+                << "Access-Control-Max-Age: 3600\r\n\r\n";
+
+    mg_send(pConnection, ssHeaders.str().c_str(), ssHeaders.str().length());
+    pConnection->is_draining = 1;
 }
 
 
@@ -1869,6 +2057,69 @@ void MongooseServer::DoCloseWebsockets()
             fnClose(theEndpoint, peer);
         }
     }
+}
+
+std::optional<MongooseServer::EndpointEx> MongooseServer::FindEndpointEx(const endpoint& thePoint) const
+{
+    auto vPathSegments = split_string(thePoint.Get(), '/');
+    
+
+    for(const auto& [endpoint, endpointEx] : m_mEndpointExs)
+    {
+        //start by checking the length. Unless we have a ** the paths must be the same length
+        bool bNoMatch = false;
+        if(endpointEx.vPathSegments.back() != "**")
+        {
+            if(vPathSegments.size() != endpointEx.vPathSegments.size())
+            {
+                bNoMatch = true;
+            }
+        }
+        else if(vPathSegments.size() < endpointEx.vPathSegments.size())
+        {
+            bNoMatch = true;
+        }
+
+
+        if(!bNoMatch)
+        {
+            std::vector<std::string> vMatchedWildSegments;
+            bool bMatch = true;
+            for(size_t i = 0; i < endpointEx.vPathSegments.size(); ++i)
+            {
+                if(endpointEx.vPathSegments[i] == "**")
+                {
+                    bMatch = true;
+                    while(i < vPathSegments.size()) 
+                    {
+                        vMatchedWildSegments.push_back(vPathSegments[++i]);
+                    }
+                    break;
+                }
+                else if(endpointEx.vPathSegments[i] == "*")
+                {
+                    bMatch = true;
+                    vMatchedWildSegments.push_back(vPathSegments[i]);
+                }
+                else
+                {
+                    if(vPathSegments[i] != endpointEx.vPathSegments[i])
+                    {
+                        bMatch = false;
+                        break;
+                    }
+                }
+            }
+            if(bMatch)
+            {
+                auto matchedEndpointEx = endpointEx;
+                matchedEndpointEx.vMatchedWildSegments = vMatchedWildSegments;
+                return matchedEndpointEx;
+            }
+        }
+    }
+    
+    return std::nullopt;
 }
 
 }   //namespace pml::restgoose

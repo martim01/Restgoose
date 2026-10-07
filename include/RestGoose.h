@@ -160,6 +160,24 @@ namespace pml::restgoose
             **/
             bool DeleteEndpoint(const httpMethod& method, const endpoint& theEndpoint);
 
+            /** Adds a callback handler for an methodpoint where the endpoint can use the following wild cards: '*' for any sequence of characters in a path segment, '?' for any single character in a path segment and '**' for any sequence of path segments.
+            *   @param theMethodPoint a pair definining the HTTP method and methodpoint address
+            *   @param func std::function that defines the callback function
+            *   @param bUseThread if false then the callback will be called in the server thread
+            *   @return bool true on success
+            *   @note the vector of strings passed to the callback function represents the matched path segments for the wild cards in the endpoint address.
+            *   @example
+            *   If the endpoint is defined as "/foo/&#42;/bar/&#42;&#42;", and a request is made to "/foo/123/bar/456/789", the vector of strings passed to the callback function will be ["123", "456", "789"].
+            **/
+            bool AddEndpointEx(const methodpoint& theMethodPoint, const std::function<response(const query&, const std::vector<partData>&, const std::vector<std::string>&, const userName&)>& func, bool bUseThread=false);
+
+            /** Removes a callback handler for an methodpoint
+            *   @param[in] theEndpoint a pair definining the HTTP method and methodpoint address
+            *   @return bool true on success
+            **/
+            bool DeleteEndpointEx(const methodpoint& theMethodPoint);
+            
+            
             /** Sets the function that will be called every time the poll function times out or an event happens
             *   @param[in] func the function to call. It will be passed one argument, the number of milliseconds since it was last called
             **/

@@ -206,4 +206,14 @@ void Server::CloseAllWebsockets()
     m_pImpl->CloseAllWebsockets();
 }
 
+bool Server::AddEndpointEx(const methodpoint& theMethodPoint, const std::function<response(const query&, const std::vector<partData>&, const std::vector<std::string>&, const userName&)>& func, bool bUseThread)
+{
+    return m_pImpl->AddEndpointEx(theMethodPoint, func, bUseThread);
+}
+
+bool Server::DeleteEndpointEx(const methodpoint& theMethodPoint)
+{
+    return m_pImpl->DeleteEndpointEx(theMethodPoint);
+}
+
 } // namespace pml::restgoose

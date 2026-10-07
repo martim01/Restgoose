@@ -10,6 +10,7 @@
 #include <list>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <set>
 #include <string>
@@ -45,6 +46,9 @@ namespace pml::restgoose
 
 
     using endpointCallback = std::pair<std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)>, bool>;
+
+    using endpointExCallback = std::pair<std::function<response(const query&, const std::vector<partData>&, const std::vector<std::string>&, const userName&)>, bool>;
+    using endpointExCallback = std::pair<std::function<response(const query&, const std::vector<partData>&, const std::vector<std::string>&, const userName&)>, bool>;
 
     class Server;
     class MongooseServer
@@ -95,6 +99,17 @@ namespace pml::restgoose
             **/
             bool AddEndpoint(const methodpoint& theMethodPoint, const std::function<response(const query&, const std::vector<partData>&, const endpoint&, const userName&)>& func, bool bUseThread=false);
 
+            /** Adds a callback handler for an methodpoint where the endpoint can use the following wild cards: '*' for any sequence of characters in a path segment, '?' for any single character in a path segment and '**' for any sequence of path segments.
+            *   @param theMethodPoint a pair definining the HTTP method and methodpoint address
+            *   @param func std::function that defines the callback function
+            *   @param bUseThread if false then the callback will be called in the server thread
+            *   @return bool true on success
+            *   @note the vector of strings passed to the callback function represents the matched path segments for the wild cards in the endpoint address.
+            *   @example
+            *   If the endpoint is defined as "/foo/&#42;/bar/&#42;&#42;", and a request is made to "/foo/123/bar/456/789", the vector of strings passed to the callback function will be ["123", "456", "789"].
+            **/
+            bool AddEndpointEx(const methodpoint& theMethodPoint, const std::function<response(const query&, const std::vector<partData>&, const std::vector<std::string>&, const userName&)>& func, bool bUseThread=false);
+
             /** @brief Adds a callback handler that is called if no handler is found for the endpoint
             **/
             void AddNotFoundCallback(const std::function<response(const httpMethod&, const query&, const std::vector<partData>&, const endpoint&, const userName&)>& func);
@@ -104,6 +119,13 @@ namespace pml::restgoose
             *   @return bool true on success
             **/
             bool DeleteEndpoint(const methodpoint& theMethodPoint);
+
+
+            /** Removes a callback handler for an methodpoint
+            *   @param theMethodPoint a pair definining the HTTP method and methodpoint address
+            *   @return bool true on success
+            **/
+            bool DeleteEndpointEx(const methodpoint& theMethodPoint);
 
             /** Sets the function that will be called every time the poll function times out or an event happens
             *   @param func the function to call. It will be passed one argument, the number of milliseconds since it was last called
@@ -159,7 +181,14 @@ namespace pml::restgoose
 
 
         private:
+            struct EndpointEx
+            {
+                std::vector<std::string> vPathSegments;
+                std::map<httpMethod, endpointExCallback> mCallbacks;
 
+                std::vector<std::string> vMatchedWildSegments;
+            };
+            
             void CloseWebsocket(mg_connection* pConnection);
 
             ///< @brief the main mongoose loop. Called in a separate thread by Run()
@@ -201,10 +230,18 @@ namespace pml::restgoose
             void DoReplyText(mg_connection* pConnection, const response& theResponse) const;
             void DoReplyFile(mg_connection* pConnection, const response& theResponse);
             void DoReplyThreaded(mg_connection* pConnection, const query& theQuery, const std::vector<partData>& theData, const methodpoint& thePoint, const userName& theUser);
+
+            void DoReplyExThreaded(mg_connection* pConnection, const query& theQuery, const std::vector<partData>& theData, const methodpoint& thePoint, const userName& theUser);
+            
             void SendAuthenticationRequest(mg_connection* pConnection, const methodpoint& thePoint, bool bApi);
 
             void SendOptions(mg_connection* pConnection, const endpoint& thEndpoint);
+            void SendOptions(mg_connection* pConnection, std::multimap<endpoint, httpMethod, end_less>::iterator itOption);
 
+            void SendOptions(mg_connection* pConnection, const EndpointEx& ex);
+            void SendOptions(mg_connection* pConnection);
+
+            std::optional<EndpointEx> FindEndpointEx(const endpoint& thePoint) const;
 
             //void ClearMultipartData();
 
@@ -255,6 +292,10 @@ namespace pml::restgoose
 
             void DoCloseWebsockets();
 
+            bool FindAndTriggerEndpointCallback(mg_connection* pConnection,const methodpoint& thePoint, mg_http_message* pMessage, const userName& theUser);
+            bool FindAndTriggerEndpointExCallback(mg_connection* pConnection,const methodpoint& thePoint, mg_http_message* pMessage, const userName& theUser);
+
+
             mg_connection* m_pConnection = nullptr;
             int m_nPipe =0;
             std::string m_sIniPath;
@@ -279,11 +320,15 @@ namespace pml::restgoose
             std::function<void(std::chrono::milliseconds)> m_loopCallback = nullptr;
 
             std::map<methodpoint, endpointCallback> m_mEndpoints;
+            std::map<endpoint, EndpointEx, end_less> m_mEndpointExs;
+            
+
             std::map<endpoint, std::function<bool(const endpoint&, const query&, const userName&, const ipAddress& peer)>, end_less> m_mWebsocketAuthenticationEndpoints;
             std::map<endpoint, std::function<bool(const endpoint&, const Json::Value&)>, end_less> m_mWebsocketMessageEndpoints;
             std::map<endpoint, std::function<std::string(const endpoint&, const ipAddress& peer)>, end_less> m_mWebsocketOpenEndpoints;
             std::map<endpoint, std::function<void(const endpoint&, const ipAddress& peer)>, end_less> m_mWebsocketCloseEndpoints;
             std::multimap<endpoint, httpMethod, end_less> m_mmOptions;
+
 
             std::function<bool(const methodpoint&, const std::string&)> m_tokenCallback = nullptr;
             std::function<response(const endpoint&, bool)> m_tokenCallbackHandleNotAuthorized = nullptr;
