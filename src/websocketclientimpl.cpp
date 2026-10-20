@@ -103,7 +103,7 @@ bool WebSocketClientImpl::CheckTimeout(std::map<endpoint, connection>::iterator&
     if(itConnection->second.bConnected == false && elapsed.count() > 3000 && itConnection->second.pConnection->is_closing == 0)
     {
         pml::log::log(pml::log::Level::kDebug, "pml::restgoose") << "WebsocketClient Websocket connection timeout ";
-        m_mConnectionError[itConnection->second.pConnection->id] = enumError::TIMEOUT;
+        m_mConnectionError[itConnection->second.pConnection->id] = enumError::kTimeout;
         itConnection->second.pConnection->is_closing = 1;
     }
     return false; // we are not ++itConnection
@@ -118,7 +118,7 @@ bool WebSocketClientImpl::CheckPingPong(std::map<endpoint, connection>::iterator
         {
             pml::log::warning( "pml::restgoose") << "WebsocketClient Websocket has not responded to PING. Close " << itConnection->second.pConnection->id;
             itConnection->second.pConnection->is_closing = 1;
-            m_mConnectionError[itConnection->second.pConnection->id] = enumError::PING;
+            m_mConnectionError[itConnection->second.pConnection->id] = enumError::kPing;
         }
         else
         {
@@ -239,7 +239,7 @@ void WebSocketClientImpl::CtlEvent(mg_connection* pConnection, void* pEventData)
 
 void WebSocketClientImpl::CloseEvent(mg_connection* pConnection)
 {
-    int nCode = enumError::NONE;
+    int nCode = enumError::kNone;
 
     if(auto itError = m_mConnectionError.find(pConnection->id); itError != m_mConnectionError.end())
     {
@@ -270,10 +270,11 @@ void WebSocketClientImpl::HandleInitialConnection(mg_connection* pConnection) co
     {
         if(theConnection.pConnection == pConnection)
         {
+
             mg_str host = mg_url_host(theEndpoint.Get().c_str());
             if(mg_url_is_ssl(theEndpoint.Get().c_str()))
             {
-                pml::log::trace( "pml::restgoose") << "WebsocketClient Connection with tls";
+                pml::log::debug( "pml::restgoose") << "WebsocketClient Connection with tls - host=" << std::string(host.buf, host.len);
                 mg_tls_opts opts{};
                 opts.name = host;
                 mg_tls_init(pConnection, &opts);
@@ -339,9 +340,10 @@ bool WebSocketClientImpl::DoConnect()
 
     auto bError = false;
     endpoint theEndpoint("");
-
+    std::string sDns;
     {
         std::scoped_lock lg(m_mutex);
+        sDns = m_sDNS;
         if(m_qConnection.empty() == false)
         {
             theEndpoint = m_qConnection.front();
@@ -354,6 +356,12 @@ bool WebSocketClientImpl::DoConnect()
     if(theEndpoint.Get().empty() == false)
     {
         pml::log::debug( "pml::restgoose") << "WebsocketClient " << "Try to connect to " << theEndpoint;
+
+        if(sDns.empty() == false)
+        {
+            m_mgr.dns4.url = sDns.c_str();
+            pml::log::debug("pml::restgoose") << "DNS " << m_mgr.dns4.url;
+        }
 
         if(auto pConnection = mg_ws_connect(&m_mgr, theEndpoint.Get().c_str(), callback, reinterpret_cast<void*>(this), nullptr); pConnection)
         {
@@ -370,7 +378,7 @@ bool WebSocketClientImpl::DoConnect()
         pml::log::debug( "pml::restgoose") << "WebsocketClient Failed to create connection  ";
         if(m_pConnectCallback && m_bRun)
         {
-            m_pConnectCallback(theEndpoint, false, enumError::INIT_FAIL);
+            m_pConnectCallback(theEndpoint, false, enumError::kInitFail);
         }
         return false;
     }
@@ -495,6 +503,29 @@ void WebSocketClientImpl::EraseConnection(mg_connection* pConnection)
             break;
         }
     }
+}
+
+void WebSocketClientImpl::SetDNS(const std::string& sDNS)
+{
+    std::scoped_lock lg(m_mutex);
+    if(sDNS.empty() == false)
+    {
+        if(sDNS.substr(0, 6) != "udp://")
+        {
+            m_sDNS = "udp://"+sDNS;
+        }
+        if(sDNS.find(':', 6) == std::string::npos)
+        {
+            m_sDNS += ":53";
+        }
+        pml::log::trace("pml::restgoose") << "WebsocketClient - Using custom DNS: " << m_sDNS;
+    }
+    else
+    {
+        m_sDNS = "udp://8.8.8.8:53";
+    }
+
+    pml::log::debug("pml::restgoose") << "WebsocketClient - DNS set to: " << m_mgr.dns4.url;
 }
 
 }

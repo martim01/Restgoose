@@ -52,4 +52,9 @@ void WebSocketClient::RemoveCallbacks()
     m_pImpl->RemoveCallbacks();
 }
 
+void WebSocketClient::SetDNS(const std::string& sDNS)
+{
+    m_pImpl->SetDNS(sDNS);
+}
+
 }

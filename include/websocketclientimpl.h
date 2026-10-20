@@ -43,8 +43,10 @@ namespace pml::restgoose
 
             void RemoveCallbacks();
 
+            void SetDNS(const std::string& sDNS);
+
         private:
-            enum enumError {NONE=0, INIT_FAIL=-1, TIMEOUT=-2, PING=-3};
+            enum enumError {kNone=0, kInitFail=-1, kTimeout=-2, kPing=-3};
 
             WebSocketClientImpl(const std::function<bool(const endpoint& theEndpoint, bool, int)>& pConnectCallback, const std::function<bool(const endpoint& theEndpoint, const std::string&)>& pMessageCallback, unsigned int nTimeout=250, bool bPingPong = true);
 
@@ -104,6 +106,8 @@ namespace pml::restgoose
 
             int m_nPipe{1};
             bool m_bPingPong{false};
+
+            std::string m_sDNS;
     };
 }
 

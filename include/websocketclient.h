@@ -66,6 +66,13 @@ namespace pml::restgoose
              */
             void RemoveCallbacks();
 
+
+            /**
+             * @brief Sets the DNS server to use for the websocket client
+             * @param[in] sDNS the DNS server to use (e.g., "udp://8.8.8.8:53")
+             */
+            void SetDNS(const std::string& sDNS);
+
         private:
             std::unique_ptr<WebSocketClientImpl> m_pImpl;
     };
