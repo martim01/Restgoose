@@ -14,7 +14,7 @@ The following libraries are required from GitHub. Using the CMake build will aut
 - [sqsthread](https://github.com/MatthewMartinBBC/sqsthread) - polls an AWS SQS for messages
 - [deel-cpp](https://github.com/MatthewMartinBBC/deel-cpp) - c++ library to decode DEEL messages
 - [deel-spec](https://github.com/MatthewMartinBBC/deel-spec) the DEEL spec - needed by deel-cpp
-- [valijson)](https://github.com/tristanpenman/valijson.git) JSON validator - needed by deel-cpp
+- [valijson](https://github.com/tristanpenman/valijson.git) JSON validator - needed by deel-cpp
 
 Other libraries required
 - openssl for secure connections
@@ -27,8 +27,7 @@ sudo apt install libssl-dev uuid-dev pkg-config
 ```
 
 # Building
-There is a CodeBlocks project file to build the library.
-Alternatively there is a CMakeLists.txt file which can be used to build the library on Linux (Windows etc still to come). To use this:
+There is a CMakeLists.txt file which can be used to build the library on Linux (Windows etc still to come). To use this:
 ```
 cd build
 cmake ..
@@ -43,6 +42,8 @@ Build the library as above and link to the compiled library.
 - [Server](#Server)
 - [HTTP Client](#HttpClient)
 - [Websocket Client](#WebsocketClient)
+
+
 
 ## Server
 
@@ -259,10 +260,10 @@ resp.jsonData["result"] = "sucess";
 server.Signal(resp);
 ```
 
-### HTTPClient
+## HTTPClient
 The library provides an easy to use HTTP client.
 
-#### Usage
+### Usage
 * Create an HttpClient object
 * Call `Run`
 
@@ -291,7 +292,7 @@ void Run(const std::function<void(const clientResponse&, unsigned int )>& pCallb
 ```
 The synchronous method returns a `clientResponse` object whilst the asynchronous one passes a `clientResponse` object and the user supplied identifier to the callback function
 
-##### clientResponse
+#### clientResponse
 A struct containing the data retrieved from an HTTP request. It has the following data members
 ```c++
 unsigned short nHttpCode;     // The HTTP response code or an internal error if the connection failed - one of ERROR_SETUP, ERROR_TIME, ERROR_CONNECTION, ERROR_REPLY, ERROR_FILE_READ, ERROR_FILE_WRITE, USER_CANCELLED
@@ -303,11 +304,46 @@ textData data;                // If bBinary=false the text data else the locatio
 std::map<headerName, headerValue> mHeaders; // The headers returned by the server
 ```
 
-##### Advanced
+#### Advanced
 There are a number of functions that can be called between the constructor and `Run` to set authentication, HTTPS client certificates etc.
 
-### WebsocketClient
-#### Usage
+### HTTP client proxies
+
+`HttpClient::UseProxy(proxy, exclusions)` supports HTTP and HTTPS proxy URLs
+for HTTP destinations, and HTTP CONNECT tunnels for HTTPS destinations.
+HTTPS destinations through HTTPS proxies require nested TLS, which is not
+supported: `Run()` returns a connection error with an explanatory message
+before connecting. No insecure fallback is attempted.
+
+Exclusions accept hostname patterns (for example `localhost` or `*.example.com`)
+and existing full-URL patterns. Matching uses Mongoose wildcard syntax
+(`*`, `?`, and `#`) and is case-sensitive. Proxy selection is evaluated again
+after each redirect.
+
+Set the `Proxy-Authorization` extra header for proxy authentication.
+CONNECT requests contain proxy headers, not the origin's `Authorization`.
+Proxy credentials are not sent inside the tunnel or on direct/bypassed
+requests. Forward-proxy HTTP requests carry both origin and proxy headers.
+Credentials embedded in proxy URLs are not converted to authentication headers.
+
+TLS options, including the configured CA, client certificate, and
+`IgnoreSSLErrors()`, apply to destination TLS through an HTTP CONNECT tunnel
+as well as direct connections. Disabling verification is intended only for
+controlled testing.
+
+With `RESTGOOSE_BUILD_TESTS=ON`, build `restgoose_proxy_client`, then run:
+
+```
+ctest --test-dir <build>/external/restgoose/tests -R restgoose_proxy_regression --output-on-failure
+```
+
+For standalone Restgoose builds, use `<build>/tests` instead. The tests require
+Python 3 and the OpenSSL command-line tool and use only ephemeral loopback
+listeners and temporary certificates.
+
+
+## WebsocketClient
+### Usage
 * Create a `WebsocketClient` with callback functions for connection and messages
 * Call `Run` to start the `WebsocketClient`
 * Call `Connect` to attempt to connect to a websocket server
@@ -316,3 +352,41 @@ There are a number of functions that can be called between the constructor and `
 * Handle any messages sent from the server in the message callback
   
   You can connect to as many endpoints as you wish - all the messages from the server will be sent to the same callback function.
+
+### WebSocket client proxies
+
+`WebSocketClient` uses the same hostname/full-URL exclusion patterns as the
+HTTP client. Proxy and TLS settings are captured separately for each new
+connection; one client can maintain both direct and proxied endpoints.
+
+```c++
+client.UseProxy(endpoint("http://proxy.example.com:3128"),
+                {endpoint("localhost"), endpoint("*.internal.example.com")},
+                {{headerName("Proxy-Authorization"), headerValue("Basic ...")}});
+client.SetCertificateAuthority("/path/to/ca.pem");
+client.Connect(endpoint("wss://service.example.com:8443/api"));
+client.Run();
+```
+
+Supported combinations:
+
+| Destination | HTTP proxy | HTTPS proxy |
+|-------------|------------|-------------|
+| `ws://` | Absolute-form HTTP WebSocket upgrade | TLS to proxy, then absolute-form upgrade |
+| `wss://` | CONNECT, destination TLS, then WebSocket upgrade | Unsupported; failure callback |
+
+The optional third `UseProxy()` argument accepts `Proxy-Authorization` and
+`Proxy-Connection` headers only; invalid entries are logged and ignored.
+Proxy headers are never included in direct requests or inside a CONNECT
+tunnel. `SetCertificateAuthority()`, `SetClientCertificate()`, and
+`IgnoreSSLErrors()` configure TLS for subsequent connections; disabling
+verification is intended only for controlled testing.
+
+Queued messages are held until the WebSocket upgrade completes. Proxy
+failures, TLS errors, and connection timeouts use the normal disconnect
+callback. A rejected CONNECT reports its HTTP status as the error code.
+As before, WebSocket upgrade redirects are not followed automatically.
+
+Build `restgoose_websocket_proxy_client` with `RESTGOOSE_BUILD_TESTS=ON` and
+run the `restgoose_websocket_proxy_regression` CTest alongside the HTTP proxy
+regression test. Both tests use temporary loopback listeners only.

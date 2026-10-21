@@ -7,6 +7,7 @@
 #include <map>
 #include <mutex>
 #include <queue>
+#include <set>
 #include <string>
 #include <thread>
 
@@ -45,6 +46,12 @@ namespace pml::restgoose
 
             void SetDNS(const std::string& sDNS);
 
+            void UseProxy(const endpoint& proxy, const std::set<endpoint>& setExcludedEndpoints,
+                          const std::map<headerName, headerValue>& proxyHeaders);
+            void IgnoreSSLErrors(bool bIgnore);
+            bool SetCertificateAuthority(const std::filesystem::path& ca);
+            bool SetClientCertificate(const std::filesystem::path& cert, const std::filesystem::path& key);
+
         private:
             enum enumError {kNone=0, kInitFail=-1, kTimeout=-2, kPing=-3};
 
@@ -52,7 +59,9 @@ namespace pml::restgoose
 
             void Loop();
 
-            void HandleInitialConnection(mg_connection* pConnection) const;
+            void HandleInitialConnection(mg_connection* pConnection);
+            void HandleProxyRead(mg_connection* pConnection);
+            void HandleTlsHandshake(mg_connection* pConnection);
             void MarkConnectionConnected(mg_connection* pConnection, bool bConnected = true, int code=0);
 
             void CloseConnection(mg_connection* pConnection, bool bTellServer);
@@ -89,7 +98,16 @@ namespace pml::restgoose
                 bool bToClose = false;
                 std::chrono::time_point<std::chrono::system_clock> tp = std::chrono::system_clock::now();
                 std::queue<std::string> q;
+                endpoint proxy;
+                std::string proxyHeaders;
+                std::string ca, cert, key;
+                bool ignoreSslErrors = false;
+                enum class State { connecting, awaitingConnect, awaitingTls, upgrading, ready };
+                State state = State::connecting;
+                void (*wsHandler)(mg_connection*, int, void*) = nullptr;
             };
+            void InitTls(mg_connection* pc, const endpoint& target, const connection& state);
+            void SendUpgrade(mg_connection* pc, const endpoint& target, connection& state);
 
             bool CheckToClose(std::map<endpoint, connection>::iterator& itConnection);
             bool CheckTimeout(std::map<endpoint, connection>::iterator& itConnection, const std::chrono::milliseconds& elapsed);
@@ -108,6 +126,13 @@ namespace pml::restgoose
             bool m_bPingPong{false};
 
             std::string m_sDNS;
+            std::string m_sActiveDNS = "udp://8.8.8.8:53";
+
+            endpoint m_proxy;
+            std::set<endpoint> m_setExcludedEndpoints;
+            std::string m_sProxyHeaders;
+            std::string m_sCA, m_sCert, m_sKey;
+            bool m_bIgnoreSSLErrors = false;
     };
 }
 

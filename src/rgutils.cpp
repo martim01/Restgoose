@@ -6,10 +6,14 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <set>
 #include <sstream>
 #include <string>
 
+
 #include "log.h"
+
+#include "mongoose.h"
 
 
 namespace pml::restgoose
@@ -177,6 +181,24 @@ std::optional<Json::Value> convert_post_to_json(const std::vector<partData>& vDa
         return js;
     }
     return {};
+}
+bool is_proxy_needed(const endpoint& target, const endpoint& proxy, const std::set<endpoint>& setExcludedEndpoints)
+{
+    if(proxy.Get().empty()) return false;
+
+    auto targetDomain = mg_url_host(target.Get().c_str());
+    auto targetUrl = mg_str(target.Get().c_str());
+
+    for(const auto& excluded : setExcludedEndpoints)
+    {
+        auto pattern = mg_str(excluded.Get().c_str());
+        if(mg_match(targetDomain, pattern, nullptr) || mg_match(targetUrl, pattern, nullptr))
+        {
+            return false;
+        }
+    }
+    return true;
+
 }
 
 }

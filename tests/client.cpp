@@ -60,7 +60,7 @@ int main(int argc, char** argv)
 
 	if(proxyUrl.empty() == false)
 	{
-		client.UseProxy(proxyUrl);
+		client.UseProxy(endpoint(proxyUrl));
 	}
 
 	if(program.get<std::string>("--log") != "0")

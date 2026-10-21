@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <set>
 #include <vector>
 
 #include "response.h"
@@ -117,8 +118,11 @@ namespace pml::restgoose
              * @brief Set the url of a proxy to use for the connection
              * 
              * @param proxy the url/ip address of the proxy
+             * @param setExcludedEndpoints hostname or full-URL wildcard patterns that bypass the proxy
+             * HTTPS destinations require an HTTP proxy; nested TLS through an HTTPS proxy is unsupported.
+             * Supply Proxy-Authorization as an extra header for proxy authentication.
              */
-            void UseProxy(const std::string& proxy) const;
+            void UseProxy(const endpoint& proxy, const std::set<endpoint>& setExcludedEndpoints = {}) const;
 
             /**
              * @brief Set the url of a DNS server to use for the connection

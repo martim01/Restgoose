@@ -146,9 +146,9 @@ bool HttpClient::SetExpectedResponse(const clientResponse::enumResponse eRespons
 }
 
 
-void HttpClient::UseProxy(const std::string& proxy) const
+void HttpClient::UseProxy(const endpoint& proxy, const std::set<endpoint>& setExcludedEndpoints) const
 {
-    m_pImpl->UseProxy(endpoint(proxy));
+    m_pImpl->UseProxy(proxy, setExcludedEndpoints);
 }
 
 void HttpClient::SetDNS(const std::string& sDnsServer) const

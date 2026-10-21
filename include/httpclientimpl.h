@@ -43,10 +43,8 @@ namespace pml::restgoose
             void HandleConnectEvent(mg_connection* pConnection);
             void HandleConnectEventDirect(mg_connection* pConnection);
             void HandleConnectEventToProxy(mg_connection* pConnection);
-            void HandleReadEvent(mg_connection* pConnection);
             void HandleTlsHandshakeEvent(mg_connection* pConnection);
-            bool HandleProxyConnectReply(mg_connection* pConnection, mg_http_message* pReply);
-            bool IsWaitingForTunnelTls() const;
+            void HandleHttpHeaders(mg_connection* pConnection, mg_http_message* pReply);
             void HandleWroteEvent(mg_connection* pConnection, int nBytes);
             void HandleMessageEvent(mg_http_message* pReply);
             void HandleErrorEvent(const char* error);
@@ -54,7 +52,7 @@ namespace pml::restgoose
             bool SetBasicAuthentication(const userName& user, const password& pass);
             bool SetBearerAuthentication(const std::string& sToken);
 
-            void UseProxy(const endpoint& proxy);
+            void UseProxy(const endpoint& proxy, const std::set<endpoint>& excludedEndpoints = {});
 
             void SetDNS(const std::string& sDnsServer);
 
@@ -63,6 +61,7 @@ namespace pml::restgoose
             bool IgnoreSSLErrors(bool bIgnore);
 
         private:
+            enum class ProxyState { kNone, kAwaitingConnect, kAwaitingTls, kReady };
 
             HttpClientImpl();
             HttpClientImpl(const httpMethod& method, const endpoint& target, const std::map<headerName, headerValue>& mExtraHeaders = {}, clientResponse::enumResponse eResponse=clientResponse::enumResponse::kAuto);
@@ -90,6 +89,8 @@ namespace pml::restgoose
 
             void DoLoop(mg_mgr& mgr) const;
             void ResetRunState();
+            void ResetConnectionState();
+            void InitTls(mg_connection* pConnection, const endpoint& target);
 
             void HandleSimpleWroteEvent(mg_connection* pConnection);
             void HandleMultipartWroteEvent(mg_connection* pConnection);
@@ -100,6 +101,7 @@ namespace pml::restgoose
             unsigned long WorkoutFileSize(const std::filesystem::path& filename);
             void SendRequestHeaders(mg_connection* pConnection, bool bAbsoluteUri);
             void SetupRedirect();
+
 
             methodpoint m_point = methodpoint(kGet, endpoint("127.0.0.1"));
             headerValue m_contentType = headerValue("text/plain");
@@ -140,8 +142,12 @@ namespace pml::restgoose
             std::function<void(const clientResponse&, unsigned int)> m_pAsyncCallbackV1 = nullptr;
 
             endpoint m_proxy;
-            bool m_bConnectedViaProxy{false};
-            bool m_bWaitingForTunnelTls{false};
+            std::set<endpoint> m_setExcludedEndpoints;
+            bool m_bUseProxy{false};
+
+            
+            ProxyState m_proxyState{ProxyState::none};
+            void (*m_pHttpHandler)(mg_connection*, int, void*) = nullptr;
 
             std::string m_sDnsServer;
 

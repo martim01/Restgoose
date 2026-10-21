@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <memory>
+#include <set>
 #include <string>
 
 #include "namedtype.h"
@@ -72,6 +73,19 @@ namespace pml::restgoose
              * @param[in] sDNS the DNS server to use (e.g., "udp://8.8.8.8:53")
              */
             void SetDNS(const std::string& sDNS);
+
+            /**
+             * @brief Sets the proxy server to use for the websocket client
+             * @param[in] proxy the URL or IP address of the proxy server
+             * @param[in] setExcludedEndpoints hostname or full-URL wildcard patterns that bypass the proxy
+             * @param[in] proxyHeaders Proxy-Authorization and Proxy-Connection headers
+             * WSS through an HTTPS proxy is unsupported and reports a connection error.
+             */
+            void UseProxy(const endpoint& proxy, const std::set<endpoint>& setExcludedEndpoints = {},
+                          const std::map<headerName, headerValue>& proxyHeaders = {});
+            void IgnoreSSLErrors(bool bIgnore);
+            bool SetCertificateAuthority(const std::filesystem::path& ca);
+            bool SetClientCertificate(const std::filesystem::path& cert, const std::filesystem::path& key);
 
         private:
             std::unique_ptr<WebSocketClientImpl> m_pImpl;

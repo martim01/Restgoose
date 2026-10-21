@@ -57,4 +57,25 @@ void WebSocketClient::SetDNS(const std::string& sDNS)
     m_pImpl->SetDNS(sDNS);
 }
 
+void WebSocketClient::UseProxy(const endpoint& proxy, const std::set<endpoint>& setExcludedEndpoints,
+                             const std::map<headerName, headerValue>& proxyHeaders)
+{
+    m_pImpl->UseProxy(proxy, setExcludedEndpoints, proxyHeaders);
+}
+
+void WebSocketClient::IgnoreSSLErrors(bool bIgnore)
+{
+    m_pImpl->IgnoreSSLErrors(bIgnore);
+}
+
+bool WebSocketClient::SetCertificateAuthority(const std::filesystem::path& ca)
+{
+    return m_pImpl->SetCertificateAuthority(ca);
+}
+
+bool WebSocketClient::SetClientCertificate(const std::filesystem::path& cert, const std::filesystem::path& key)
+{
+    return m_pImpl->SetClientCertificate(cert, key);
+}
+
 }

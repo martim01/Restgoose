@@ -5,6 +5,7 @@
 #include <chrono>
 #include <optional>
 #include <queue>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -30,6 +31,8 @@ namespace pml::restgoose
     RG_EXPORT extern std::optional<Json::Value> convert_to_json(const std::string& str);
 
     RG_EXPORT extern std::optional<Json::Value> convert_post_to_json(const std::vector<partData>& vData);
+
+    RG_EXPORT extern bool is_proxy_needed(const endpoint& target, const endpoint& proxy, const std::set<endpoint>& setExcludedEndpoints);
 }
 
 #endif

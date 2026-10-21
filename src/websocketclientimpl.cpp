@@ -85,9 +85,12 @@ void WebSocketClientImpl::CheckConnections()
 bool WebSocketClientImpl::CheckToClose(std::map<endpoint, connection>::iterator& itConnection)
 {
     auto bHandled = false;
-    if(itConnection->second.bConnected == true && itConnection->second.bToClose == true)
+    if(itConnection->second.bToClose == true)
     {
-        mg_ws_send(itConnection->second.pConnection, nullptr, 0, WEBSOCKET_OP_CLOSE);
+        if(itConnection->second.bConnected)
+        {
+            mg_ws_send(itConnection->second.pConnection, nullptr, 0, WEBSOCKET_OP_CLOSE);
+        }
         
         itConnection->second.pConnection->is_closing = 1;
         //itConnection = m_mConnection.erase(itConnection);
@@ -135,6 +138,10 @@ void WebSocketClientImpl::SendMessages()
     std::scoped_lock lg(m_mutex);
     for(auto& [theEndpoint, theConnection] : m_mConnection)
     {
+        if(!theConnection.bConnected || theConnection.pConnection->is_closing)
+        {
+            continue;
+        }
         while(theConnection.q.empty() == false)
         {
             mg_ws_send(theConnection.pConnection, theConnection.q.front().c_str(), theConnection.q.front().size(), WEBSOCKET_OP_TEXT);
@@ -173,10 +180,16 @@ void WebSocketClientImpl::Callback(mg_connection* pConnection, int nEvent, void 
         case MG_EV_CONNECT:
             HandleInitialConnection(pConnection);
             break;
+        case MG_EV_READ:
+            HandleProxyRead(pConnection);
+            break;
+        case MG_EV_TLS_HS:
+            HandleTlsHandshake(pConnection);
+            break;
         case MG_EV_ERROR:
             {
                 
-                m_mConnectionError[pConnection->id] =  errno;
+                m_mConnectionError[pConnection->id] = enumError::kInitFail;
             }
             if(pEventData)
             {
@@ -262,24 +275,140 @@ void WebSocketClientImpl::CloseEvent(mg_connection* pConnection)
     }
 }
 
-void WebSocketClientImpl::HandleInitialConnection(mg_connection* pConnection) const
+void WebSocketClientImpl::InitTls(mg_connection* pc, const endpoint& target, const connection& state)
 {
-    pml::log::debug( "pml::restgoose") << "HandleInitialConnection  connection=" << pConnection->id;
-    std::scoped_lock lg(m_mutex);
-    for(const auto& [theEndpoint, theConnection] : m_mConnection)
+    mg_tls_opts opts{};
+    opts.skip_verification = state.ignoreSslErrors;
+    if(!state.ignoreSslErrors)
     {
-        if(theConnection.pConnection == pConnection)
-        {
+        opts.name = mg_url_host(target.Get().c_str());
+        opts.ca = mg_str(state.ca.c_str());
+    }
+    opts.cert = mg_str(state.cert.c_str());
+    opts.key = mg_str(state.key.c_str());
+    mg_tls_init(pc, &opts);
+}
 
-            mg_str host = mg_url_host(theEndpoint.Get().c_str());
-            if(mg_url_is_ssl(theEndpoint.Get().c_str()))
+void WebSocketClientImpl::SendUpgrade(mg_connection* pc, const endpoint& target, connection& state)
+{
+    auto host = mg_url_host(target.Get().c_str());
+    const auto port = mg_url_port(target.Get().c_str());
+    const bool ssl = mg_url_is_ssl(target.Get().c_str());
+    std::string authority(host.buf, host.len);
+    if(port != (ssl ? 443 : 80))
+    {
+        authority += ":" + std::to_string(port);
+    }
+    std::string uri = mg_url_uri(target.Get().c_str());
+    const bool forward = !state.proxy.Get().empty() && !ssl;
+    if(forward)
+    {
+        uri = "http://" + authority + uri;
+    }
+    char nonce[16], key[30];
+    mg_random(nonce, sizeof(nonce));
+    mg_base64_encode(reinterpret_cast<unsigned char*>(nonce), sizeof(nonce), key, sizeof(key));
+    pc->pfn = state.wsHandler;
+    pc->pfn_data = nullptr;
+    mg_printf(pc, "GET %s HTTP/1.1\r\nHost: %s\r\nUpgrade: websocket\r\n"
+                  "Connection: Upgrade\r\nSec-WebSocket-Version: 13\r\n"
+                  "Sec-WebSocket-Key: %s\r\n%s\r\n",
+              uri.c_str(), authority.c_str(), key, forward ? state.proxyHeaders.c_str() : "");
+}
+
+void WebSocketClientImpl::HandleInitialConnection(mg_connection* pc)
+{
+    std::unique_lock lg(m_mutex);
+    for(auto& [target, state] : m_mConnection)
+    {
+        if(state.pConnection != pc) continue;
+        const bool ssl = mg_url_is_ssl(target.Get().c_str());
+        if(!state.proxy.Get().empty() && ssl)
+        {
+            auto host = mg_url_host(target.Get().c_str());
+            std::string authority(host.buf, host.len);
+            authority += ":" + std::to_string(mg_url_port(target.Get().c_str()));
+            state.state = connection::State::awaitingConnect;
+            const auto headers = state.proxyHeaders;
+            lg.unlock();
+            mg_printf(pc, "CONNECT %s HTTP/1.1\r\nHost: %s\r\n%s\r\n",
+                      authority.c_str(), authority.c_str(), headers.c_str());
+            return;
+        }
+        const auto tlsTarget = state.proxy.Get().empty() ? target : state.proxy;
+        if(mg_url_is_ssl(tlsTarget.Get().c_str()))
+        {
+            state.state = connection::State::awaitingTls;
+            auto tlsState = state;
+            lg.unlock();
+            InitTls(pc, tlsTarget, tlsState);
+        }
+        else
+        {
+            state.state = connection::State::upgrading;
+            auto upgradeState = state;
+            auto upgradeTarget = target;
+            lg.unlock();
+            SendUpgrade(pc, upgradeTarget, upgradeState);
+        }
+        return;
+    }
+}
+
+void WebSocketClientImpl::HandleProxyRead(mg_connection* pc)
+{
+    // The WebSocket protocol handler is detached until CONNECT and TLS finish.
+    if(pc->pfn != nullptr) return;
+    std::unique_lock lg(m_mutex);
+    for(auto& [target, state] : m_mConnection)
+    {
+        if(state.pConnection != pc || state.state != connection::State::awaitingConnect) continue;
+        while(pc->recv.len > 0)
+        {
+            mg_http_message reply{};
+            const int parsed = mg_http_parse(reinterpret_cast<char*>(pc->recv.buf), pc->recv.len, &reply);
+            if(parsed == 0) return;
+            if(parsed < 0)
             {
-                pml::log::debug( "pml::restgoose") << "WebsocketClient Connection with tls - host=" << std::string(host.buf, host.len);
-                mg_tls_opts opts{};
-                opts.name = host;
-                mg_tls_init(pConnection, &opts);
+                lg.unlock();
+                mg_error(pc, "Invalid proxy CONNECT response");
+                return;
             }
-            break;
+            const int status = mg_http_status(&reply);
+            mg_iobuf_del(&pc->recv, 0, static_cast<size_t>(parsed));
+            if(status >= 100 && status < 200) continue;
+            if(status < 200 || status >= 300)
+            {
+                m_mConnectionError[pc->id] = status;
+                pc->is_closing = 1;
+                pml::log::error("pml::restgoose") << "WebSocket proxy CONNECT failed: " << status;
+                return;
+            }
+            state.state = connection::State::awaitingTls;
+            // TLS errors synchronously invoke the user event handler.
+            auto tlsState = state;
+            lg.unlock();
+            InitTls(pc, target, tlsState);
+            if(!pc->is_closing && pc->is_tls_hs) mg_tls_handshake(pc);
+            return;
+        }
+        return;
+    }
+}
+
+void WebSocketClientImpl::HandleTlsHandshake(mg_connection* pc)
+{
+    std::unique_lock lg(m_mutex);
+    for(auto& [target, state] : m_mConnection)
+    {
+        if(state.pConnection == pc && state.state == connection::State::awaitingTls)
+        {
+            state.state = connection::State::upgrading;
+            auto upgradeState = state;
+            auto upgradeTarget = target;
+            lg.unlock();
+            SendUpgrade(pc, upgradeTarget, upgradeState);
+            return;
         }
     }
 }
@@ -340,10 +469,16 @@ bool WebSocketClientImpl::DoConnect()
 
     auto bError = false;
     endpoint theEndpoint("");
-    std::string sDns;
+    endpoint proxy;
+    connection settings(nullptr);
     {
         std::scoped_lock lg(m_mutex);
-        sDns = m_sDNS;
+        m_sActiveDNS = m_sDNS.empty() ? "udp://8.8.8.8:53" : m_sDNS;
+        m_mgr.dns4.url = m_sActiveDNS.c_str();
+        settings.ca = m_sCA;
+        settings.cert = m_sCert;
+        settings.key = m_sKey;
+        settings.ignoreSslErrors = m_bIgnoreSSLErrors;
         if(m_qConnection.empty() == false)
         {
             theEndpoint = m_qConnection.front();
@@ -351,23 +486,38 @@ bool WebSocketClientImpl::DoConnect()
             m_qConnection.pop();
             --m_nQueued;
         }
+        if(is_proxy_needed(theEndpoint, m_proxy, m_setExcludedEndpoints))
+        {
+            proxy = m_proxy;
+            settings.proxy = proxy;
+            settings.proxyHeaders = m_sProxyHeaders;
+        }
     }
 
     if(theEndpoint.Get().empty() == false)
     {
         pml::log::debug( "pml::restgoose") << "WebsocketClient " << "Try to connect to " << theEndpoint;
 
-        if(sDns.empty() == false)
+        if(!proxy.Get().empty() && mg_url_is_ssl(proxy.Get().c_str()) &&
+           mg_url_is_ssl(theEndpoint.Get().c_str()))
         {
-            m_mgr.dns4.url = sDns.c_str();
-            pml::log::debug("pml::restgoose") << "DNS " << m_mgr.dns4.url;
+            pml::log::error("pml::restgoose") << "WSS destinations through HTTPS proxies are not supported";
+            if(m_pConnectCallback && m_bRun) m_pConnectCallback(theEndpoint, false, enumError::kInitFail);
+            return false;
         }
+        m_mgr.dns4.url = m_sActiveDNS.c_str();
 
-        if(auto pConnection = mg_ws_connect(&m_mgr, theEndpoint.Get().c_str(), callback, reinterpret_cast<void*>(this), nullptr); pConnection)
+        const auto& connectTo = proxy.Get().empty() ? theEndpoint : proxy;
+        if(auto pConnection = mg_ws_connect(&m_mgr, connectTo.Get().c_str(), callback, reinterpret_cast<void*>(this), nullptr); pConnection)
         {
             pml::log::debug( "pml::restgoose") << "WebsocketClient " << " Connection created " << pConnection->id << " to " << theEndpoint;
             std::scoped_lock lg(m_mutex);
-            m_mConnection.try_emplace(theEndpoint, pConnection);
+            settings.pConnection = pConnection;
+            settings.wsHandler = pConnection->pfn;
+            pConnection->pfn = nullptr;
+            // mg_ws_connect creates an upgrade for connectTo, not the origin.
+            mg_iobuf_del(&pConnection->send, 0, pConnection->send.len);
+            m_mConnection.try_emplace(theEndpoint, std::move(settings));
             return true;
         }
         bError = true;
@@ -461,6 +611,7 @@ void WebSocketClientImpl::MarkConnectionConnected(mg_connection* pConnection, bo
                 theConnection.bConnected = bConnected;
                 if(bConnected)
                 {
+                    theConnection.state = connection::State::ready;
                     theConnection.tp = std::chrono::system_clock::now();    //mark first time connected for future ping/ponging
                 }
                 else
@@ -482,6 +633,7 @@ void WebSocketClientImpl::MarkConnectionConnected(mg_connection* pConnection, bo
     }
 
     DoConnect();
+    if(bConnected) SendMessages();
     
 }
 
@@ -510,22 +662,72 @@ void WebSocketClientImpl::SetDNS(const std::string& sDNS)
     std::scoped_lock lg(m_mutex);
     if(sDNS.empty() == false)
     {
-        if(sDNS.substr(0, 6) != "udp://")
-        {
-            m_sDNS = "udp://"+sDNS;
-        }
-        if(sDNS.find(':', 6) == std::string::npos)
+        m_sDNS = sDNS.substr(0, 6) == "udp://" ? sDNS : "udp://" + sDNS;
+        if(m_sDNS.find(':', 6) == std::string::npos)
         {
             m_sDNS += ":53";
         }
-        pml::log::trace("pml::restgoose") << "WebsocketClient - Using custom DNS: " << m_sDNS;
     }
     else
     {
         m_sDNS = "udp://8.8.8.8:53";
     }
 
-    pml::log::debug("pml::restgoose") << "WebsocketClient - DNS set to: " << m_mgr.dns4.url;
+    pml::log::debug("pml::restgoose") << "WebsocketClient - DNS set to: " << m_sDNS;
 }
 
+void WebSocketClientImpl::UseProxy(const endpoint& proxy, const std::set<endpoint>& setExcludedEndpoints,
+                                 const std::map<headerName, headerValue>& proxyHeaders)
+{
+    std::scoped_lock lg(m_mutex);
+    m_proxy = proxy;
+    m_setExcludedEndpoints = setExcludedEndpoints;
+    m_sProxyHeaders.clear();
+    for(const auto& [name, value] : proxyHeaders)
+    {
+        if((mg_casecmp(name.Get().c_str(), "Proxy-Authorization") != 0 &&
+            mg_casecmp(name.Get().c_str(), "Proxy-Connection") != 0) ||
+           value.Get().find_first_of("\r\n") != std::string::npos)
+        {
+            pml::log::error("pml::restgoose") << "Invalid WebSocket proxy header: " << name.Get();
+            continue;
+        }
+        m_sProxyHeaders += name.Get() + ": " + value.Get() + "\r\n";
+    }
 }
+
+void WebSocketClientImpl::IgnoreSSLErrors(bool bIgnore)
+{
+    std::scoped_lock lg(m_mutex);
+    m_bIgnoreSSLErrors = bIgnore;
+}
+
+bool WebSocketClientImpl::SetCertificateAuthority(const std::filesystem::path& ca)
+{
+    auto data = load_tls(ca);
+    if(data.empty())
+    {
+        pml::log::error("pml::restgoose") << "Could not load WebSocket CA: " << ca;
+        return false;
+    }
+    std::scoped_lock lg(m_mutex);
+    m_sCA = std::move(data);
+    return true;
+}
+
+bool WebSocketClientImpl::SetClientCertificate(const std::filesystem::path& cert, const std::filesystem::path& key)
+{
+    auto certData = load_tls(cert);
+    auto keyData = load_tls(key);
+    if(certData.empty() || keyData.empty())
+    {
+        pml::log::error("pml::restgoose") << "Could not load WebSocket client certificate/key";
+        return false;
+    }
+    std::scoped_lock lg(m_mutex);
+    m_sCert = std::move(certData);
+    m_sKey = std::move(keyData);
+    return true;
+}
+
+} // namespace pml::restgoose
