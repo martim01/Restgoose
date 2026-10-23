@@ -146,7 +146,7 @@ namespace pml::restgoose
             bool m_bUseProxy{false};
 
             
-            ProxyState m_proxyState{ProxyState::none};
+            ProxyState m_proxyState{ProxyState::kNone};
             void (*m_pHttpHandler)(mg_connection*, int, void*) = nullptr;
 
             std::string m_sDnsServer;
