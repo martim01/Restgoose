@@ -201,4 +201,23 @@ bool is_proxy_needed(const endpoint& target, const endpoint& proxy, const std::s
 
 }
 
+std::string html_escape(const std::string& s)
+{
+    std::ostringstream ss;
+    for(auto c : s)
+    {
+        switch(c)
+        {
+            case '&': ss << "&amp;"; break;
+            case '<': ss << "&lt;"; break;
+            case '>': ss << "&gt;"; break;
+            case '"': ss << "&quot;"; break;
+            case '\'': ss << "&#39;"; break;
+            case '/': ss << "&#x2F;"; break;
+            default: ss << c; break;
+        }
+    }
+    return ss.str();
+}
+
 }

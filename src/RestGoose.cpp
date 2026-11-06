@@ -216,4 +216,25 @@ bool Server::DeleteEndpointEx(const methodpoint& theMethodPoint)
     return m_pImpl->DeleteEndpointEx(theMethodPoint);
 }
 
+void Server::SetPlaceholders(const std::map<std::string, std::string, std::less<>>& mPlaceholders)
+{
+    m_pImpl->SetPlaceholders(mPlaceholders);
+}
+
+void Server::RemovePlaceholders(const std::set<std::string>& setPlaceholders)
+{
+    m_pImpl->RemovePlaceholders(setPlaceholders);
+}
+
+void Server::ClearPlaceholders()
+{
+    m_pImpl->ClearPlaceholders();
+}
+
+void Server::SetPlaceholder(const std::string& sKey, const std::string& sValue)
+{
+    m_pImpl->SetPlaceholder(sKey, sValue);
+}
+
+
 } // namespace pml::restgoose

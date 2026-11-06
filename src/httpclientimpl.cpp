@@ -625,14 +625,6 @@ const clientResponse& HttpClientImpl::Run(const std::chrono::milliseconds& conne
 
         if(m_sDnsServer.empty() == false)
         {
-            if(m_sDnsServer.substr(0, 6) != "udp://")
-            {
-                m_sDnsServer = "udp://"+m_sDnsServer;
-            }
-            if(m_sDnsServer.find(':', 6) == std::string::npos)
-            {
-                m_sDnsServer += ":53";
-            }
             pml::log::trace("pml::restgoose") << "RestGoose:HttpClient::Run - Using custom DNS: " << m_sDnsServer;
             mgr.dns4.url = m_sDnsServer.c_str();
         }
@@ -1111,6 +1103,17 @@ void HttpClientImpl::UseProxy(const endpoint& proxy, const std::set<endpoint>& e
 void HttpClientImpl::SetDNS(const std::string& sDnsServer)
 {
     m_sDnsServer = sDnsServer;
+    if(m_sDnsServer.empty() == false)
+    {
+        if(m_sDnsServer.substr(0, 6) != "udp://")
+        {
+            m_sDnsServer = "udp://"+m_sDnsServer;
+        }
+        if(m_sDnsServer.find(':', 6) == std::string::npos)
+        {
+            m_sDnsServer += ":53";
+        }
+    }
 }   
 
 

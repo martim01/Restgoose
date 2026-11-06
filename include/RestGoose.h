@@ -260,7 +260,7 @@ namespace pml::restgoose
             void RemoveHeaders(const std::set<headerName>& setHeaders);
 
             /** @brief Sets the headers to be sent by the server
-            *   @para[in]m mHeaders a map of headerName, headerValue pairs
+            *   @param[in] mHeaders a map of headerName, headerValue pairs
             *   @note Content-Type and Content-Length are always sent
             **/
             void SetHeaders(const std::map<headerName, headerValue>& mHeaders);
@@ -278,6 +278,34 @@ namespace pml::restgoose
              * @brief Closes all open websocket connections
              */
             void CloseAllWebsockets();
+
+            /**
+             * @brief Sets the placeholders for the server to use in endpoint addresses
+             * @param[in] mPlaceholders a map of placeholder keys and their corresponding values. 
+             * @note In the HTML the placeholder should be used as {{key}} where key is the placeholder key.
+             * @note Existing placeholders with the same keys will be overwritten
+             */
+             void SetPlaceholders(const std::map<std::string, std::string, std::less<>>& mPlaceholders);
+            
+             /**
+             * @brief Removes placeholders from the server
+             * @param[in] setPlaceholders a set of placeholder keys to remove
+             */
+            void RemovePlaceholders(const std::set<std::string>& setPlaceholders);
+
+            /**
+             * @brief Clears all placeholders from the server
+             */
+            void ClearPlaceholders();
+
+            /**
+             * @brief Sets a single placeholder for the server
+             * @param[in] sKey the placeholder key
+             * @param[in] sValue the placeholder value
+             * @note In the HTML the placeholder should be used as {{key}} where key is the placeholder key.
+             
+             */
+            void SetPlaceholder(const std::string& sKey, const std::string& sValue);
 
         private:
             std::unique_ptr<MongooseServer> m_pImpl;

@@ -148,6 +148,10 @@ namespace pml::restgoose
 
             unsigned long GetPort() const { return m_nPort; }
 
+            void SetPlaceholders(const std::map<std::string, std::string, std::less<>>& mPlaceholders);
+            void RemovePlaceholders(const std::set<std::string>& setPlaceholders);
+            void ClearPlaceholders();
+            void SetPlaceholder(const std::string& sKey, const std::string& sValue);
 
             void Wait();
             void PrimeWait();
@@ -296,6 +300,8 @@ namespace pml::restgoose
             bool FindAndTriggerEndpointExCallback(mg_connection* pConnection,const methodpoint& thePoint, mg_http_message* pMessage, const userName& theUser);
 
 
+            void SendPage(mg_connection* pConnection, mg_str& data, const std::string& sFilePath);
+
             mg_connection* m_pConnection = nullptr;
             int m_nPipe =0;
             std::string m_sIniPath;
@@ -392,6 +398,8 @@ namespace pml::restgoose
             std::string m_sProtocol;
             redirectType m_redirectType = redirectType::none;
             endpoint m_redirectEndpoint;
+
+            std::map<std::string, std::string, std::less<>> m_mPlaceholders;
     };
 }
 #endif

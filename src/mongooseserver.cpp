@@ -1,6 +1,7 @@
 #include "mongooseserver.h"
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <fstream>
 #include <initializer_list>
@@ -725,10 +726,111 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int, void* pData)
         //none found so sne a "not found" error
         if(m_sStaticRootDir.empty() == false)
         {
-            mg_http_serve_opts opts = {.root_dir = m_sStaticRootDir.c_str()};
-            mg_http_serve_dir(pConnection, pMessage, &opts);
+            //if thePoint.second.Get() ends in a / we need to add "index.html"
+            std::string sFilePath = m_sStaticRootDir + thePoint.second.Get();
+
+            auto data = mg_file_read(&mg_fs_posix, sFilePath.c_str());
+            if(data.buf == nullptr)
+            {
+                if(sFilePath.back() != '/')
+                    sFilePath += '/';
+                sFilePath += "index.html";
+                data = mg_file_read(&mg_fs_posix, sFilePath.c_str());
+            }
+            if(data.buf)
+            {
+                SendPage(pConnection, data, sFilePath);
+
+                mg_free(data.buf);
+            }
+            else
+            {
+                pml::log::warning("pml::restgoose") << "File not found: " << sFilePath;
+            }
+            
         }
     }
+}
+
+void MongooseServer::SendPage(mg_connection* pConnection, mg_str& data, const std::string& sFilePath)
+{
+    pml::log::debug("pml::restgoose") << "Send page";
+
+    std::string sData;
+    sData.reserve(data.len);
+    std::string_view page(data.buf, data.len);
+    size_t pos = 0;
+    while(pos < page.size())
+    {
+        const auto start = page.find("{{", pos);
+        if(start == std::string_view::npos)
+        {
+            sData.append(page.substr(pos));
+            break;
+        }
+
+        sData.append(page.substr(pos, start - pos));
+        const auto end = page.find("}}", start + 2);
+        if(end == std::string_view::npos)
+        {
+            sData.append(page.substr(start));
+            break;
+        }
+
+        const auto key = page.substr(start + 2, end - start - 2);
+        if(const auto it = m_mPlaceholders.find(key); it != m_mPlaceholders.end())
+        {
+            sData.append(it->second);
+        }
+        else
+        {
+            sData.append(page.substr(start, end + 2 - start));
+        }
+        pos = end + 2;
+    }
+
+    std::string sExtension;
+    const auto extensionStart = sFilePath.find_last_of('.');
+    const auto pathSeparator = sFilePath.find_last_of("/\\");
+    if(extensionStart != std::string::npos &&
+       (pathSeparator == std::string::npos || extensionStart > pathSeparator))
+    {
+        sExtension = sFilePath.substr(extensionStart + 1);
+        std::transform(sExtension.begin(), sExtension.end(), sExtension.begin(), [](unsigned char ch)
+        {
+            return static_cast<char>(std::tolower(ch));
+        });
+    }
+
+    static const std::map<std::string, const char*, std::less<>> mimeTypes =
+    {
+        {"css", "text/css; charset=utf-8"},
+        {"gif", "image/gif"},
+        {"htm", "text/html; charset=utf-8"},
+        {"html", "text/html; charset=utf-8"},
+        {"ico", "image/x-icon"},
+        {"jpeg", "image/jpeg"},
+        {"jpg", "image/jpeg"},
+        {"js", "text/javascript; charset=utf-8"},
+        {"json", "application/json"},
+        {"mjs", "text/javascript; charset=utf-8"},
+        {"png", "image/png"},
+        {"svg", "image/svg+xml"},
+        {"ttf", "font/ttf"},
+        {"txt", "text/plain; charset=utf-8"},
+        {"wasm", "application/wasm"},
+        {"webp", "image/webp"},
+        {"woff", "font/woff"},
+        {"woff2", "font/woff2"}
+    };
+    const auto itMimeType = mimeTypes.find(sExtension);
+    const char* sContentType = itMimeType != mimeTypes.end() ? itMimeType->second : "application/octet-stream";
+
+    mg_printf(pConnection, "HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContent-Length: %zu\r\nX-Content-Type-Options: nosniff\r\n\r\n",
+              sContentType, sData.size());
+    mg_send(pConnection, sData.data(), sData.size());
+    mg_send(pConnection, "", 0);
+    pConnection->is_draining = 1;
 }
 
 void MongooseServer::EventHttpWebsocket(mg_connection *pConnection, mg_http_message* pMessage, const endpoint& uri)
@@ -1671,8 +1773,6 @@ void MongooseServer::SendWSQueue()
         
             auto sMessage = convert_from_json(message.second);
 
-            pml::log::trace("pml::restgoose") << "SendWSQueue: " << sMessage;
-
             std::vector<mg_connection*> vConnections;
             {
                 std::scoped_lock lgSubscribers(m_mutexSubscribers);
@@ -1693,10 +1793,6 @@ void MongooseServer::SendWSQueue()
                                         break;
                                     }
                                 }
-                            }
-                            else
-                            {
-                                pml::log::trace("pml::restgoose") << "" << itSubscriber->second.theEndpoint << " not yet authenticated...";
                             }
                         }
                     }
@@ -2120,6 +2216,34 @@ std::optional<MongooseServer::EndpointEx> MongooseServer::FindEndpointEx(const e
     }
     
     return std::nullopt;
+}
+
+void MongooseServer::SetPlaceholders(const std::map<std::string, std::string, std::less<>>& mPlaceholders)
+{
+    m_mPlaceholders.clear();
+    for(const auto& [sKey, sValue] : mPlaceholders)
+    {
+        m_mPlaceholders[sKey] = html_escape(sValue);
+    }
+}
+
+void MongooseServer::RemovePlaceholders(const std::set<std::string>& setPlaceholders)
+{
+    for(const auto& sKey : setPlaceholders)
+    {
+        m_mPlaceholders.erase(sKey);
+    }
+}
+
+void MongooseServer::ClearPlaceholders()
+{
+    m_mPlaceholders.clear();
+}
+
+void MongooseServer::SetPlaceholder(const std::string& sKey, const std::string& sValue)
+
+{
+    m_mPlaceholders[sKey] = html_escape(sValue); 
 }
 
 }   //namespace pml::restgoose
