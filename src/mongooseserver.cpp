@@ -754,41 +754,6 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int, void* pData)
 
 void MongooseServer::SendPage(mg_connection* pConnection, mg_str& data, const std::string& sFilePath)
 {
-    pml::log::debug("pml::restgoose") << "Send page";
-
-    std::string sData;
-    sData.reserve(data.len);
-    std::string_view page(data.buf, data.len);
-    size_t pos = 0;
-    while(pos < page.size())
-    {
-        const auto start = page.find("{{", pos);
-        if(start == std::string_view::npos)
-        {
-            sData.append(page.substr(pos));
-            break;
-        }
-
-        sData.append(page.substr(pos, start - pos));
-        const auto end = page.find("}}", start + 2);
-        if(end == std::string_view::npos)
-        {
-            sData.append(page.substr(start));
-            break;
-        }
-
-        const auto key = page.substr(start + 2, end - start - 2);
-        if(const auto it = m_mPlaceholders.find(key); it != m_mPlaceholders.end())
-        {
-            sData.append(it->second);
-        }
-        else
-        {
-            sData.append(page.substr(start, end + 2 - start));
-        }
-        pos = end + 2;
-    }
-
     std::string sExtension;
     const auto extensionStart = sFilePath.find_last_of('.');
     const auto pathSeparator = sFilePath.find_last_of("/\\");
@@ -825,6 +790,46 @@ void MongooseServer::SendPage(mg_connection* pConnection, mg_str& data, const st
     };
     const auto itMimeType = mimeTypes.find(sExtension);
     const char* sContentType = itMimeType != mimeTypes.end() ? itMimeType->second : "application/octet-stream";
+
+    std::string sData;
+    const std::string_view page(data.buf, data.len);
+    if(std::string_view(sContentType).rfind("text/", 0) == 0)
+    {
+        sData.reserve(data.len);
+        size_t pos = 0;
+        while(pos < page.size())
+        {
+            const auto start = page.find("{{", pos);
+            if(start == std::string_view::npos)
+            {
+                sData.append(page.substr(pos));
+                break;
+            }
+
+            sData.append(page.substr(pos, start - pos));
+            const auto end = page.find("}}", start + 2);
+            if(end == std::string_view::npos)
+            {
+                sData.append(page.substr(start));
+                break;
+            }
+
+            const auto key = page.substr(start + 2, end - start - 2);
+            if(const auto it = m_mPlaceholders.find(key); it != m_mPlaceholders.end())
+            {
+                sData.append(it->second);
+            }
+            else
+            {
+                sData.append(page.substr(start, end + 2 - start));
+            }
+            pos = end + 2;
+        }
+    }
+    else
+    {
+        sData.assign(page.data(), page.size());
+    }
 
     mg_printf(pConnection, "HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContent-Length: %zu\r\nX-Content-Type-Options: nosniff\r\n\r\n",
               sContentType, sData.size());

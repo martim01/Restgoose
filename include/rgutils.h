@@ -33,6 +33,8 @@ namespace pml::restgoose
     RG_EXPORT extern std::optional<Json::Value> convert_post_to_json(const std::vector<partData>& vData);
 
     RG_EXPORT extern bool is_proxy_needed(const endpoint& target, const endpoint& proxy, const std::set<endpoint>& setExcludedEndpoints);
+
+    RG_EXPORT extern std::string html_escape(const std::string& s);
 }
 
 #endif
