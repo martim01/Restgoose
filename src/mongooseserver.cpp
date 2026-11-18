@@ -729,38 +729,42 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int, void* pData)
             //if thePoint.second.Get() ends in a / we need to add "index.html"
             std::string sFilePath = m_sStaticRootDir + thePoint.second.Get();
 
-            auto data = mg_file_read(&mg_fs_posix, sFilePath.c_str());
-            if(data.buf == nullptr)
+            if(std::filesystem::exists(sFilePath))
             {
-                if(sFilePath.back() != '/')
-                    sFilePath += '/';
-                sFilePath += "index.html";
-                data = mg_file_read(&mg_fs_posix, sFilePath.c_str());
+                // if the path exists and is a directory, append "index.html"
+                if(std::filesystem::is_directory(sFilePath))
+                {
+                    if(sFilePath.back() != '/')
+                    {
+                        sFilePath += '/';
+                    }
+                    sFilePath += "index.html";
+                }
             }
-            if(data.buf)
+            if(std::filesystem::exists(sFilePath))
             {
-                SendPage(pConnection, data, sFilePath);
-
-                mg_free(data.buf);
+                SendPage(pConnection, sFilePath);
             }
             else
             {
                 pml::log::warning("pml::restgoose") << "File not found: " << sFilePath;
+                mg_printf(pConnection, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n");  
             }
             
         }
     }
 }
 
-void MongooseServer::SendPage(mg_connection* pConnection, mg_str& data, const std::filesystem::path& filePath)
+void MongooseServer::SendPage(mg_connection* pConnection, const std::filesystem::path& filePath)
 {
     auto sExtension = filePath.extension().string();
     std::transform(sExtension.begin(), sExtension.end(), sExtension.begin(), [](unsigned char ch)
     {
         return static_cast<char>(std::tolower(ch));
     });
+    
 
-    static const std::map<std::string, const char*, std::less<>> mimeTypes =
+    static const std::map<std::string, std::string, std::less<>> mimeTypes =
     {
         {".css", "text/css; charset=utf-8"},
         {".gif", "image/gif"},
@@ -781,15 +785,31 @@ void MongooseServer::SendPage(mg_connection* pConnection, mg_str& data, const st
         {".woff", "font/woff"},
         {".woff2", "font/woff2"}
     };
-    const auto itMimeType = mimeTypes.find(sExtension);
-    const char* sContentType = itMimeType != mimeTypes.end() ? itMimeType->second : "application/octet-stream";
-
-    std::string sData;
-    const std::string_view page(data.buf, data.len);
-    std::string_view responseBody = page;
-    if(std::string_view(sContentType).rfind("text/html", 0) == 0)
+    std::string sContentType;
+    if(auto itMimeType = mimeTypes.find(sExtension); itMimeType != mimeTypes.end())
     {
-        sData.reserve(data.len);
+        sContentType = itMimeType->second;
+    }
+    else
+    {
+        sContentType = "application/octet-stream";
+    }
+
+    std::ifstream file(filePath, std::ios::binary);
+    if(!file)
+    {
+        pml::log::warning("pml::restgoose") << "Failed to open file: " << filePath;
+        //send 404 not found
+        mg_printf(pConnection, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n");
+        return;
+    }
+
+    std::string page((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    std::string sData;
+    if(sContentType.rfind("text/html", 0) == 0)
+    {
+        
+        sData.reserve(page.size());
         size_t pos = 0;
         while(pos < page.size())
         {
@@ -819,12 +839,15 @@ void MongooseServer::SendPage(mg_connection* pConnection, mg_str& data, const st
             }
             pos = end + 2;
         }
-        responseBody = sData;
+    }
+    else
+    {
+        sData = std::move(page);
     }
 
     mg_printf(pConnection, "HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContent-Length: %zu\r\nX-Content-Type-Options: nosniff\r\n\r\n",
-              sContentType, responseBody.size());
-    mg_send(pConnection, responseBody.data(), responseBody.size());
+              sContentType.c_str(), sData.size());
+    mg_send(pConnection, sData.data(), sData.size());
     mg_send(pConnection, "", 0);
     pConnection->is_draining = 1;
 }

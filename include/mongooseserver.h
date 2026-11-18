@@ -299,7 +299,7 @@ namespace pml::restgoose
             bool FindAndTriggerEndpointExCallback(mg_connection* pConnection,const methodpoint& thePoint, mg_http_message* pMessage, const userName& theUser);
 
 
-            void SendPage(mg_connection* pConnection, mg_str& data, const std::filesystem::path& filePath);
+            void SendPage(mg_connection* pConnection, const std::filesystem::path& filePath);
 
             mg_connection* m_pConnection = nullptr;
             int m_nPipe =0;
