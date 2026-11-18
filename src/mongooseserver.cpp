@@ -734,20 +734,41 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int, void* pData)
         std::error_code errorCode;
         const auto rootPath = std::filesystem::canonical(m_sStaticRootDir, errorCode);
         auto filePath = rootPath / std::filesystem::path(thePoint.second.Get()).relative_path();
+        const auto isWithinRoot = [&rootPath](const std::filesystem::path& candidate)
+        {
+            return std::mismatch(rootPath.begin(), rootPath.end(), candidate.begin(), candidate.end()).first == rootPath.end();
+        };
         if(!errorCode)
         {
             filePath = std::filesystem::canonical(filePath, errorCode);
         }
         if(!errorCode && std::filesystem::is_directory(filePath, errorCode) && !errorCode)
         {
+            if(!isWithinRoot(filePath))
+            {
+                errorCode = std::make_error_code(std::errc::permission_denied);
+            }
+            else if(pMessage->uri.len == 0 || pMessage->uri.buf[pMessage->uri.len - 1] != '/')
+            {
+                std::string location(pMessage->uri.buf, pMessage->uri.len);
+                location += '/';
+                if(pMessage->query.len > 0)
+                {
+                    location += '?';
+                    location.append(pMessage->query.buf, pMessage->query.len);
+                }
+                mg_printf(pConnection, "HTTP/1.1 301 Moved Permanently\r\nLocation: %s\r\nContent-Length: 0\r\n\r\n", location.c_str());
+                pConnection->is_draining = 1;
+                return;
+            }
+
             filePath /= "index.html";
             filePath = std::filesystem::canonical(filePath, errorCode);
         }
 
-        if(!errorCode)
+        if(!errorCode && isWithinRoot(filePath))
         {
-            const auto [rootIt, fileIt] = std::mismatch(rootPath.begin(), rootPath.end(), filePath.begin(), filePath.end());
-            if(rootIt == rootPath.end() && std::filesystem::is_regular_file(filePath, errorCode) && !errorCode)
+            if(std::filesystem::is_regular_file(filePath, errorCode) && !errorCode)
             {
                 SendPage(pConnection, filePath);
                 return;
