@@ -10,6 +10,7 @@
 #include <limits>
 #include <map>
 #include <sstream>
+#include <system_error>
 #include <thread>
 
 #include "json/json.h"
@@ -723,35 +724,39 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int, void* pData)
             SendAuthenticationRequest(pConnection, thePoint, false);
             return;
         }
-        //none found so sne a "not found" error
-        if(m_sStaticRootDir.empty() == false)
+        if(m_sStaticRootDir.empty())
         {
-            //if thePoint.second.Get() ends in a / we need to add "index.html"
-            std::string sFilePath = m_sStaticRootDir + thePoint.second.Get();
-
-            if(std::filesystem::exists(sFilePath))
-            {
-                // if the path exists and is a directory, append "index.html"
-                if(std::filesystem::is_directory(sFilePath))
-                {
-                    if(sFilePath.back() != '/')
-                    {
-                        sFilePath += '/';
-                    }
-                    sFilePath += "index.html";
-                }
-            }
-            if(std::filesystem::exists(sFilePath))
-            {
-                SendPage(pConnection, sFilePath);
-            }
-            else
-            {
-                pml::log::warning("pml::restgoose") << "File not found: " << sFilePath;
-                mg_printf(pConnection, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n");  
-            }
-            
+            mg_printf(pConnection, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n");
+            pConnection->is_draining = 1;
+            return;
         }
+
+        std::error_code errorCode;
+        const auto rootPath = std::filesystem::canonical(m_sStaticRootDir, errorCode);
+        auto filePath = rootPath / std::filesystem::path(thePoint.second.Get()).relative_path();
+        if(!errorCode)
+        {
+            filePath = std::filesystem::canonical(filePath, errorCode);
+        }
+        if(!errorCode && std::filesystem::is_directory(filePath, errorCode) && !errorCode)
+        {
+            filePath /= "index.html";
+            filePath = std::filesystem::canonical(filePath, errorCode);
+        }
+
+        if(!errorCode)
+        {
+            const auto [rootIt, fileIt] = std::mismatch(rootPath.begin(), rootPath.end(), filePath.begin(), filePath.end());
+            if(rootIt == rootPath.end() && std::filesystem::is_regular_file(filePath, errorCode) && !errorCode)
+            {
+                SendPage(pConnection, filePath);
+                return;
+            }
+        }
+
+        pml::log::warning("pml::restgoose") << "File not found: " << filePath;
+        mg_printf(pConnection, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n");
+        pConnection->is_draining = 1;
     }
 }
 
