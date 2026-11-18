@@ -752,48 +752,42 @@ void MongooseServer::EventHttp(mg_connection *pConnection, int, void* pData)
     }
 }
 
-void MongooseServer::SendPage(mg_connection* pConnection, mg_str& data, const std::string& sFilePath)
+void MongooseServer::SendPage(mg_connection* pConnection, mg_str& data, const std::filesystem::path& filePath)
 {
-    std::string sExtension;
-    const auto extensionStart = sFilePath.find_last_of('.');
-    const auto pathSeparator = sFilePath.find_last_of("/\\");
-    if(extensionStart != std::string::npos &&
-       (pathSeparator == std::string::npos || extensionStart > pathSeparator))
+    auto sExtension = filePath.extension().string();
+    std::transform(sExtension.begin(), sExtension.end(), sExtension.begin(), [](unsigned char ch)
     {
-        sExtension = sFilePath.substr(extensionStart + 1);
-        std::transform(sExtension.begin(), sExtension.end(), sExtension.begin(), [](unsigned char ch)
-        {
-            return static_cast<char>(std::tolower(ch));
-        });
-    }
+        return static_cast<char>(std::tolower(ch));
+    });
 
     static const std::map<std::string, const char*, std::less<>> mimeTypes =
     {
-        {"css", "text/css; charset=utf-8"},
-        {"gif", "image/gif"},
-        {"htm", "text/html; charset=utf-8"},
-        {"html", "text/html; charset=utf-8"},
-        {"ico", "image/x-icon"},
-        {"jpeg", "image/jpeg"},
-        {"jpg", "image/jpeg"},
-        {"js", "text/javascript; charset=utf-8"},
-        {"json", "application/json"},
-        {"mjs", "text/javascript; charset=utf-8"},
-        {"png", "image/png"},
-        {"svg", "image/svg+xml"},
-        {"ttf", "font/ttf"},
-        {"txt", "text/plain; charset=utf-8"},
-        {"wasm", "application/wasm"},
-        {"webp", "image/webp"},
-        {"woff", "font/woff"},
-        {"woff2", "font/woff2"}
+        {".css", "text/css; charset=utf-8"},
+        {".gif", "image/gif"},
+        {".htm", "text/html; charset=utf-8"},
+        {".html", "text/html; charset=utf-8"},
+        {".ico", "image/x-icon"},
+        {".jpeg", "image/jpeg"},
+        {".jpg", "image/jpeg"},
+        {".js", "text/javascript; charset=utf-8"},
+        {".json", "application/json"},
+        {".mjs", "text/javascript; charset=utf-8"},
+        {".png", "image/png"},
+        {".svg", "image/svg+xml"},
+        {".ttf", "font/ttf"},
+        {".txt", "text/plain; charset=utf-8"},
+        {".wasm", "application/wasm"},
+        {".webp", "image/webp"},
+        {".woff", "font/woff"},
+        {".woff2", "font/woff2"}
     };
     const auto itMimeType = mimeTypes.find(sExtension);
     const char* sContentType = itMimeType != mimeTypes.end() ? itMimeType->second : "application/octet-stream";
 
     std::string sData;
     const std::string_view page(data.buf, data.len);
-    if(std::string_view(sContentType).rfind("text/", 0) == 0)
+    std::string_view responseBody = page;
+    if(std::string_view(sContentType).rfind("text/html", 0) == 0)
     {
         sData.reserve(data.len);
         size_t pos = 0;
@@ -825,15 +819,12 @@ void MongooseServer::SendPage(mg_connection* pConnection, mg_str& data, const st
             }
             pos = end + 2;
         }
-    }
-    else
-    {
-        sData.assign(page.data(), page.size());
+        responseBody = sData;
     }
 
     mg_printf(pConnection, "HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContent-Length: %zu\r\nX-Content-Type-Options: nosniff\r\n\r\n",
-              sContentType, sData.size());
-    mg_send(pConnection, sData.data(), sData.size());
+              sContentType, responseBody.size());
+    mg_send(pConnection, responseBody.data(), responseBody.size());
     mg_send(pConnection, "", 0);
     pConnection->is_draining = 1;
 }
