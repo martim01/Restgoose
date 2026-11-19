@@ -8,8 +8,6 @@ option(RESTGOOSE_BUILD_TESTS "Build restgoose test executables" OFF)
 
 message(STATUS "----pml/restgoose ----")
 
-set(CMAKE_INSTALL_PREFIX "/usr/local")
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 message(STATUS "Restgoose Version: ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
